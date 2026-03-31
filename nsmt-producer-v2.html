@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NSMT Live Producer v2</title>
+<script src="ws-client.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#07080a; --surf:#0e1014; --surf2:#141619; --surf3:#1a1d21; --surf4:#202328;
+  --border:#22252b; --border2:#2d3138;
+  --text:#e8eaed; --muted:#5a606b; --muted2:#3d4249;
+  --gold:#F5C518; --gold-dim:rgba(245,197,24,.15);
+  --red:#e53f3f; --green:#22c55e; --blue:#3b82f6; --orange:#f97316; --cyan:#06b6d4;
+  --live:#ef4444;
+  --r:6px; --r2:10px; --r3:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:14px}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;user-select:none;-webkit-tap-highlight-color:transparent}
+
+/* ── TOPBAR ── */
+.topbar{background:#000;border-bottom:2px solid var(--gold);padding:0 16px;display:flex;align-items:center;gap:10px;height:46px;flex-shrink:0}
+.tb-logo{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:3px;color:#1877F2}
+.tb-divider{width:1px;height:22px;background:var(--border2)}
+.tb-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.tb-game{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--text);flex:1;padding-left:4px}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:4px 12px;cursor:pointer;transition:all .15s}
+.live-pill.active{background:rgba(239,68,68,.25);border-color:rgba(239,68,68,.6)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--live);animation:livePulse 2s infinite}
+@keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}50%{box-shadow:0 0 0 5px rgba(239,68,68,0)}}
+.live-label{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--live)}
+.ws-badge{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:4px;border:1px solid var(--border);color:var(--muted)}
+.ws-badge.ok{background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2);color:var(--green)}
+.ws-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* ── MAIN TABS ── */
+.main-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+.main-tab{padding:11px 20px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap}
+.main-tab:hover{color:var(--text)}
+.main-tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* ── TAB PANES ── */
+.tab-pane{display:none;flex:1;overflow:hidden}
+.tab-pane.active{display:flex}
+
+/* ── SHARED LAYOUT ── */
+.pane-body{flex:1;overflow-y:auto;padding:16px}
+.pane-body::-webkit-scrollbar{width:3px}
+.pane-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── FORM ELEMENTS ── */
+label{display:block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+input,select,textarea{background:var(--surf3);border:1px solid var(--border2);color:var(--text);padding:8px 10px;font-size:13px;font-family:'Barlow',sans-serif;border-radius:var(--r);outline:none;width:100%;transition:border-color .15s;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+textarea{resize:vertical;min-height:80px}
+.field{margin-bottom:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:700;border-radius:var(--r);transition:transform .1s,opacity .15s,background .15s;font-size:13px;padding:9px 16px;white-space:nowrap}
+.btn:active{transform:scale(.96)}
+.btn-gold{background:var(--gold);color:#000}
+.btn-gold:hover{background:#e6b800}
+.btn-surf{background:var(--surf3);color:var(--text);border:1px solid var(--border2)}
+.btn-surf:hover{border-color:var(--gold)}
+.btn-red{background:var(--red);color:#fff}
+.btn-green{background:var(--green);color:#000}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.btn-full{width:100%}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 8px;font-size:10px}
+
+/* ── CARDS ── */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:16px;margin-bottom:12px}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ── SECTION HEADER ── */
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+
+/* ── TOGGLE ── */
+.toggle{position:relative;width:38px;height:20px;cursor:pointer;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:10px;transition:background .2s}
+.toggle input:checked~.toggle-track{background:var(--gold)}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.toggle input:checked~.toggle-thumb{transform:translateX(18px)}
+
+/* ── TAG / BADGE ── */
+.tag{display:inline-flex;align-items:center;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px}
+.tag-gold{background:rgba(245,197,24,.15);color:var(--gold)}
+.tag-green{background:rgba(34,197,94,.15);color:var(--green)}
+.tag-red{background:rgba(229,63,63,.15);color:var(--red)}
+.tag-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+
+/* ══════════════════════════════════════
+   TAB 1: GAME SETUP
+══════════════════════════════════════ */
+#tab-setup{gap:0}
+.setup-cols{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;overflow:hidden}
+.setup-col{overflow-y:auto;padding:16px;border-right:1px solid var(--border)}
+.setup-col:last-child{border-right:none}
+.setup-col::-webkit-scrollbar{width:3px}
+.setup-col::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.logo-preview-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.logo-preview{width:48px;height:48px;border-radius:8px;background:var(--surf3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.logo-preview img{width:100%;height:100%;object-fit:contain}
+.logo-preview-placeholder{font-family:'Bebas Neue',cursive;font-size:18px;color:var(--muted2)}
+
+/* ══════════════════════════════════════
+   TAB 2: ROSTERS
+══════════════════════════════════════ */
+#tab-rosters{flex-direction:column}
+.roster-layout{display:grid;grid-template-columns:240px 1fr;flex:1;overflow:hidden}
+.roster-sidebar{border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.roster-sidebar-hdr{padding:12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.roster-list{flex:1;overflow-y:auto}
+.roster-list::-webkit-scrollbar{width:3px}
+.roster-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.roster-item{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .15s}
+.roster-item:hover{background:var(--surf2)}
+.roster-item.active{background:rgba(245,197,24,.08);border-left:3px solid var(--gold)}
+.roster-item-name{font-weight:600;font-size:13px}
+.roster-item-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.roster-main{flex:1;overflow-y:auto;padding:16px}
+.roster-main::-webkit-scrollbar{width:3px}
+.roster-main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Player table */
+.player-table{width:100%;border-collapse:collapse}
+.player-table th{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:6px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.player-table td{padding:5px 6px;border-bottom:1px solid rgba(34,37,43,.6);vertical-align:middle}
+.player-table tr:hover td{background:var(--surf2)}
+.player-table input{padding:5px 7px;font-size:12px;background:transparent;border:1px solid transparent}
+.player-table input:focus{background:var(--surf3);border-color:var(--gold)}
+.player-table .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;transition:color .15s}
+.player-table .del-btn:hover{color:var(--red)}
+
+/* CSV drop zone */
+.csv-drop{border:2px dashed var(--border2);border-radius:var(--r2);padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.csv-drop:hover,.csv-drop.drag{border-color:var(--gold);background:var(--gold-dim)}
+.csv-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.csv-drop-icon{font-size:28px;margin-bottom:6px}
+.csv-drop-text{font-size:12px;font-weight:600;color:var(--muted)}
+.csv-drop-hint{font-size:10px;color:var(--muted2);margin-top:4px}
+
+/* ══════════════════════════════════════
+   TAB 3: BROADCAST (main control)
+══════════════════════════════════════ */
+#tab-broadcast.active{gap:0;flex-direction:column}
+.broadcast-layout{display:grid;grid-template-columns:300px 1fr 220px;flex:2;min-height:0;overflow:hidden;border-bottom:2px solid var(--border)}
+.stats-section{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;min-height:0}
+.stats-team-col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.stats-team-col:last-child{border-right:none}
+.stats-team-hdr{padding:5px 12px;background:var(--surf);border-bottom:1px solid var(--border);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+/* Stats player grid */
+.stats-player-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:5px;overflow-y:auto;flex:1;align-content:start}
+.stats-player-grid::-webkit-scrollbar{width:3px}
+.stats-player-grid::-webkit-scrollbar-thumb{background:var(--border2)}
+.sp-card{display:flex;flex-direction:column;align-items:center;gap:1px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:5px 3px;cursor:pointer;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent;text-align:center;width:100%}
+.sp-card:active{transform:scale(.94)}
+.sp-card.sel{background:rgba(245,197,24,.12);border-color:var(--gold)}
+.sp-card.foul4{border-color:var(--orange)}
+.sp-card.foul5{border-color:var(--red);opacity:.55}
+.sp-card-num{font-family:'Bebas Neue',cursive;font-size:20px;line-height:1;color:var(--gold)}
+.sp-card-name{font-size:8px;font-weight:600;color:var(--text);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 2px}
+.sp-card-pts{font-size:8px;color:var(--muted);line-height:1.3}
+.sp-card-fouls{display:flex;gap:2px;margin-top:2px}
+.sp-card-fp{width:5px;height:5px;border-radius:50%;background:var(--border2);flex-shrink:0}
+.sp-card-fp.on{background:var(--red)}
+/* Stat action bar */
+.stats-action-bar{flex-shrink:0;border-top:1px solid var(--border);display:flex;align-items:center;flex-wrap:wrap;gap:3px;padding:5px 6px;min-height:42px;background:var(--surf)}
+.stat-btn{padding:4px 7px;border:none;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.4;transition:transform .1s;font-family:'Barlow',sans-serif}
+.stat-btn:active{transform:scale(.9)}
+.bc-col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.bc-col:last-child{border-right:none}
+.bc-col-hdr{background:var(--surf);border-bottom:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.bc-col-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.bc-col-body{flex:1;overflow-y:auto;padding:12px}
+.bc-col-body::-webkit-scrollbar{width:3px}
+.bc-col-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Scoreboard widget */
+.score-widget{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;margin-bottom:10px}
+.score-widget-hdr{background:linear-gradient(90deg,#000,var(--surf2));padding:7px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.sw-event{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+.sw-period{background:var(--gold);color:#000;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;padding:2px 8px;border-radius:3px}
+.score-display{display:grid;grid-template-columns:1fr 32px 1fr;align-items:center;padding:12px 16px;gap:8px}
+.sd-team{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sd-team.right{align-items:flex-end}
+.sd-code{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.sd-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;color:var(--text);line-height:1;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sd-score{font-family:'Bebas Neue',cursive;font-size:54px;line-height:1;color:#fff;letter-spacing:-2px;cursor:pointer;transition:color .15s}
+.sd-score:hover{color:var(--gold)}
+.sd-sep{font-family:'Bebas Neue',cursive;font-size:28px;color:var(--border2);text-align:center}
+.score-btns{display:flex;gap:3px;margin-top:4px}
+.sc-btn{background:var(--surf3);border:1px solid var(--border2);color:var(--text);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:3px 7px;border-radius:4px;cursor:pointer;transition:all .1s;letter-spacing:.5px}
+.sc-btn:hover{border-color:var(--gold);color:var(--gold)}
+.sc-btn:active{transform:scale(.92)}
+.sc-btn.minus{color:var(--red)}
+.sc-btn.minus:hover{border-color:var(--red)}
+
+/* Foul pips */
+.foul-pips-row{display:flex;gap:3px;margin-top:3px}
+.fp{width:7px;height:7px;border-radius:50%;background:var(--border2)}
+.fp.on{background:var(--orange)}
+.fp.bonus{background:var(--red)}
+
+/* Clock widget */
+.clock-widget{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
+.clock-face{font-family:'Bebas Neue',cursive;font-size:64px;line-height:1;color:#fff;text-align:center;letter-spacing:-1px;cursor:pointer;transition:color .2s}
+.clock-face:hover{color:var(--gold)}
+.clock-face.running{color:var(--green)}
+.clock-face.paused{color:var(--gold);animation:blink 1s infinite}
+.clock-face.expired{color:var(--red)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.clock-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px}
+.ck-btn{background:var(--surf3);border:1px solid var(--border2);color:var(--text);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:.5px;text-transform:uppercase;padding:9px 4px;border-radius:var(--r);cursor:pointer;transition:all .12s;text-align:center}
+.ck-btn:active{transform:scale(.95)}
+.ck-btn.start{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--green)}
+.ck-btn.pause{background:rgba(245,197,24,.1);border-color:rgba(245,197,24,.3);color:var(--gold)}
+.ck-btn.reset{background:rgba(229,63,63,.08);border-color:rgba(229,63,63,.25);color:var(--red)}
+.clock-set-row{display:flex;gap:6px;margin-top:7px}
+.ck-input{flex:1;background:var(--surf3);border:1px solid var(--border2);color:var(--text);font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:1px;text-align:center;padding:6px;border-radius:var(--r);outline:none}
+.ck-input:focus{border-color:var(--gold)}
+.ck-set-btn{background:var(--surf3);border:1px solid var(--border2);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:6px 10px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all .12s}
+.ck-set-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* Period pills */
+.period-widget{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
+.period-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.period-pill{background:var(--surf3);border:1px solid var(--border2);color:var(--muted);font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:1px;padding:5px 10px;border-radius:4px;cursor:pointer;transition:all .12s}
+.period-pill:hover{border-color:var(--gold);color:var(--gold)}
+.period-pill.active{background:var(--gold);color:#000;border-color:var(--gold)}
+.period-pill.ot{border-color:rgba(59,130,246,.3);color:var(--blue)}
+.period-pill.ot.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* Timeout tracker */
+.timeout-widget{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
+.to-team-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.to-team-row:last-child{margin-bottom:0}
+.to-label{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;min-width:44px}
+.to-dots{display:flex;gap:4px;flex:1}
+.to-dot{flex:1;max-width:24px;height:7px;border-radius:2px;background:var(--surf4);border:1px solid var(--border2);transition:all .15s}
+.to-dot.on{background:var(--gold);border-color:var(--gold)}
+.to-dot.empty{background:var(--red);border-color:var(--red)}
+
+/* Action grid */
+.action-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px}
+.action-btn{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:12px 10px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.action-btn:hover{background:var(--surf2)}
+.action-btn:active{transform:scale(.95)}
+.action-icon{font-size:22px;line-height:1}
+.action-label{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text);line-height:1.2}
+.action-sub{font-size:9px;color:var(--muted);letter-spacing:.5px}
+.action-btn.timeout{border-color:rgba(245,197,24,.2)}
+.action-btn.timeout:hover{border-color:rgba(245,197,24,.5);background:rgba(245,197,24,.05)}
+.action-btn.foul{border-color:rgba(249,115,22,.2)}
+.action-btn.foul:hover{border-color:rgba(249,115,22,.5);background:rgba(249,115,22,.05)}
+.action-btn.sub{border-color:rgba(6,182,212,.2)}
+.action-btn.sub:hover{border-color:rgba(6,182,212,.5);background:rgba(6,182,212,.05)}
+.action-btn.special{border-color:rgba(59,130,246,.2)}
+.action-btn.special:hover{border-color:rgba(59,130,246,.5);background:rgba(59,130,246,.05)}
+
+/* Event log */
+.event-log{display:flex;flex-direction:column}
+.log-row{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:7px;font-size:11px;transition:background .15s}
+.log-row:hover{background:var(--surf2)}
+.log-time{font-family:'Bebas Neue',cursive;font-size:10px;color:var(--muted);min-width:36px;margin-top:1px}
+.log-icon{font-size:13px;flex-shrink:0}
+.log-text{flex:1;color:var(--text);line-height:1.4}
+.log-pts{font-family:'Bebas Neue',cursive;font-size:15px;color:var(--gold);flex-shrink:0}
+.log-tag{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.log-tag.broadcast{background:rgba(59,130,246,.15);color:var(--blue)}
+.log-tag.game{background:rgba(34,197,94,.15);color:var(--green)}
+.log-tag.warn{background:rgba(249,115,22,.15);color:var(--orange)}
+
+/* Foul trouble panel */
+.foul-trouble-panel{background:var(--surf);border:1px solid rgba(249,115,22,.2);border-radius:var(--r2);overflow:hidden;margin-bottom:10px}
+.ft-hdr{background:rgba(249,115,22,.1);padding:6px 12px;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(249,115,22,.15)}
+.ft-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--orange)}
+.ft-player-row{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border)}
+.ft-player-row:last-child{border-bottom:none}
+.ft-num{font-family:'Bebas Neue',cursive;font-size:17px;color:var(--gold);min-width:26px}
+.ft-name{flex:1;font-size:11px;font-weight:600}
+.ft-fpips{display:flex;gap:3px}
+.ft-fp{width:9px;height:9px;border-radius:50%;background:var(--border2)}
+.ft-fp.on{background:var(--orange)}
+.ft-fp.red{background:var(--red)}
+
+/* ══════════════════════════════════════
+   TAB 4: TICKER MANAGER
+══════════════════════════════════════ */
+#tab-ticker{flex-direction:column}
+.ticker-layout{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;gap:0}
+.ticker-col{padding:16px;overflow-y:auto;border-right:1px solid var(--border)}
+.ticker-col:last-child{border-right:none}
+.ticker-col::-webkit-scrollbar{width:3px}
+.ticker-col::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.game-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;margin-bottom:8px;position:relative}
+.game-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.game-card-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
+.game-card-status{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.game-card-status.live{color:var(--live)}
+.game-card-status.final{color:var(--muted)}
+.game-matchup{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.gm-team{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:15px;letter-spacing:.5px;text-transform:uppercase;color:var(--text)}
+.gm-team.right{text-align:right}
+.gm-score-row{display:flex;align-items:center;justify-content:center;gap:6px}
+.gm-score{background:var(--surf3);border:1px solid var(--border2);border-radius:4px;padding:3px 8px;font-family:'Bebas Neue',cursive;font-size:20px;color:#fff;letter-spacing:1px;width:40px;text-align:center}
+.gm-sep{font-family:'Bebas Neue',cursive;font-size:14px;color:var(--muted2)}
+.gm-period{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:4px}
+.game-card .del-btn{position:absolute;top:10px;right:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;transition:color .15s;padding:2px}
+.game-card .del-btn:hover{color:var(--red)}
+
+.ticker-preview{background:var(--surf3);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-size:11px;font-weight:600;color:var(--muted);font-family:'Barlow Condensed',sans-serif;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ══════════════════════════════════════
+   TAB 5: OVERLAY SETTINGS
+══════════════════════════════════════ */
+#tab-overlay{flex-direction:column}
+.overlay-settings-layout{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden}
+.os-col{padding:16px;overflow-y:auto;border-right:1px solid var(--border)}
+.os-col:last-child{border-right:none}
+.os-col::-webkit-scrollbar{width:3px}
+.os-col::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-row-label{font-size:13px;font-weight:600;color:var(--text)}
+.toggle-row-sub{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* Ad zone grid */
+.ad-zones-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ad-zone{background:var(--surf3);border:1px solid var(--border2);border-radius:var(--r2);padding:12px;position:relative;overflow:hidden}
+.ad-zone-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.ad-zone-preview{width:100%;aspect-ratio:16/9;background:var(--surf4);border:1px dashed var(--border2);border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.ad-zone-preview:hover{border-color:var(--gold)}
+.ad-zone-preview img{width:100%;height:100%;object-fit:contain}
+.ad-zone-preview-text{font-size:10px;color:var(--muted2);text-align:center;padding:8px}
+.ad-zone-input{position:absolute;inset:0;opacity:0;cursor:pointer;pointer-events:none}
+
+/* ══════════════════════════════════════
+   MODALS
+══════════════════════════════════════ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-backdrop.hidden{display:none}
+.modal-box{background:var(--surf);border:1px solid var(--border2);border-radius:14px;padding:22px;width:100%;max-width:420px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.7)}
+.modal-title{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:1px;color:var(--gold);margin-bottom:14px}
+.modal-actions{display:flex;gap:8px;margin-top:14px}
+
+.player-pick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;max-height:220px;overflow-y:auto;margin-top:8px}
+.player-pick{background:var(--surf3);border:1px solid var(--border2);border-radius:6px;padding:7px 4px;text-align:center;cursor:pointer;transition:all .12s}
+.player-pick:hover{border-color:var(--gold)}
+.player-pick.sel{background:rgba(245,197,24,.15);border-color:var(--gold)}
+.pp-num{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold);line-height:1}
+.pp-name{font-size:8px;color:var(--muted);line-height:1.3;margin-top:2px;word-break:break-word}
+.pp-fouls{font-size:8px;color:var(--muted2);margin-top:1px}
+
+/* ── LOGO PICKER MODAL ── */
+.logo-picker-modal .modal-box{max-width:680px}
+.logo-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;max-height:420px;overflow-y:auto;padding:4px 2px;margin-top:10px}
+.logo-pick-item{background:var(--surf3);border:2px solid var(--border2);border-radius:8px;padding:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .15s}
+.logo-pick-item:hover{border-color:var(--gold);background:var(--gold-dim)}
+.logo-pick-item.sel{border-color:var(--gold);background:rgba(245,197,24,.18)}
+.logo-pick-item img{width:64px;height:64px;object-fit:contain}
+.logo-pick-name{font-size:9px;color:var(--muted);text-align:center;word-break:break-all;line-height:1.2;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logo-picker-search{width:100%;margin-bottom:10px}
+.logo-picker-empty{text-align:center;padding:30px;color:var(--muted);font-size:12px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surf3);border:1px solid var(--border2);color:var(--text);padding:8px 18px;border-radius:20px;font-size:12px;font-weight:600;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw}
+.toast.show{opacity:1}
+
+/* info box */
+.info-box{background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.18);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--text);line-height:1.7;margin-bottom:10px}
+.info-box code{background:rgba(255,255,255,.07);border-radius:3px;padding:1px 5px;font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══ -->
+<div class="topbar">
+  <div class="tb-logo">NSMT</div>
+  <div class="tb-divider"></div>
+  <div class="tb-title">Live Producer</div>
+  <div class="tb-divider"></div>
+  <div class="tb-game" id="tbGame">No game configured</div>
+  <div class="live-pill" id="livePill" onclick="toggleLive()">
+    <div class="live-dot"></div>
+    <div class="live-label" id="liveLabel">GO LIVE</div>
+  </div>
+  <div class="ws-badge" id="wsBadge"><div class="ws-dot"></div><span id="wsBadgeText">OFFLINE</span></div>
+</div>
+
+<!-- ══ MAIN TABS ══ -->
+<div class="main-tabs">
+  <div class="main-tab active" data-tab="setup" onclick="showTab('setup',this)">⚙️ Game Setup</div>
+  <div class="main-tab" data-tab="rosters" onclick="showTab('rosters',this)">👥 Rosters</div>
+  <div class="main-tab" data-tab="broadcast" onclick="showTab('broadcast',this)">📡 Broadcast</div>
+  <div class="main-tab" data-tab="ticker" onclick="showTab('ticker',this)">📊 Score Ticker</div>
+  <div class="main-tab" data-tab="overlay" onclick="showTab('overlay',this)">🎨 Overlay & Ads</div>
+</div>
+
+<!-- ══════════════════════════════════════
+  TAB 1: GAME SETUP
+══════════════════════════════════════ -->
+<div class="tab-pane active" id="tab-setup">
+  <div class="setup-cols">
+
+    <!-- LEFT: Game Info + Away Team -->
+    <div class="setup-col">
+      <div class="card">
+        <div class="card-title">Game Info</div>
+        <div class="field"><label>Event Name</label><input id="cfgEvent" placeholder="WCAC Championship" oninput="onSetupChange()"></div>
+        <div class="field"><label>Venue</label><input id="cfgVenue" placeholder="DeMatha Catholic HS"></div>
+        <div class="g2">
+          <div class="field"><label>Date</label><input type="date" id="cfgDate"></div>
+          <div class="field"><label>Time</label><input type="time" id="cfgTime"></div>
+        </div>
+        <div class="g2">
+          <div class="field"><label>Format</label>
+            <select id="cfgPeriods" onchange="onSetupChange()">
+              <option value="4">4 Quarters</option>
+              <option value="2">2 Halves</option>
+            </select>
+          </div>
+          <div class="field"><label>Period Length (min)</label><input type="number" id="cfgPeriodLen" value="8" min="1" max="30" oninput="onSetupChange()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Away Team</div>
+        <div class="logo-preview-row">
+          <div class="logo-preview" id="awayLogoPreview">
+            <img id="awayLogoImg" src="" alt="" style="display:none">
+            <div class="logo-preview-placeholder" id="awayLogoPlaceholder">A</div>
+          </div>
+          <div style="flex:1">
+            <div class="g2">
+              <div class="field"><label>Team Name</label><input id="cfgAwayName" placeholder="St. John's" oninput="onSetupChange()"></div>
+              <div class="field"><label>Code (3-4 chars)</label><input id="cfgAwayCode" placeholder="SJC" maxlength="4" oninput="onSetupChange()"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Logo</label>
+          <div style="display:flex;gap:6px">
+            <input id="cfgAwayLogoUrl" placeholder="URL or pick from library" oninput="previewLogo('away')" style="flex:1">
+            <button class="btn btn-surf btn-sm" onclick="openLogoPicker('away')" style="white-space:nowrap;flex-shrink:0">Library</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Upload Logo File</label>
+          <div class="csv-drop" style="padding:10px" onclick="document.getElementById('awayLogoFile').click()">
+            <input type="file" id="awayLogoFile" accept="image/*" style="display:none" onchange="handleLogoUpload('away',this)">
+            <div style="font-size:11px;color:var(--muted);text-align:center">Click to upload PNG / JPG logo</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Team Colors</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgAwayPrimary" value="#00007f" oninput="onColorChange('away')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Primary
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgAwaySecondary" value="#ffffff" oninput="onColorChange('away')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Secondary
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgAwayText" value="#ffffff" oninput="onColorChange('away')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Text
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgAwayAccent" value="#7f7f7f" oninput="onColorChange('away')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Accent
+            </div>
+          </div>
+        </div>
+        <div class="field"><label>Load Saved Roster</label>
+          <select id="awayRosterSelect" onchange="loadRosterForTeam('away')">
+            <option value="">— Select roster —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Home Team + WebSocket Config -->
+    <div class="setup-col">
+      <div class="card">
+        <div class="card-title">Home Team</div>
+        <div class="logo-preview-row">
+          <div class="logo-preview" id="homeLogoPreview">
+            <img id="homeLogoImg" src="" alt="" style="display:none">
+            <div class="logo-preview-placeholder" id="homeLogoPlaceholder">H</div>
+          </div>
+          <div style="flex:1">
+            <div class="g2">
+              <div class="field"><label>Team Name</label><input id="cfgHomeName" placeholder="Paul VI" oninput="onSetupChange()"></div>
+              <div class="field"><label>Code (3-4 chars)</label><input id="cfgHomeCode" placeholder="PVI" maxlength="4" oninput="onSetupChange()"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Logo</label>
+          <div style="display:flex;gap:6px">
+            <input id="cfgHomeLogoUrl" placeholder="URL or pick from library" oninput="previewLogo('home')" style="flex:1">
+            <button class="btn btn-surf btn-sm" onclick="openLogoPicker('home')" style="white-space:nowrap;flex-shrink:0">Library</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Upload Logo File</label>
+          <div class="csv-drop" style="padding:10px" onclick="document.getElementById('homeLogoFile').click()">
+            <input type="file" id="homeLogoFile" accept="image/*" style="display:none" onchange="handleLogoUpload('home',this)">
+            <div style="font-size:11px;color:var(--muted);text-align:center">Click to upload PNG / JPG logo</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Team Colors</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgHomePrimary" value="#046333" oninput="onColorChange('home')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Primary
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgHomeSecondary" value="#ffffff" oninput="onColorChange('home')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Secondary
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgHomeText" value="#ffffff" oninput="onColorChange('home')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Text
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)">
+              <input type="color" id="cfgHomeAccent" value="#c0c0c0" oninput="onColorChange('home')" style="width:40px;height:32px;cursor:pointer;border:none;background:none">Accent
+            </div>
+          </div>
+        </div>
+        <div class="field"><label>Load Saved Roster</label>
+          <select id="homeRosterSelect" onchange="loadRosterForTeam('home')">
+            <option value="">— Select roster —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">WebSocket Server</div>
+        <div class="info-box">Connect to the local scoreboard server so the overlay receives live updates. Run <code>python3 scoreboard_server.py</code> first.</div>
+        <div class="field"><label>Server URL</label><input id="wsUrlInput" placeholder="ws://localhost:8765" value="ws://localhost:8765"></div>
+        <button class="btn btn-gold btn-full" onclick="connectWS()">🔌 Connect WebSocket</button>
+      </div>
+
+      <div class="card" style="background:rgba(245,197,24,.05);border-color:rgba(245,197,24,.2)">
+        <div class="card-title" style="color:var(--text)">Ready to Start?</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Fill in both teams, load rosters, connect WebSocket — then Go Live. The broadcast tab will unlock.</div>
+        <button class="btn btn-gold btn-full" style="font-size:14px;padding:12px" onclick="goLive()">▶ GO LIVE</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+  TAB 2: ROSTERS
+══════════════════════════════════════ -->
+<div class="tab-pane" id="tab-rosters">
+  <div class="roster-layout">
+
+    <!-- Sidebar: saved rosters list -->
+    <div class="roster-sidebar">
+      <div class="roster-sidebar-hdr">
+        <div class="section-hdr" style="margin-bottom:8px">
+          <span class="section-title">Saved Rosters</span>
+          <button class="btn btn-gold btn-sm" onclick="newRoster()">+ New</button>
+        </div>
+        <input placeholder="Search rosters…" oninput="filterRosters(this.value)" style="font-size:12px;padding:6px 8px">
+      </div>
+      <div class="roster-list" id="rosterList"></div>
+    </div>
+
+    <!-- Main: roster editor -->
+    <div class="roster-main" id="rosterMain">
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <div style="font-size:32px;margin-bottom:8px">👥</div>
+        <div style="font-size:13px">Select a roster to edit, or create a new one</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+  TAB 3: BROADCAST
+══════════════════════════════════════ -->
+<div class="tab-pane" id="tab-broadcast">
+  <div class="broadcast-layout">
+
+    <!-- LEFT COL: Broadcast Actions -->
+    <div class="bc-col">
+      <div class="bc-col-hdr">
+        <span class="bc-col-title">Broadcast Actions</span>
+        <span style="font-size:9px;color:var(--muted)">Fire overlays on stream</span>
+      </div>
+      <div class="bc-col-body">
+        <div class="action-grid">
+          <button class="action-btn timeout" onclick="openTimeoutModal('away')">
+            <div class="action-icon">⏱️</div>
+            <div class="action-label">Away Timeout</div>
+            <div class="action-sub">Fires on stream</div>
+          </button>
+          <button class="action-btn timeout" onclick="openTimeoutModal('home')">
+            <div class="action-icon">⏱️</div>
+            <div class="action-label">Home Timeout</div>
+            <div class="action-sub">Fires on stream</div>
+          </button>
+          <button class="action-btn sub" onclick="openSubModal()">
+            <div class="action-icon">🔄</div>
+            <div class="action-label">Substitution</div>
+            <div class="action-sub">In / out graphic</div>
+          </button>
+          <button class="action-btn foul" onclick="openFoulModal()">
+            <div class="action-icon">🚨</div>
+            <div class="action-label">Personal Foul</div>
+            <div class="action-sub">Player + foul count</div>
+          </button>
+          <button class="action-btn special" onclick="fireSpecial('HALFTIME')">
+            <div class="action-icon">🏀</div>
+            <div class="action-label">Halftime</div>
+            <div class="action-sub">Halftime graphic</div>
+          </button>
+          <button class="action-btn special" onclick="fireSpecial('END OF GAME')">
+            <div class="action-icon">🏆</div>
+            <div class="action-label">Final</div>
+            <div class="action-sub">End of game graphic</div>
+          </button>
+          <button class="action-btn" onclick="fireSpecial('MEDIA TIMEOUT')">
+            <div class="action-icon">📺</div>
+            <div class="action-label">Media Timeout</div>
+            <div class="action-sub">TV break graphic</div>
+          </button>
+          <button class="action-btn" onclick="fireSpecial('OFFICIALS TIMEOUT')">
+            <div class="action-icon">👮</div>
+            <div class="action-label">Officials TO</div>
+            <div class="action-sub">Officials graphic</div>
+          </button>
+        </div>
+
+        <!-- Foul trouble panel -->
+        <div class="foul-trouble-panel">
+          <div class="ft-hdr">
+            <span style="font-size:14px">⚠️</span>
+            <span class="ft-title">Foul Trouble</span>
+            <span id="ftCount" style="font-size:9px;color:var(--muted);margin-left:auto">0 players</span>
+          </div>
+          <div id="foulTroubleList">
+            <div style="padding:10px 12px;font-size:11px;color:var(--muted);text-align:center">No foul trouble</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CENTER COL: Score + Clock + Period + Timeouts -->
+    <div class="bc-col">
+      <div class="bc-col-hdr">
+        <span class="bc-col-title">Score & Clock</span>
+        <span id="bcPushStatus" style="font-size:9px;color:var(--muted)">Not synced</span>
+      </div>
+      <div class="bc-col-body" style="padding:10px 14px;display:flex;flex-direction:column;gap:10px">
+
+        <!-- Score -->
+        <div class="score-widget">
+          <div class="score-widget-hdr">
+            <div class="sw-event" id="swEvent">NSMT BASKETBALL</div>
+            <div class="sw-period" id="swPeriod">Q1</div>
+          </div>
+          <div class="score-display">
+            <div class="sd-team">
+              <div class="sd-code" id="sdAwayCode">AWAY</div>
+              <div class="sd-name" id="sdAwayName">Away</div>
+              <div class="sd-score" id="sdAwayScore" onclick="openOverride('away')" title="Click to override">0</div>
+              <div class="score-btns">
+                <button class="sc-btn" onclick="adjScore('away',3)">+3</button>
+                <button class="sc-btn" onclick="adjScore('away',2)">+2</button>
+                <button class="sc-btn" onclick="adjScore('away',1)">+1</button>
+                <button class="sc-btn minus" onclick="adjScore('away',-1)">-1</button>
+              </div>
+              <div class="foul-pips-row" id="awayFoulPips"></div>
+            </div>
+            <div class="sd-sep">—</div>
+            <div class="sd-team right">
+              <div class="sd-code" id="sdHomeCode">HOME</div>
+              <div class="sd-name" id="sdHomeName">Home</div>
+              <div class="sd-score" id="sdHomeScore" onclick="openOverride('home')" title="Click to override">0</div>
+              <div class="score-btns" style="justify-content:flex-end">
+                <button class="sc-btn minus" onclick="adjScore('home',-1)">-1</button>
+                <button class="sc-btn" onclick="adjScore('home',1)">+1</button>
+                <button class="sc-btn" onclick="adjScore('home',2)">+2</button>
+                <button class="sc-btn" onclick="adjScore('home',3)">+3</button>
+              </div>
+              <div class="foul-pips-row" id="homeFoulPips" style="justify-content:flex-end"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clock -->
+        <div class="clock-widget" style="margin-bottom:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <span class="section-title">Game Clock</span>
+            <span id="clockSyncBadge" style="font-size:9px;color:var(--muted)">—</span>
+          </div>
+          <div class="clock-face" id="clockFace" onclick="openClockEdit()">8:00</div>
+          <div class="clock-btns">
+            <button class="ck-btn start" onclick="clockStart()">▶ Start</button>
+            <button class="ck-btn pause" onclick="clockPause()">⏸ Pause</button>
+            <button class="ck-btn reset" onclick="clockReset()">↺ Reset</button>
+          </div>
+          <div class="clock-set-row">
+            <input class="ck-input" id="ckSetInput" placeholder="8:00" title="MM:SS">
+            <button class="ck-set-btn" onclick="clockSetManual()">Set</button>
+          </div>
+        </div>
+
+        <!-- Period -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="section-title" style="flex-shrink:0">Period</span>
+          <div class="period-pills" id="periodPills" style="flex:1"></div>
+          <button class="btn btn-surf btn-sm" onclick="addOT()">+OT</button>
+          <button class="btn btn-surf btn-sm" onclick="endPeriod()">End Period</button>
+        </div>
+
+        <!-- Timeouts -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="section-title">Timeouts</span>
+            <button class="btn btn-ghost btn-sm" onclick="resetTimeouts()">Reset</button>
+          </div>
+          <div class="to-team-row">
+            <div class="to-label" id="toLabelAway">AWAY</div>
+            <div class="to-dots" id="toDotsAway"></div>
+            <button class="btn btn-surf btn-sm" onclick="callTimeout('away')">USE ▸</button>
+          </div>
+          <div class="to-team-row" style="margin-top:6px">
+            <div class="to-label" id="toLabelHome">HOME</div>
+            <div class="to-dots" id="toDotsHome"></div>
+            <button class="btn btn-surf btn-sm" onclick="callTimeout('home')">USE ▸</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT COL: Event Log -->
+    <div class="bc-col">
+      <div class="bc-col-hdr">
+        <span class="bc-col-title">Live Event Log</span>
+        <button class="btn btn-ghost btn-sm" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="bc-col-body" style="padding:0">
+        <div class="event-log" id="eventLog">
+          <div class="log-row"><div class="log-time">—:——</div><div class="log-icon">📋</div><div class="log-text" style="color:var(--muted)">Go Live to start logging</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LIVE STATS SECTION -->
+  <div class="stats-section">
+    <div class="stats-team-col">
+      <div class="stats-team-hdr">
+        <span id="statsAwayHdr">AWAY — LIVE STATS</span>
+        <span id="statsAwaySelLabel" style="font-size:9px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--gold)"></span>
+        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+          <select id="statsAwayRosterPick" style="font-size:10px;padding:2px 4px;height:22px;width:120px" onchange="loadRosterForTeam('away',this.value)">
+            <option value="">— roster —</option>
+          </select>
+        </div>
+      </div>
+      <div class="stats-player-grid" id="statsAwayPlayers">
+        <div style="grid-column:1/-1;padding:12px;text-align:center;color:var(--muted);font-size:10px">Select a roster above</div>
+      </div>
+      <div class="stats-action-bar" id="statsAwayBar">
+        <span style="color:var(--muted2);font-size:10px;padding:0 4px">Tap a player to log a stat</span>
+      </div>
+    </div>
+    <div class="stats-team-col">
+      <div class="stats-team-hdr">
+        <span id="statsHomeHdr">HOME — LIVE STATS</span>
+        <span id="statsHomeSelLabel" style="font-size:9px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--gold)"></span>
+        <div style="display:flex;align-items:center;gap:4px;margin-left:auto">
+          <select id="statsHomeRosterPick" style="font-size:10px;padding:2px 4px;height:22px;width:120px" onchange="loadRosterForTeam('home',this.value)">
+            <option value="">— roster —</option>
+          </select>
+        </div>
+      </div>
+      <div class="stats-player-grid" id="statsHomePlayers">
+        <div style="grid-column:1/-1;padding:12px;text-align:center;color:var(--muted);font-size:10px">Select a roster above</div>
+      </div>
+      <div class="stats-action-bar" id="statsHomeBar">
+        <span style="color:var(--muted2);font-size:10px;padding:0 4px">Tap a player to log a stat</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════
+  TAB 4: SCORE TICKER
+══════════════════════════════════════ -->
+<div class="tab-pane" id="tab-ticker">
+  <div class="ticker-layout">
+
+    <!-- LEFT: Add / manage games -->
+    <div class="ticker-col">
+      <div class="section-hdr" style="margin-bottom:12px">
+        <span class="section-title">Ticker Games</span>
+        <button class="btn btn-gold btn-sm" onclick="addTickerGame()">+ Add Game</button>
+      </div>
+      <div class="info-box">Games added here scroll across the bottom ticker on your live stream. Update scores in real time during broadcasts.</div>
+      <div id="tickerGamesList">
+        <div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No games added yet</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Preview + controls -->
+    <div class="ticker-col">
+      <div class="section-hdr" style="margin-bottom:12px">
+        <span class="section-title">Ticker Preview</span>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:10px;color:var(--muted)">Show ticker</span>
+          <label class="toggle"><input type="checkbox" id="togTicker" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+      </div>
+
+      <div style="background:#111316;border-radius:6px;overflow:hidden;margin-bottom:12px">
+        <div style="background:#0d0d10;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.05);font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">TICKER PREVIEW</div>
+        <div style="padding:10px 12px;overflow:hidden;white-space:nowrap">
+          <div id="tickerPreviewText" style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;color:rgba(255,255,255,.7)">Add games to see ticker preview…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Ticker Settings</div>
+        <div class="field"><label>Scroll Speed</label>
+          <select id="tickerSpeed" onchange="pushOverlay()">
+            <option value="slow">Slow</option>
+            <option value="normal" selected>Normal</option>
+            <option value="fast">Fast</option>
+          </select>
+        </div>
+        <div class="field"><label>Separator Character</label>
+          <select id="tickerSep" onchange="updateTickerPreview()">
+            <option value=" ● ">● Bullet</option>
+            <option value=" │ ">│ Pipe</option>
+            <option value="  ·  ">· Dot</option>
+            <option value="  ◆  ">◆ Diamond</option>
+          </select>
+        </div>
+        <button class="btn btn-gold btn-full" onclick="pushOverlay()">📡 Push Ticker to Stream</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+  TAB 5: OVERLAY & ADS
+══════════════════════════════════════ -->
+<div class="tab-pane" id="tab-overlay">
+  <div class="overlay-settings-layout">
+
+    <!-- LEFT: Visibility + NSMT logo -->
+    <div class="os-col">
+
+      <div class="card">
+        <div class="card-title">NSMT Branding Logo</div>
+        <div class="info-box">This logo appears in the scorebug on the stream. PNG with transparent background recommended.</div>
+        <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">
+          <div style="width:80px;height:80px;background:var(--surf3);border:1px solid var(--border2);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0" id="nsmtLogoPreviewBox">
+            <img id="nsmtLogoPreviewImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:contain">
+            <div style="font-family:'Bebas Neue',cursive;font-size:14px;color:var(--muted2)" id="nsmtLogoPreviewText">NSMT</div>
+          </div>
+          <div style="flex:1">
+            <div class="field"><label>Logo URL</label><input id="nsmtLogoUrl" placeholder="https://..." oninput="previewNsmtLogo()"></div>
+            <div class="csv-drop" style="padding:8px" onclick="document.getElementById('nsmtLogoFile').click()">
+              <input type="file" id="nsmtLogoFile" accept="image/*" style="display:none" onchange="handleNsmtLogoUpload(this)">
+              <div style="font-size:10px;color:var(--muted);text-align:center">Upload PNG / JPG</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-gold btn-full" onclick="pushNsmtLogo()">📡 Push Logo to Stream</button>
+      </div>
+
+
+      <div class="card">
+        <div class="card-title">Other Game Tracker</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Mini score display shown top-right of the overlay. Use for a second game happening simultaneously.</div>
+        <div class="toggle-row" style="margin-bottom:10px">
+          <div><div class="toggle-row-label">Show Tracker</div><div class="toggle-row-sub">Displays in top-right corner</div></div>
+          <label class="toggle"><input type="checkbox" id="togOtherGame" onchange="updateOtherGame()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        </div>
+        <div id="otherGameFields">
+          <div class="g2" style="margin-bottom:8px">
+            <div class="field"><label>Away Team</label><input type="text" id="ogAwayName" placeholder="Away" oninput="updateOtherGame()"></div>
+            <div class="field"><label>Home Team</label><input type="text" id="ogHomeName" placeholder="Home" oninput="updateOtherGame()"></div>
+          </div>
+          <div class="g2" style="margin-bottom:8px">
+            <div class="field"><label>Away Score</label>
+              <div style="display:flex;gap:4px;align-items:center">
+                <button class="btn btn-surf btn-sm" onclick="adjOtherScore('away',-1)">−</button>
+                <input type="number" id="ogAwayScore" value="0" min="0" style="text-align:center" oninput="updateOtherGame()">
+                <button class="btn btn-surf btn-sm" onclick="adjOtherScore('away',1)">+</button>
+              </div>
+            </div>
+            <div class="field"><label>Home Score</label>
+              <div style="display:flex;gap:4px;align-items:center">
+                <button class="btn btn-surf btn-sm" onclick="adjOtherScore('home',-1)">−</button>
+                <input type="number" id="ogHomeScore" value="0" min="0" style="text-align:center" oninput="updateOtherGame()">
+                <button class="btn btn-surf btn-sm" onclick="adjOtherScore('home',1)">+</button>
+              </div>
+            </div>
+          </div>
+          <div class="g2">
+            <div class="field"><label>Period / Status</label><input type="text" id="ogQuarter" placeholder="Q1 / HT / FINAL" oninput="updateOtherGame()"></div>
+            <div class="field"><label>Clock</label><input type="text" id="ogClock" placeholder="8:00" oninput="updateOtherGame()"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Overlay Visibility</div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Scorebug</div><div class="toggle-row-sub">Full-width ESPN-style bug</div></div><label class="toggle"><input type="checkbox" id="togScorebug" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Game Clock</div><div class="toggle-row-sub">Shows in scorebug center</div></div><label class="toggle"><input type="checkbox" id="togClock" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Score Pop Cards</div><div class="toggle-row-sub">Player photo + points on score</div></div><label class="toggle"><input type="checkbox" id="togPops" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Event Feed</div><div class="toggle-row-sub">Right-side chip feed</div></div><label class="toggle"><input type="checkbox" id="togFeed" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Score Ticker</div><div class="toggle-row-sub">Scrolling bottom ticker</div></div><label class="toggle"><input type="checkbox" id="togTicker2" checked onchange="syncTickerToggles()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+        <div class="toggle-row"><div><div class="toggle-row-label">Ad Zones</div><div class="toggle-row-sub">4 corner sponsor slots</div></div><label class="toggle"><input type="checkbox" id="togAds" checked onchange="pushOverlay()"><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Ad zones -->
+    <div class="os-col">
+      <div class="card">
+        <div class="card-title">Sponsor Ad Zones — 4 Corners</div>
+        <div class="info-box">Upload sponsor PNG/JPG for each corner. Recommended size: 300×250 px with transparent background. These display live on stream and can be sold as digital ad space.</div>
+        <div class="ad-zones-grid" id="adZonesGrid"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-gold btn-full" onclick="pushAdZones()">📡 Push Ads to Stream</button>
+          <button class="btn btn-surf" onclick="clearAllAds()">Clear All</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Graphic Duration</div>
+        <div class="g2">
+          <div class="field"><label>Timeout / Foul / Sub (sec)</label><input type="number" id="cfgGraphicDur" value="5" min="2" max="20"></div>
+          <div class="field"><label>Score Pop Card (sec)</label><input type="number" id="cfgPopDur" value="4.5" min="2" max="15" step="0.5"></div>
+        </div>
+        <div class="field"><label>Special Graphic – Halftime / Final (sec)</label><input type="number" id="cfgSpecialDur" value="8" min="3" max="30"></div>
+        <button class="btn btn-surf btn-full" onclick="pushDurations()">Save Durations</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Score Override -->
+<div class="modal-backdrop hidden" id="overrideModal">
+  <div class="modal-box">
+    <div class="modal-title">Override Score</div>
+    <div class="field"><label id="overrideLbl">Score</label><input type="number" id="overrideInput" min="0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gold btn-full" onclick="applyOverride()">Apply</button>
+      <button class="btn btn-surf" onclick="closeModal('overrideModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timeout -->
+<div class="modal-backdrop hidden" id="timeoutModal">
+  <div class="modal-box">
+    <div class="modal-title" id="timeoutModalTitle">Timeout</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">Fires the TIMEOUT graphic on stream and pauses the clock.</div>
+    <div class="field"><label>Timeout Type</label>
+      <select id="timeoutType">
+        <option value="Full Timeout">Full Timeout (60 sec)</option>
+        <option value="30-Second Timeout">30-Second Timeout</option>
+        <option value="TV / Media Timeout">TV / Media Timeout</option>
+        <option value="Officials Timeout">Officials Timeout</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gold btn-full" onclick="fireTimeout()">🎬 Fire Graphic</button>
+      <button class="btn btn-surf" onclick="closeModal('timeoutModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Substitution -->
+<div class="modal-backdrop hidden" id="subModal">
+  <div class="modal-box">
+    <div class="modal-title">Substitution</div>
+    <div class="field"><label>Team</label>
+      <select id="subTeam" onchange="renderSubPlayers()">
+        <option value="away" id="subAwayOpt">Away</option>
+        <option value="home" id="subHomeOpt">Home</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);margin-bottom:4px">⬆ ENTERING</div>
+        <div class="player-pick-grid" id="subInGrid"></div>
+      </div>
+      <div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:4px">⬇ EXITING</div>
+        <div class="player-pick-grid" id="subOutGrid"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-gold btn-full" onclick="fireSub()">🎬 Fire Sub Graphic</button>
+      <button class="btn btn-surf" onclick="closeModal('subModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Foul -->
+<div class="modal-backdrop hidden" id="foulModal">
+  <div class="modal-box">
+    <div class="modal-title">Personal Foul</div>
+    <div class="field"><label>Team</label>
+      <select id="foulTeam" onchange="renderFoulPlayers()">
+        <option value="away">Away</option>
+        <option value="home">Home</option>
+      </select>
+    </div>
+    <div class="player-pick-grid" id="foulGrid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gold btn-full" onclick="fireFoul()">🎬 Log + Fire Graphic</button>
+      <button class="btn btn-surf" onclick="closeModal('foulModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clock Edit -->
+<div class="modal-backdrop hidden" id="clockModal">
+  <div class="modal-box">
+    <div class="modal-title">Set Game Clock</div>
+    <div class="field"><label>Time (MM:SS)</label><input type="text" id="clockEditInput" placeholder="8:00" style="font-family:'Bebas Neue',cursive;font-size:28px;text-align:center;letter-spacing:2px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-gold btn-full" onclick="applyClockEdit()">Set</button>
+      <button class="btn btn-surf" onclick="closeModal('clockModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOGO PICKER MODAL ══ -->
+<div class="modal-backdrop hidden logo-picker-modal" id="logoPickerModal">
+  <div class="modal-box" style="max-width:680px">
+    <div class="modal-title">Choose Logo from Library</div>
+    <input class="logo-picker-search" id="logoPickerSearch" placeholder="Search logos..." oninput="filterLogoPicker(this.value)">
+    <div class="logo-picker-grid" id="logoPickerGrid">
+      <div class="logo-picker-empty">Loading logos...</div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-gold btn-full" id="logoPickerConfirm" onclick="confirmLogoPicker()" disabled>Select Logo</button>
+      <button class="btn btn-surf" onclick="closeModal('logoPickerModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// NSMT LIVE PRODUCER v2 — WebSocket Edition
+// ════════════════════════════════════════════════════════
+
+// ── WEBSOCKET (via ws-client.js) ──
+NSMTClient.onConnect(() => { setWsBadge('CONNECTED', true); toast('WebSocket connected ✓'); });
+NSMTClient.onDisconnect(() => setWsBadge('OFFLINE'));
+
+window.connectWS = function(urlOverride) {
+  const url = urlOverride || id('wsUrlInput')?.value.trim();
+  if (url) DB.set('nsmt_wsUrl', url);
+  NSMTClient.connect(url || undefined);
+};
+
+function setWsBadge(label, ok=false) {
+  id('wsBadge').className = 'ws-badge' + (ok ? ' ok' : '');
+  id('wsBadgeText').textContent = label;
+}
+
+function wsSend(data) { NSMTClient.send(data); }
+
+// ── STATE ──
+const G = {
+  isLive: false,
+  event:'', venue:'', periods:4, periodLen:8,
+  currentPeriod:1, totalPeriods:4,
+  away:{ name:'Away', code:'AWAY', score:0, fouls:0, timeouts:4, players:[], logoUrl:'', logoData:'', primary:'#00007f', secondary:'#ffffff', textColor:'#ffffff', accent:'#7f7f7f' },
+  home:{ name:'Home', code:'HOME', score:0, fouls:0, timeouts:4, players:[], logoUrl:'', logoData:'', primary:'#046333', secondary:'#ffffff', textColor:'#ffffff', accent:'#c0c0c0' },
+  clock:{ secs:480, display:'8:00', running:false },
+  eventLog:[],
+  tickerGames:[],
+  nsmtLogo:'',
+  otherGame:{ show:false, awayName:'', awayScore:0, homeName:'', homeScore:0, quarter:'', clock:'' },
+  adZones:{ tl:'', tr:'', bl:'', br:'' },
+  durations:{ graphic:5000, pop:4500, special:8000 },
+  overlayFlags:{ scorebug:true, clock:true, pops:true, feed:true, ticker:true, ads:true },
+};
+
+let _clockInterval = null;
+let _overrideTeam = 'away';
+let _timeoutTeam  = 'away';
+let _subIn = null, _subOut = null;
+let _foulPlayer = null;
+let _activeRosterId = null;
+
+// ── STORAGE ──
+const DB = {
+  get(k,d=null){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){console.warn(e)}}
+};
+
+// ── Seed test rosters (always present, never deleted by normal use) ──
+(function seedTestRosters(){
+  const TEST_AWAY_ID = 'r_TEST_AWAY';
+  const TEST_HOME_ID = 'r_TEST_HOME';
+  const mkP = (num,name,pos) => ({id:'p_TEST_'+num+'_'+name.replace(/\s/g,''), num, name, pos, fouls:0});
+  const testAway = { id:TEST_AWAY_ID, name:'TEST — Away (Lake Braddock)', players:[
+    mkP('3','Marcus Johnson','PG'), mkP('5','DeShawn Williams','SG'), mkP('10','Tyler Brooks','SF'),
+    mkP('21','Jordan Hayes','PF'), mkP('34','Chris Daniels','C'), mkP('0','Andre Mitchell','PG'),
+    mkP('1','Kevin Park','SG'), mkP('12','Darius Bell','SF'), mkP('14','Elijah Turner','PF'),
+    mkP('23','Malik Cooper','C'), mkP('4','Cam Rivera','G'), mkP('11','Noah Grant','F')
+  ]};
+  const testHome = { id:TEST_HOME_ID, name:'TEST — Home (South County)', players:[
+    mkP('2','Isaiah Freeman','PG'), mkP('4','Trevon Scott','SG'), mkP('11','Dante Lewis','SF'),
+    mkP('24','Marcus Webb','PF'), mkP('32','Jaylen Carter','C'), mkP('0','Zion Thomas','PG'),
+    mkP('1','Brandon Price','SG'), mkP('13','Amir Jackson','SF'), mkP('20','Quincy Moore','PF'),
+    mkP('33','Devon Harris','C'), mkP('5','Cam Washington','G'), mkP('15','Tyler Evans','F')
+  ]};
+  const rosters = DB.get('nsmt_rosters', []);
+  const hasAway = rosters.some(r=>r.id===TEST_AWAY_ID);
+  const hasHome = rosters.some(r=>r.id===TEST_HOME_ID);
+  if (!hasAway) rosters.unshift(testAway);
+  if (!hasHome) rosters.unshift(testHome);
+  if (!hasAway || !hasHome) DB.set('nsmt_rosters', rosters);
+})();
+
+// ═══════════════════════════════════
+// COLOR PICKERS
+// ═══════════════════════════════════
+function onColorChange(team) {
+  const t = team === 'away' ? 'Away' : 'Home';
+  G[team].primary   = id('cfg'+t+'Primary')?.value   || G[team].primary;
+  G[team].secondary = id('cfg'+t+'Secondary')?.value || G[team].secondary;
+  G[team].textColor = id('cfg'+t+'Text')?.value      || G[team].textColor;
+  G[team].accent    = id('cfg'+t+'Accent')?.value    || G[team].accent;
+  pushOverlayState();
+}
+
+// ═══════════════════════════════════
+// PUSH OVERLAY STATE → WebSocket
+// ═══════════════════════════════════
+function pushOverlayState(extra={}) {
+  const { graphic, lastScoreEvent, periodChange, gameOver, clockExpired: ce, ...rest } = extra;
+  wsSend({ type: 'patch', bug: {
+    awayName: G.away.name, awayCode: G.away.code, awayScore: G.away.score,
+    awayFouls: G.away.fouls, awayTOs: G.away.timeouts,
+    awayLogo: G.away.logoData || G.away.logoUrl,
+    awayPrimary: G.away.primary, awaySecondary: G.away.secondary, awayText: G.away.textColor, awayAccent: G.away.accent,
+    homeName: G.home.name, homeCode: G.home.code, homeScore: G.home.score,
+    homeFouls: G.home.fouls, homeTOs: G.home.timeouts,
+    homeLogo: G.home.logoData || G.home.logoUrl,
+    homePrimary: G.home.primary, homeSecondary: G.home.secondary, homeText: G.home.textColor, homeAccent: G.home.accent,
+    quarter: getPeriodLabel(G.currentPeriod), periodNum: G.currentPeriod,
+    sponsorLabel: G.event,
+    clock: G.clock.display, clockRunning: G.clock.running, clockSecs: G.clock.secs,
+    showScorebug: G.overlayFlags.scorebug,
+    showClock:    G.overlayFlags.clock,
+    showPops:     G.overlayFlags.pops,
+    showFeed:     G.overlayFlags.feed,
+    showTicker:   G.overlayFlags.ticker,
+    showAds:      G.overlayFlags.ads,
+    nsmtLogo:     G.nsmtLogo,
+    otherGameShow:   G.otherGame.show,
+    otherAwayName:   G.otherGame.awayName,
+    otherAwayScore:  G.otherGame.awayScore,
+    otherHomeName:   G.otherGame.homeName,
+    otherHomeScore:  G.otherGame.homeScore,
+    otherQuarter:    G.otherGame.quarter,
+    otherClock:      G.otherGame.clock,
+    cornerTLLogo: G.adZones.tl, cornerTRLogo: G.adZones.tr,
+    cornerBLLogo: G.adZones.bl, cornerBRLogo: G.adZones.br,
+    durations:    G.durations,
+    updatedAt:    Date.now(),
+    lastEvent:    G.eventLog[0] || null,
+    ...(graphic          && { graphic }),
+    ...(lastScoreEvent   && { lastScoreEvent }),
+    ...(periodChange     && { periodChange }),
+    ...(gameOver         && { gameOver }),
+    ...(ce               && { clockExpired: true }),
+    ...rest
+  }});
+  wsSend({ type: 'patch', ticker: {
+    entries: G.tickerGames.filter(g=>g.away&&g.home).map(g => {
+      const status = g.status==='final'?'FINAL':g.status==='upcoming'?'':g.period||'LIVE';
+      return { text:`${g.away} ${g.awayScore} – ${g.home} ${g.homeScore}${status?' ('+status+')':''}`, flash: g.status==='live'?1:0 };
+    }),
+    show:  G.overlayFlags.ticker && G.tickerGames.filter(g=>g.away&&g.home).length > 0,
+    speed: id('tickerSpeed')?.value || 'normal',
+    sep:   id('tickerSep')?.value || ' ● '
+  }});
+  id('bcPushStatus').textContent = '↑ ' + new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+window.pushOverlay = function() {
+  // Sync all overlay flag checkboxes into G.overlayFlags before pushing
+  const f = G.overlayFlags;
+  f.scorebug = id('togScorebug')?.checked ?? f.scorebug;
+  f.clock    = id('togClock')?.checked    ?? f.clock;
+  f.pops     = id('togPops')?.checked     ?? f.pops;
+  f.feed     = id('togFeed')?.checked     ?? f.feed;
+  f.ticker   = id('togTicker')?.checked   ?? f.ticker;
+  f.ads      = id('togAds')?.checked      ?? f.ads;
+  pushOverlayState();
+};
+
+// ═══════════════════════════════════
+// TABS
+// ═══════════════════════════════════
+window.showTab = function(name, el) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+  id('tab-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'broadcast') renderStatsTab();
+};
+
+// ═══════════════════════════════════
+// GAME SETUP
+// ═══════════════════════════════════
+window.onSetupChange = function() {
+  const an = id('cfgAwayName').value || 'Away';
+  const hn = id('cfgHomeName').value || 'Home';
+  id('tbGame').textContent = an + ' vs ' + hn + (id('cfgEvent').value ? ' — ' + id('cfgEvent').value : '');
+};
+
+window.previewLogo = function(team) {
+  const url = id('cfg' + cap(team) + 'LogoUrl').value.trim();
+  const img = id(team + 'LogoImg');
+  const ph  = id(team + 'LogoPlaceholder');
+  if (url) {
+    img.src = url; img.style.display='block'; ph.style.display='none';
+    G[team].logoUrl = url;
+    extractColorsFromLogo(team, url);
+  } else {
+    img.style.display='none'; ph.style.display='flex';
+  }
+};
+
+window.handleLogoUpload = function(team, input) {
+  const file = input.files[0]; if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  fetch('/upload', { method:'POST', headers:{'Content-Type': file.type}, body: file })
+    .then(r => r.json())
+    .then(json => {
+      if (!json.url) throw new Error('no url');
+      G[team].logoData = '';
+      G[team].logoUrl  = json.url;
+      const img = id(team + 'LogoImg');
+      const ph  = id(team + 'LogoPlaceholder');
+      img.src = json.url; img.style.display='block'; ph.style.display='none';
+      _allLogos = []; // invalidate cache so next open re-fetches
+      extractColorsFromLogo(team, json.url);
+      pushOverlayState();
+      toast(cap(team) + ' logo uploaded ✓ — pushed to stream');
+    })
+    .catch(() => toast('Upload failed — check server', 'error'));
+};
+
+// ═══════════════════════════════════
+// LOGO PICKER
+// ═══════════════════════════════════
+let _logoPickerTeam = null;
+let _logoPickerSel  = null;
+let _allLogos       = [];
+
+window.openLogoPicker = function(team) {
+  _logoPickerTeam = team;
+  _logoPickerSel  = null;
+  id('logoPickerSearch').value = '';
+  id('logoPickerConfirm').disabled = true;
+  id('logoPickerModal').classList.remove('hidden');
+  if (_allLogos.length) {
+    renderLogoPickerGrid(_allLogos);
+  } else {
+    id('logoPickerGrid').innerHTML = '<div class="logo-picker-empty">Loading logos...</div>';
+    fetch('/list-logos')
+      .then(r => r.json())
+      .then(json => {
+        _allLogos = json.logos || [];
+        renderLogoPickerGrid(_allLogos);
+      })
+      .catch(() => {
+        id('logoPickerGrid').innerHTML = '<div class="logo-picker-empty">Could not load logos — is the server running?</div>';
+      });
+  }
+};
+
+function renderLogoPickerGrid(logos) {
+  const grid = id('logoPickerGrid');
+  if (!logos.length) { grid.innerHTML = '<div class="logo-picker-empty">No logos found in the uploads folder.</div>'; return; }
+  grid.innerHTML = logos.map((l, i) =>
+    `<div class="logo-pick-item" data-url="${l.url}" data-idx="${i}" onclick="selectLogoPickerItem(this)">
+      <img src="${l.url}" alt="${l.name}" loading="lazy" onerror="this.style.opacity='.3'">
+      <div class="logo-pick-name">${l.name}</div>
+    </div>`
+  ).join('');
+}
+
+window.filterLogoPicker = function(q) {
+  const filtered = q ? _allLogos.filter(l => l.name.toLowerCase().includes(q.toLowerCase())) : _allLogos;
+  renderLogoPickerGrid(filtered);
+};
+
+window.selectLogoPickerItem = function(el) {
+  document.querySelectorAll('.logo-pick-item').forEach(x => x.classList.remove('sel'));
+  el.classList.add('sel');
+  _logoPickerSel = el.dataset.url;
+  id('logoPickerConfirm').disabled = false;
+};
+
+window.confirmLogoPicker = function() {
+  if (!_logoPickerSel || !_logoPickerTeam) return;
+  const team = _logoPickerTeam;
+  const url  = _logoPickerSel;
+
+  // Set URL input and preview
+  const inp = id('cfg' + cap(team) + 'LogoUrl');
+  inp.value = url;
+  G[team].logoUrl  = url;
+  G[team].logoData = '';
+  const img = id(team + 'LogoImg');
+  const ph  = id(team + 'LogoPlaceholder');
+  img.src = url; img.style.display = 'block'; ph.style.display = 'none';
+
+  // Extract colors from logo
+  extractColorsFromLogo(team, url);
+
+  closeModal('logoPickerModal');
+  toast(cap(team) + ' logo selected');
+};
+
+function extractColorsFromLogo(team, src) {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 64, 64);
+      const data = ctx.getImageData(0, 0, 64, 64).data;
+      const buckets = {};
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        if (a < 100) continue;
+        if (r > 225 && g > 225 && b > 225) continue; // skip near-white
+        if (r < 30  && g < 30  && b < 30)  continue; // skip near-black
+        const key = (r>>5) + ',' + (g>>5) + ',' + (b>>5);
+        if (!buckets[key]) buckets[key] = { r:0, g:0, b:0, n:0, sr:r, sg:g, sb:b };
+        buckets[key].r += r; buckets[key].g += g; buckets[key].b += b; buckets[key].n++;
+      }
+      const sorted = Object.values(buckets).sort((a,b) => b.n - a.n);
+      if (!sorted.length) return;
+
+      const primary = sorted[0];
+      const pr = Math.round(primary.r / primary.n);
+      const pg = Math.round(primary.g / primary.n);
+      const pb = Math.round(primary.b / primary.n);
+      const primaryHex = '#' + [pr,pg,pb].map(x=>x.toString(16).padStart(2,'0')).join('');
+
+      // Find secondary: most common bucket with color distance > 90 from primary
+      let secondaryHex = '#ffffff';
+      for (const b of sorted.slice(1)) {
+        const sr = Math.round(b.r/b.n), sg = Math.round(b.g/b.n), sb2 = Math.round(b.b/b.n);
+        const dist = Math.sqrt((sr-pr)**2 + (sg-pg)**2 + (sb2-pb)**2);
+        if (dist > 90) {
+          secondaryHex = '#' + [sr,sg,sb2].map(x=>x.toString(16).padStart(2,'0')).join('');
+          break;
+        }
+      }
+
+      // Text: white or black based on primary luminance
+      const lum = 0.299*pr + 0.587*pg + 0.114*pb;
+      const textHex = lum > 140 ? '#000000' : '#ffffff';
+
+      G[team].primary   = primaryHex;
+      G[team].secondary = secondaryHex;
+      G[team].textColor = textHex;
+      G[team].accent    = secondaryHex;
+
+      // Update color pickers
+      const c = cap(team);
+      const setColor = (id2, v) => { const el = id(id2); if (el) el.value = v; };
+      setColor('cfg'+c+'Primary',   primaryHex);
+      setColor('cfg'+c+'Secondary', secondaryHex);
+      setColor('cfg'+c+'Text',      textHex);
+      setColor('cfg'+c+'Accent',    secondaryHex);
+
+      pushOverlayState();
+      toast(cap(team) + ' colors extracted from logo');
+    } catch(e) {
+      // CORS or canvas error — silently skip color extraction
+    }
+  };
+  img.src = src;
+}
+
+window.loadRosterForTeam = function(team, ridOverride) {
+  const rid = ridOverride !== undefined ? ridOverride : id(team + 'RosterSelect')?.value;
+  if (!rid) return;
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x => x.id === rid);
+  if (!r) return;
+  G[team].players = r.players.map(p => ({ ...p, fouls:0 }));
+  // Sync both pickers to show the loaded roster
+  const pick = id('stats'+cap(team)+'RosterPick');
+  if (pick) pick.value = rid;
+  const sel = id(team + 'RosterSelect');
+  if (sel) sel.value = rid;
+  renderStatsTab();
+  toast(r.name + ' loaded for ' + cap(team));
+};
+
+// ═══════════════════════════════════
+// GO LIVE
+// ═══════════════════════════════════
+window.goLive = function() {
+  G.event      = id('cfgEvent').value.trim() || 'Basketball';
+  G.venue      = id('cfgVenue').value.trim();
+  G.periods    = parseInt(id('cfgPeriods').value) || 4;
+  G.periodLen  = parseInt(id('cfgPeriodLen').value) || 8;
+  G.totalPeriods = G.periods;
+  G.currentPeriod = 1;
+
+  ['away','home'].forEach(t => {
+    G[t].name     = id('cfg' + cap(t) + 'Name').value.trim() || cap(t);
+    G[t].code     = id('cfg' + cap(t) + 'Code').value.trim() || t.toUpperCase();
+    G[t].score    = 0;
+    G[t].fouls    = 0;
+    G[t].timeouts = 4;
+    if (!G[t].players.length) G[t].players = [];
+    G[t].players = G[t].players.map(p => _statDefaults(p));
+  });
+
+  G.isLive = true;
+  G.clock.secs = G.periodLen * 60;
+  G.clock.display = fmtClock(G.clock.secs);
+  G.clock.running = false;
+
+  id('livePill').classList.add('active');
+  id('liveLabel').textContent = 'LIVE';
+  id('tbGame').textContent = G.away.name + ' vs ' + G.home.name + ' — ' + G.event;
+
+  updateScoreUI();
+  buildPeriodPills();
+  renderFoulPipsUI();
+  renderTimeoutDots();
+  renderClockFace();
+
+  id('swEvent').textContent = G.event;
+  id('sdAwayCode').textContent = G.away.code;
+  id('sdAwayName').textContent = G.away.name;
+  id('sdHomeCode').textContent = G.home.code;
+  id('sdHomeName').textContent = G.home.name;
+  id('toLabelAway').textContent = G.away.code;
+  id('toLabelHome').textContent = G.home.code;
+
+  renderStatsTab();
+  addLog('🎬','Broadcast started — ' + G.event,'broadcast');
+  pushOverlayState();
+  pushStats();
+  toast('LIVE ▸ pushing to overlay');
+
+  document.querySelector('[data-tab="broadcast"]').click();
+};
+
+window.toggleLive = function() {
+  if (!G.isLive) { window.goLive(); }
+  else { G.isLive = false; id('livePill').classList.remove('active'); id('liveLabel').textContent = 'GO LIVE'; clockPause(); toast('Broadcast ended'); }
+};
+
+// ═══════════════════════════════════
+// SCORE
+// ═══════════════════════════════════
+window.adjScore = function(team, delta) {
+  G[team].score = Math.max(0, G[team].score + delta);
+  updateScoreUI();
+  addLog(delta>0?'🏀':'↩', G[team].code + ' ' + (delta>0?'+':'') + delta + ' pts', 'game', Math.abs(delta));
+  pushOverlayState({ lastScoreEvent:{ team, pts:delta>0?delta:0, score:G[team].score } });
+};
+
+function updateScoreUI() {
+  id('sdAwayScore').textContent = G.away.score;
+  id('sdHomeScore').textContent = G.home.score;
+  id('swPeriod').textContent    = getPeriodLabel(G.currentPeriod);
+}
+
+window.openOverride = function(team) {
+  _overrideTeam = team;
+  id('overrideLbl').textContent = G[team].name + ' Score';
+  id('overrideInput').value = G[team].score;
+  openModal('overrideModal');
+  setTimeout(() => id('overrideInput').select(), 50);
+};
+window.applyOverride = function() {
+  const v = parseInt(id('overrideInput').value);
+  if (isNaN(v) || v < 0) return;
+  const old = G[_overrideTeam].score;
+  G[_overrideTeam].score = v;
+  updateScoreUI();
+  closeModal('overrideModal');
+  addLog('✏️', G[_overrideTeam].code + ' override: ' + old + '→' + v, 'broadcast');
+  pushOverlayState();
+  toast('Score corrected to ' + v);
+};
+
+// ═══════════════════════════════════
+// CLOCK
+// ═══════════════════════════════════
+function fmtClock(s) {
+  const m = Math.floor(Math.max(0,s)/60), sec = Math.max(0,s)%60;
+  return m + ':' + String(sec).padStart(2,'0');
+}
+function parseClock(str) {
+  const p = str.trim().split(':');
+  return p.length===2 ? parseInt(p[0])*60+parseInt(p[1]) : parseInt(str)||0;
+}
+function renderClockFace() {
+  const el = id('clockFace');
+  el.textContent = G.clock.display;
+  el.className = 'clock-face' + (G.clock.running?' running':G.clock.secs===0?' expired':' paused');
+}
+
+window.clockStart = function() {
+  if (G.clock.running) return;
+  if (G.clock.secs <= 0) { toast('Clock at 0 — reset first'); return; }
+  G.clock.running = true; renderClockFace();
+  pushOverlayState();
+  _clockInterval = setInterval(() => {
+    if (G.clock.secs > 0) {
+      G.clock.secs--;
+      G.clock.display = fmtClock(G.clock.secs);
+      renderClockFace();
+      if (G.clock.secs % 5 === 0) pushOverlayState();
+      if (G.clock.secs === 30) addLog('⏰','30 seconds remaining','game');
+      if (G.clock.secs === 0) { clockExpired(); }
+    }
+  }, 1000);
+};
+
+window.clockPause = function() {
+  if (!G.clock.running) return;
+  clearInterval(_clockInterval); _clockInterval = null;
+  G.clock.running = false; renderClockFace();
+  pushOverlayState();
+  addLog('⏸','Clock paused at ' + G.clock.display,'game');
+};
+
+window.clockReset = function() {
+  clearInterval(_clockInterval); _clockInterval = null;
+  G.clock.running = false;
+  G.clock.secs = G.periodLen * 60;
+  G.clock.display = fmtClock(G.clock.secs);
+  renderClockFace();
+  pushOverlayState();
+};
+
+function clockExpired() {
+  clearInterval(_clockInterval); _clockInterval = null;
+  G.clock.running = false; G.clock.display = '0:00';
+  renderClockFace();
+  addLog('⏰','END OF ' + getPeriodLabel(G.currentPeriod),'game');
+  pushOverlayState({ clockExpired:true });
+  toast('End of ' + getPeriodLabel(G.currentPeriod));
+}
+
+window.clockSetManual = function() {
+  const v = id('ckSetInput').value.trim(); if (!v) return;
+  const s = parseClock(v);
+  clearInterval(_clockInterval); _clockInterval = null;
+  G.clock.running = false; G.clock.secs = s; G.clock.display = fmtClock(s);
+  renderClockFace(); id('ckSetInput').value = '';
+  pushOverlayState(); toast('Clock set to ' + G.clock.display);
+};
+
+window.openClockEdit = function() {
+  if (G.clock.running) return;
+  id('clockEditInput').value = G.clock.display;
+  openModal('clockModal');
+  setTimeout(() => id('clockEditInput').select(), 50);
+};
+window.applyClockEdit = function() {
+  const v = id('clockEditInput').value.trim();
+  G.clock.secs = parseClock(v); G.clock.display = fmtClock(G.clock.secs);
+  G.clock.running = false; renderClockFace();
+  closeModal('clockModal');
+  pushOverlayState(); toast('Clock set to ' + G.clock.display);
+};
+
+// ═══════════════════════════════════
+// PERIOD
+// ═══════════════════════════════════
+function getPeriodLabel(n) {
+  if (G.periods===2) return n<=2 ? 'H'+n : 'OT'+(n-2);
+  return n<=4 ? 'Q'+n : 'OT'+(n-4);
+}
+
+function buildPeriodPills() {
+  const el = id('periodPills'); let html='';
+  for (let i=1; i<=G.totalPeriods; i++) {
+    const ot = i > G.periods;
+    const lbl = getPeriodLabel(i);
+    html += `<button class="period-pill ${ot?'ot':''} ${i===G.currentPeriod?'active':''}" onclick="setPeriod(${i})">${lbl}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+window.setPeriod = function(n) {
+  G.currentPeriod = n; buildPeriodPills();
+  id('swPeriod').textContent = getPeriodLabel(n);
+  addLog('🏀','Period: ' + getPeriodLabel(n),'game');
+  pushOverlayState();
+};
+
+window.endPeriod = function() {
+  clockPause();
+  if (G.currentPeriod < G.totalPeriods) {
+    G.currentPeriod++;
+    G.away.fouls=0; G.home.fouls=0;
+    renderFoulPipsUI(); clockReset(); buildPeriodPills();
+    id('swPeriod').textContent = getPeriodLabel(G.currentPeriod);
+    addLog('🏁','End period → ' + getPeriodLabel(G.currentPeriod),'game');
+    pushOverlayState({ periodChange:true });
+    toast('Now ' + getPeriodLabel(G.currentPeriod));
+  } else {
+    addLog('🏆','FINAL — ' + G.away.code+' '+G.away.score+' – '+G.home.code+' '+G.home.score,'game');
+    pushOverlayState({ gameOver:true });
+    toast('Game over — final pushed');
+  }
+};
+
+window.addOT = function() { G.totalPeriods++; buildPeriodPills(); toast('OT added'); };
+
+// ═══════════════════════════════════
+// TIMEOUTS
+// ═══════════════════════════════════
+function renderTimeoutDots() {
+  ['away','home'].forEach(t => {
+    const el = id('toDots' + cap(t)); let html='';
+    for (let i=1; i<=4; i++) {
+      const used = i > G[t].timeouts;
+      html += `<div class="to-dot${used?' empty':' on'}"></div>`;
+    }
+    el.innerHTML = html;
+  });
+}
+
+window.callTimeout = function(team) { openTimeoutModal(team); };
+window.resetTimeouts = function() { G.away.timeouts=4; G.home.timeouts=4; renderTimeoutDots(); pushOverlayState(); toast('Timeouts reset'); };
+
+window.openTimeoutModal = function(team) {
+  _timeoutTeam = team;
+  id('timeoutModalTitle').textContent = 'Timeout — ' + G[team].name;
+  openModal('timeoutModal');
+};
+
+window.fireTimeout = function() {
+  const type = id('timeoutType').value;
+  const isTeamTO = type === 'Full Timeout' || type === '30-Second Timeout';
+  clockPause();
+  if (isTeamTO && G[_timeoutTeam].timeouts > 0) G[_timeoutTeam].timeouts--;
+  renderTimeoutDots();
+  closeModal('timeoutModal');
+  addLog('⏱️', (isTeamTO ? G[_timeoutTeam].name + ' — ' : '') + type + (isTeamTO ? ' (' + G[_timeoutTeam].timeouts + ' left)' : ''),'broadcast');
+  pushOverlayState({
+    graphic:{
+      type:'TIMEOUT', team:_timeoutTeam,
+      teamName:G[_timeoutTeam].name, teamCode:G[_timeoutTeam].code,
+      timeoutType:type, timeoutsLeft:G[_timeoutTeam].timeouts,
+      clockAt:G.clock.display, period:getPeriodLabel(G.currentPeriod)
+    }
+  });
+  toast('Timeout fired on stream 📡');
+};
+
+// ═══════════════════════════════════
+// FOUL PIPS UI
+// ═══════════════════════════════════
+function renderFoulPipsUI() {
+  ['away','home'].forEach(t => {
+    const el = id(t + 'FoulPips'); let html='';
+    for (let i=1; i<=7; i++) {
+      const on = i<=G[t].fouls;
+      const bonus = on && i>=7;
+      html += `<div class="fp${on?(bonus?' bonus':' on'):''}"></div>`;
+    }
+    el.innerHTML = html;
+  });
+}
+
+// ═══════════════════════════════════
+// SUBSTITUTION
+// ═══════════════════════════════════
+window.openSubModal = function() {
+  id('subAwayOpt').textContent = G.away.name;
+  id('subHomeOpt').textContent = G.home.name;
+  _subIn = null; _subOut = null;
+  renderSubPlayers();
+  openModal('subModal');
+};
+
+window.renderSubPlayers = function() {
+  const team = id('subTeam').value;
+  const pl = G[team].players;
+  const mkGrid = (containerId, selId) => {
+    id(containerId).innerHTML = pl.map(p => `
+      <div class="player-pick ${selId===p.id?'sel':''}" onclick="pickSub('${containerId}','${p.id}')">
+        <div class="pp-num">${p.num||'—'}</div>
+        <div class="pp-name">${p.name.split(' ').pop()}</div>
+      </div>`).join('');
+  };
+  mkGrid('subInGrid', _subIn);
+  mkGrid('subOutGrid', _subOut);
+};
+
+window.pickSub = function(container, pid) {
+  if (container==='subInGrid') _subIn=pid; else _subOut=pid;
+  renderSubPlayers();
+};
+
+window.fireSub = function() {
+  const team = id('subTeam').value;
+  const pIn  = G[team].players.find(p=>p.id===_subIn);
+  const pOut = G[team].players.find(p=>p.id===_subOut);
+  if (!pIn||!pOut) { toast('Select IN and OUT player'); return; }
+  closeModal('subModal');
+  addLog('🔄', G[team].code+' SUB: #'+pIn.num+' '+pIn.name+' IN / #'+pOut.num+' '+pOut.name+' OUT','broadcast');
+  pushOverlayState({ graphic:{ type:'SUBSTITUTION', team, teamCode:G[team].code, teamName:G[team].name,
+    playerIn:{id:pIn.id,num:pIn.num,name:pIn.name}, playerOut:{id:pOut.id,num:pOut.num,name:pOut.name},
+    period:getPeriodLabel(G.currentPeriod), clockAt:G.clock.display }});
+  toast('Sub fired 📡');
+};
+
+// ═══════════════════════════════════
+// FOUL
+// ═══════════════════════════════════
+window.openFoulModal = function() {
+  _foulPlayer = null;
+  renderFoulPlayers();
+  openModal('foulModal');
+};
+
+window.renderFoulPlayers = function() {
+  const team = id('foulTeam').value;
+  id('foulGrid').innerHTML = G[team].players.map(p => {
+    const f = p.fouls||0;
+    return `<div class="player-pick ${_foulPlayer===p.id?'sel':''}" onclick="pickFoul('${p.id}','${team}')">
+      <div class="pp-num">${p.num||'—'}</div>
+      <div class="pp-name">${p.name.split(' ').pop()}</div>
+      <div class="pp-fouls" style="color:${f>=4?'var(--red)':'var(--muted2)'}">${f}PF</div>
+    </div>`;
+  }).join('');
+};
+
+window.pickFoul = function(pid) { _foulPlayer=pid; renderFoulPlayers(); };
+
+window.fireFoul = function() {
+  const team = id('foulTeam').value;
+  const p = G[team].players.find(x=>x.id===_foulPlayer);
+  if (!p) { toast('Select a player'); return; }
+  p.fouls = (p.fouls||0)+1;
+  G[team].fouls++;
+  renderFoulPipsUI();
+  updateFoulTrouble();
+  closeModal('foulModal');
+  const trouble = p.fouls>=4;
+  addLog('🚨', G[team].code+' #'+p.num+' '+p.name+' ('+p.fouls+'PF)'+(trouble?' ⚠️ TROUBLE':''), trouble?'warn':'game');
+  pushOverlayState({ graphic:{ type:'FOUL', team, teamCode:G[team].code,
+    player:{id:p.id,num:p.num,name:p.name,fouls:p.fouls},
+    teamFouls:G[team].fouls, inTrouble:trouble,
+    period:getPeriodLabel(G.currentPeriod), clockAt:G.clock.display }});
+  toast('Foul logged — #'+p.num+' has '+p.fouls+' PF');
+};
+
+// ═══════════════════════════════════
+// FOUL TROUBLE
+// ═══════════════════════════════════
+function updateFoulTrouble() {
+  const troubled = [];
+  ['away','home'].forEach(t => {
+    G[t].players.forEach(p => { if ((p.fouls||0)>=4) troubled.push({...p,team:t,teamCode:G[t].code}); });
+  });
+  id('ftCount').textContent = troubled.length + ' player' + (troubled.length!==1?'s':'');
+  const el = id('foulTroubleList');
+  if (!troubled.length) { el.innerHTML='<div style="padding:10px 12px;font-size:11px;color:var(--muted);text-align:center">No foul trouble</div>'; return; }
+  el.innerHTML = troubled.map(p => {
+    const pips = [1,2,3,4,5].map(i=>`<div class="ft-fp${i<=(p.fouls||0)?(p.fouls>=5?' red':' on'):''}"></div>`).join('');
+    return `<div class="ft-player-row"><div class="ft-num">#${p.num}</div><div class="ft-name">${p.name}</div><div class="ft-fpips">${pips}</div><span class="tag tag-gold" style="margin-left:4px">${p.teamCode}</span></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════
+// SPECIAL GRAPHICS
+// ═══════════════════════════════════
+window.fireSpecial = function(type) {
+  addLog('🎬', type+' graphic fired','broadcast');
+  pushOverlayState({ graphic:{ type, awayScore:G.away.score, homeScore:G.home.score,
+    awayName:G.away.name, homeName:G.home.name, awayCode:G.away.code, homeCode:G.home.code,
+    period:getPeriodLabel(G.currentPeriod), clockAt:G.clock.display, event:G.event }});
+  toast(type+' fired 📡');
+};
+
+
+// ═══════════════════════════════════
+// ROSTERS
+// ═══════════════════════════════════
+function loadSavedRosters() {
+  const rosters = DB.get('nsmt_rosters', []);
+  const el = id('rosterList');
+  el.innerHTML = rosters.length ? '' : '<div style="padding:14px;font-size:11px;color:var(--muted);text-align:center">No rosters saved yet</div>';
+  rosters.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'roster-item' + (r.id===_activeRosterId?' active':'');
+    div.innerHTML = `<div><div class="roster-item-name">${r.name}</div><div class="roster-item-sub">${r.players.length} players</div></div><button class="btn btn-xs btn-red" onclick="deleteRoster('${r.id}',event)">✕</button>`;
+    div.onclick = (e) => { if(e.target.tagName!=='BUTTON') loadRosterInEditor(r.id); };
+    el.appendChild(div);
+  });
+  const opts = '<option value="">— Select roster —</option>' + rosters.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  ['away','home'].forEach(t => {
+    const sel = id(t+'RosterSelect');
+    const cur = sel ? sel.value : '';
+    if (sel) { sel.innerHTML = opts; if (cur) sel.value = cur; }
+    const pick = id('stats'+cap(t)+'RosterPick');
+    const curPick = pick ? pick.value : '';
+    if (pick) { pick.innerHTML = '<option value="">— roster —</option>' + rosters.map(r=>`<option value="${r.id}">${r.name}</option>`).join(''); if (curPick) pick.value = curPick; }
+  });
+}
+
+window.filterRosters = function(q) {
+  document.querySelectorAll('.roster-item').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+};
+
+window.newRoster = function() {
+  const name = prompt('Roster name (e.g. "St. John\'s 2025"):');
+  if (!name) return;
+  const roster = { id:'r_'+Date.now(), name, players:[] };
+  const rosters = DB.get('nsmt_rosters', []);
+  rosters.push(roster);
+  DB.set('nsmt_rosters', rosters);
+  loadSavedRosters();
+  loadRosterInEditor(roster.id);
+  toast('Roster "' + name + '" created');
+};
+
+window.deleteRoster = function(rid, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this roster?')) return;
+  const rosters = DB.get('nsmt_rosters', []).filter(r=>r.id!==rid);
+  DB.set('nsmt_rosters', rosters);
+  if (_activeRosterId===rid) { _activeRosterId=null; id('rosterMain').innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Select a roster</div>'; }
+  loadSavedRosters();
+};
+
+function loadRosterInEditor(rid) {
+  _activeRosterId = rid;
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x=>x.id===rid);
+  if (!r) return;
+  document.querySelectorAll('.roster-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.roster-item').forEach(el => { if(el.textContent.includes(r.name)) el.classList.add('active'); });
+  renderRosterEditor(r);
+}
+
+function renderRosterEditor(r) {
+  const el = id('rosterMain');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:1px;color:var(--gold)">${r.name}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.players.length} players</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-surf btn-sm" onclick="addPlayerRow('${r.id}')">+ Add Player</button>
+        <button class="btn btn-surf btn-sm" onclick="document.getElementById('csvImportFile_${r.id}').click()">⬆ Import CSV</button>
+        <input type="file" id="csvImportFile_${r.id}" accept=".csv,.txt" style="display:none" onchange="importCSV('${r.id}',this)">
+        <button class="btn btn-gold btn-sm" onclick="saveRoster('${r.id}')">💾 Save</button>
+      </div>
+    </div>
+    <div class="info-box" style="margin-bottom:10px">CSV format: <code>Number, Name, Position</code> — one player per row. Header row optional.</div>
+    <table class="player-table">
+      <thead><tr><th style="width:60px">#</th><th>Name</th><th style="width:80px">Position</th><th style="width:32px"></th></tr></thead>
+      <tbody id="playerTableBody_${r.id}"></tbody>
+    </table>
+    <button class="btn btn-surf btn-full" style="margin-top:10px" onclick="addPlayerRow('${r.id}')">+ Add Player</button>
+  `;
+  renderPlayerRows(r);
+}
+
+function renderPlayerRows(r) {
+  const tb = id('playerTableBody_' + r.id);
+  if (!tb) return;
+  tb.innerHTML = r.players.map(p => `
+    <tr id="pr_${p.id}">
+      <td><input value="${p.num||''}" placeholder="#" style="width:52px;text-align:center" onchange="updatePlayer('${r.id}','${p.id}','num',this.value)"></td>
+      <td><input value="${p.name||''}" placeholder="Player name" onchange="updatePlayer('${r.id}','${p.id}','name',this.value)"></td>
+      <td><input value="${p.pos||''}" placeholder="PG" onchange="updatePlayer('${r.id}','${p.id}','pos',this.value)"></td>
+      <td><button class="del-btn" onclick="removePlayer('${r.id}','${p.id}')">✕</button></td>
+    </tr>`).join('');
+}
+
+window.addPlayerRow = function(rid) {
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x=>x.id===rid); if (!r) return;
+  r.players.push({ id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), num:'', name:'', pos:'', fouls:0 });
+  DB.set('nsmt_rosters', rosters);
+  renderPlayerRows(r);
+};
+
+window.removePlayer = function(rid, pid) {
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x=>x.id===rid); if (!r) return;
+  r.players = r.players.filter(p=>p.id!==pid);
+  DB.set('nsmt_rosters', rosters);
+  renderPlayerRows(r);
+};
+
+window.updatePlayer = function(rid, pid, field, val) {
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x=>x.id===rid); if (!r) return;
+  const p = r.players.find(x=>x.id===pid); if (!p) return;
+  p[field] = val;
+  DB.set('nsmt_rosters', rosters);
+};
+
+window.saveRoster = function(rid) {
+  const rosters = DB.get('nsmt_rosters', []);
+  const r = rosters.find(x=>x.id===rid); if (!r) return;
+  r.players.forEach(p => {
+    const row = id('pr_'+p.id); if (!row) return;
+    const inputs = row.querySelectorAll('input');
+    p.num  = inputs[0].value.trim();
+    p.name = inputs[1].value.trim();
+    p.pos  = inputs[2].value.trim();
+  });
+  r.players = r.players.filter(p=>p.name);
+  DB.set('nsmt_rosters', rosters);
+  loadSavedRosters();
+  renderRosterEditor(r);
+  toast('Roster saved ✓');
+};
+
+window.importCSV = function(rid, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l=>l.trim());
+    const rosters = DB.get('nsmt_rosters', []);
+    const r = rosters.find(x=>x.id===rid); if (!r) return;
+    let added = 0;
+    lines.forEach(line => {
+      const parts = line.split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+      const num  = parts[0]||'';
+      const name = parts[1]||parts[0]||'';
+      const pos  = parts[2]||'';
+      if (name && isNaN(name) || (num && name)) {
+        if (name.toLowerCase()==='name'||name.toLowerCase()==='player') return;
+        r.players.push({ id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), num, name, pos, fouls:0 });
+        added++;
+      }
+    });
+    DB.set('nsmt_rosters', rosters);
+    renderRosterEditor(r);
+    loadSavedRosters();
+    toast(added + ' players imported from CSV ✓');
+  };
+  reader.readAsText(file);
+  input.value = '';
+};
+
+// ═══════════════════════════════════
+// TICKER GAMES
+// ═══════════════════════════════════
+window.addTickerGame = function() {
+  const game = { id:'tg_'+Date.now(), away:'', home:'', awayScore:0, homeScore:0, period:'', status:'live' };
+  G.tickerGames.push(game);
+  renderTickerGames();
+};
+
+function renderTickerGames() {
+  const el = id('tickerGamesList');
+  if (!G.tickerGames.length) {
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No games added yet</div>';
+    updateTickerPreview(); return;
+  }
+  el.innerHTML = G.tickerGames.map(g => `
+    <div class="game-card">
+      <button class="del-btn" onclick="removeTickerGame('${g.id}')">✕</button>
+      <div class="game-card-hdr">
+        <div class="game-card-title">Game</div>
+        <select style="background:var(--surf3);border:1px solid var(--border2);color:var(--text);font-size:11px;padding:3px 8px;border-radius:4px;font-family:'Barlow',sans-serif;font-weight:700" onchange="updateTickerGame('${g.id}','status',this.value)">
+          <option value="live" ${g.status==='live'?'selected':''}>🔴 LIVE</option>
+          <option value="final" ${g.status==='final'?'selected':''}>FINAL</option>
+          <option value="upcoming" ${g.status==='upcoming'?'selected':''}>Upcoming</option>
+        </select>
+      </div>
+      <div class="game-matchup">
+        <div>
+          <input value="${g.away}" placeholder="Away team" style="font-size:13px;font-weight:700;margin-bottom:4px" oninput="updateTickerGame('${g.id}','away',this.value)">
+          <div class="gm-score-row">
+            <input class="gm-score" type="number" value="${g.awayScore}" min="0" oninput="updateTickerGame('${g.id}','awayScore',parseInt(this.value)||0)">
+          </div>
+        </div>
+        <div style="text-align:center">
+          <div class="gm-sep">vs</div>
+          <input value="${g.period}" placeholder="Q1" style="font-size:10px;text-align:center;padding:3px 6px;width:50px;margin-top:4px" oninput="updateTickerGame('${g.id}','period',this.value)">
+        </div>
+        <div style="text-align:right">
+          <input value="${g.home}" placeholder="Home team" style="font-size:13px;font-weight:700;margin-bottom:4px;text-align:right" oninput="updateTickerGame('${g.id}','home',this.value)">
+          <div class="gm-score-row" style="justify-content:flex-end">
+            <input class="gm-score" type="number" value="${g.homeScore}" min="0" oninput="updateTickerGame('${g.id}','homeScore',parseInt(this.value)||0)">
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+  updateTickerPreview();
+}
+
+window.updateTickerGame = function(gid, field, val) {
+  const g = G.tickerGames.find(x=>x.id===gid); if (!g) return;
+  g[field] = val;
+  updateTickerPreview();
+  pushOverlayState();
+};
+
+window.removeTickerGame = function(gid) {
+  G.tickerGames = G.tickerGames.filter(x=>x.id!==gid);
+  renderTickerGames();
+  pushOverlayState();
+};
+
+window.updateTickerPreview = function() {
+  const sep = id('tickerSep').value;
+  const text = buildTickerString(sep);
+  id('tickerPreviewText').textContent = text || 'No games — add games above';
+};
+
+function buildTickerString(sep) {
+  return G.tickerGames.filter(g=>g.away&&g.home).map(g => {
+    const status = g.status==='final' ? 'FINAL' : g.status==='upcoming' ? '' : g.period||'LIVE';
+    return `${g.away} ${g.awayScore} – ${g.home} ${g.homeScore}${status?' ('+status+')':''}`;
+  }).join(sep||' ● ');
+}
+
+window.syncTickerToggles = function() {
+  G.overlayFlags.ticker = id('togTicker2').checked;
+  id('togTicker').checked = G.overlayFlags.ticker;
+  pushOverlayState();
+};
+
+// ═══════════════════════════════════
+// NSMT LOGO
+// ═══════════════════════════════════
+window.previewNsmtLogo = function() {
+  const url = id('nsmtLogoUrl').value.trim();
+  const img = id('nsmtLogoPreviewImg');
+  const txt = id('nsmtLogoPreviewText');
+  if (url) { img.src=url; img.style.display='block'; txt.style.display='none'; G.nsmtLogo=url; }
+  else     { img.style.display='none'; txt.style.display='block'; }
+};
+
+window.handleNsmtLogoUpload = function(input) {
+  const file = input.files[0]; if (!file) return;
+  fetch('/upload', { method:'POST', headers:{'Content-Type': file.type}, body: file })
+    .then(r => r.json())
+    .then(json => {
+      if (!json.url) throw new Error('no url');
+      G.nsmtLogo = json.url;
+      const img = id('nsmtLogoPreviewImg');
+      const txt = id('nsmtLogoPreviewText');
+      img.src = json.url; img.style.display='block'; txt.style.display='none';
+      toast('NSMT logo uploaded ✓');
+    })
+    .catch(() => toast('Upload failed — check server', 'error'));
+};
+
+window.pushNsmtLogo = function() { pushOverlayState(); toast('Logo pushed to stream 📡'); };
+
+// ═══════════════════════════════════
+// PROMO TL LOGO
+// ═══════════════════════════════════
+window.handlePromoTLUpload = function(input) {
+  const file = input.files[0]; if (!file) return;
+  fetch('/upload', { method:'POST', headers:{'Content-Type': file.type}, body: file })
+    .then(r => r.json())
+    .then(json => {
+      if (!json.url) throw new Error('no url');
+      G.promoTLLogo = json.url;
+      const prev = id('promoTLPreview');
+      prev.innerHTML = `<img src="${json.url}" style="width:100%;height:100%;object-fit:contain">`;
+      pushOverlayState();
+      toast('Promo logo uploaded ✓ — pushed to stream');
+    })
+    .catch(() => toast('Upload failed — check server', 'error'));
+  input.value = '';
+};
+
+window.clearPromoTL = function() {
+  G.promoTLLogo = '';
+  id('promoTLPreview').innerHTML = '<span style="font-size:9px;color:var(--muted2)">No logo</span>';
+  pushOverlayState();
+  toast('Top-left promo logo removed');
+};
+
+// ═══════════════════════════════════
+// OTHER GAME TRACKER
+// ═══════════════════════════════════
+window.updateOtherGame = function() {
+  G.otherGame.show       = id('togOtherGame').checked;
+  G.otherGame.awayName   = id('ogAwayName').value.trim();
+  G.otherGame.homeName   = id('ogHomeName').value.trim();
+  G.otherGame.awayScore  = parseInt(id('ogAwayScore').value) || 0;
+  G.otherGame.homeScore  = parseInt(id('ogHomeScore').value) || 0;
+  G.otherGame.quarter    = id('ogQuarter').value.trim();
+  G.otherGame.clock      = id('ogClock').value.trim();
+  pushOverlayState();
+};
+
+window.adjOtherScore = function(team, delta) {
+  const field = team === 'away' ? 'ogAwayScore' : 'ogHomeScore';
+  const el = id(field);
+  el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+  updateOtherGame();
+};
+
+// ═══════════════════════════════════
+// AD ZONES
+// ═══════════════════════════════════
+const AD_ZONE_LABELS = { tl:'Top Left', tr:'Top Right', bl:'Bottom Left', br:'Bottom Right' };
+
+function renderAdZones() {
+  const el = id('adZonesGrid');
+  el.innerHTML = Object.entries(AD_ZONE_LABELS).map(([key,label]) => `
+    <div class="ad-zone">
+      <div class="ad-zone-label">${label}</div>
+      <div class="ad-zone-preview" id="adPreview_${key}" onclick="triggerAdUpload('${key}')">
+        ${G.adZones[key]
+          ? `<img src="${G.adZones[key]}" style="width:100%;height:100%;object-fit:contain">`
+          : `<div class="ad-zone-preview-text">Click to upload sponsor logo</div>`}
+      </div>
+      <input type="file" id="adFile_${key}" accept="image/*" style="display:none" onchange="handleAdUpload('${key}',this)">
+      <div style="display:flex;gap:5px">
+        <input placeholder="Or paste image URL" style="font-size:10px;padding:5px 7px" id="adUrl_${key}" oninput="setAdUrl('${key}',this.value)">
+        ${G.adZones[key] ? `<button class="btn btn-xs btn-ghost" onclick="clearAd('${key}')">✕</button>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+window.triggerAdUpload = function(key) { id('adFile_'+key).click(); };
+
+window.handleAdUpload = function(key, input) {
+  const file = input.files[0]; if (!file) return;
+  fetch('/upload', { method:'POST', headers:{'Content-Type': file.type}, body: file })
+    .then(r => r.json())
+    .then(json => {
+      if (!json.url) throw new Error('no url');
+      G.adZones[key] = json.url;
+      renderAdZones();
+      pushOverlayState();
+      toast(AD_ZONE_LABELS[key] + ' ad uploaded ✓ — pushed to stream');
+    })
+    .catch(() => toast('Upload failed — check server', 'error'));
+  input.value = '';
+};
+
+window.setAdUrl  = function(key, val) { G.adZones[key] = val.trim(); };
+window.clearAd   = function(key) { G.adZones[key]=''; renderAdZones(); };
+window.clearAllAds = function() { Object.keys(G.adZones).forEach(k=>G.adZones[k]=''); renderAdZones(); toast('All ads cleared'); };
+window.pushAdZones = function() { pushOverlayState(); toast('Ads pushed to stream 📡'); };
+
+window.pushDurations = function() {
+  G.durations.graphic = (parseFloat(id('cfgGraphicDur').value)||5)*1000;
+  G.durations.pop     = (parseFloat(id('cfgPopDur').value)||4.5)*1000;
+  G.durations.special = (parseFloat(id('cfgSpecialDur').value)||8)*1000;
+  pushOverlayState();
+  toast('Durations saved ✓');
+};
+
+// ═══════════════════════════════════
+// EVENT LOG
+// ═══════════════════════════════════
+function addLog(icon, text, type='game', pts=0) {
+  G.eventLog.unshift({ icon, text, type, pts, time:G.clock.display, ts:Date.now() });
+  if (G.eventLog.length>120) G.eventLog.pop();
+  renderLog();
+}
+function renderLog() {
+  id('eventLog').innerHTML = G.eventLog.slice(0,50).map(e => `
+    <div class="log-row">
+      <div class="log-time">${e.time||'—:——'}</div>
+      <div class="log-icon">${e.icon}</div>
+      <div class="log-text">${e.text}</div>
+      ${e.pts>0?`<div class="log-pts">+${e.pts}</div>`:''}
+      <div class="log-tag ${e.type}">${e.type}</div>
+    </div>`).join('');
+}
+window.clearLog = function() { G.eventLog=[]; renderLog(); };
+
+// ═══════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════
+window.openModal  = id2 => document.getElementById(id2).classList.remove('hidden');
+window.closeModal = id2 => document.getElementById(id2).classList.add('hidden');
+document.querySelectorAll('.modal-backdrop').forEach(el =>
+  el.addEventListener('click', e => { if(e.target===el) el.classList.add('hidden'); })
+);
+
+// ═══════════════════════════════════
+// TOAST
+// ═══════════════════════════════════
+let _tt;
+window.toast = function(msg) {
+  const el = document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),2500);
+};
+
+// ═══════════════════════════════════
+// LIVE STATS
+// ═══════════════════════════════════
+const _selPlayer = { away: null, home: null };
+const _lastStat  = { away: null, home: null };
+
+function _statDefaults(p) {
+  return { fgm:0,fga:0,t3m:0,t3a:0,ftm:0,fta:0,off:0,def:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,min:0,pm:0, ...p };
+}
+
+window.selectPlayer = function(team, pid) {
+  _selPlayer[team] = pid;
+  const grid = id('stats'+cap(team)+'Players');
+  if (grid) grid.querySelectorAll('.sp-card').forEach(c => c.classList.toggle('sel', c.dataset.pid === pid));
+  const p = G[team].players.find(x => x.id === pid);
+  const lbl = id('stats'+cap(team)+'SelLabel');
+  if (lbl && p) lbl.textContent = '#'+p.num+' '+p.name.split(' ').pop();
+  renderActionBar(team);
+};
+
+function renderActionBar(team) {
+  const bar = id('stats'+cap(team)+'Bar');
+  if (!bar) return;
+  const pid = _selPlayer[team];
+  if (!pid) {
+    bar.innerHTML = '<span style="color:var(--muted2);font-size:10px;padding:0 4px">Tap a player to log a stat</span>';
+    return;
+  }
+  const s = (label, stat, bg, fg) =>
+    `<button class="stat-btn" onclick="logStat('${team}','${stat}')" style="background:${bg};color:${fg}">${label}</button>`;
+  bar.innerHTML =
+    s('+2','fg2m','#2dc653','#000') +
+    s('2×','fg2x','rgba(255,255,255,.08)','var(--muted)') +
+    s('+3','fg3m','#2dc653','#000') +
+    s('3×','fg3x','rgba(255,255,255,.08)','var(--muted)') +
+    s('+FT','ftm','#2dc653','#000') +
+    s('FT×','ftx','rgba(255,255,255,.08)','var(--muted)') +
+    s('REB','reb','rgba(245,197,24,.2)','var(--gold)') +
+    s('ORB','oreb','rgba(245,197,24,.12)','var(--gold)') +
+    s('AST','ast','rgba(245,197,24,.2)','var(--gold)') +
+    s('STL','stl','rgba(245,197,24,.2)','var(--gold)') +
+    s('BLK','blk','rgba(245,197,24,.2)','var(--gold)') +
+    s('TO','to','rgba(255,80,80,.2)','#ff6060') +
+    s('PF','pf','rgba(255,80,80,.15)','#ff6060') +
+    `<button class="stat-btn" onclick="undoStat('${team}')" style="background:rgba(239,68,68,.15);color:var(--red);margin-left:4px">↩</button>`;
+}
+
+window.logStat = function(team, stat) {
+  const pid = _selPlayer[team];
+  if (!pid) { toast('Select a player first'); return; }
+  const p = G[team].players.find(x => x.id === pid);
+  if (!p) return;
+  _lastStat[team] = { pid, stat };
+  switch(stat) {
+    case 'fg2m': p.fgm++; p.fga++; p.pts+=2; G[team].score+=2; break;
+    case 'fg2x': p.fga++; break;
+    case 'fg3m': p.fgm++; p.fga++; p.t3m++; p.t3a++; p.pts+=3; G[team].score+=3; break;
+    case 'fg3x': p.fga++; p.t3a++; break;
+    case 'ftm':  p.ftm++; p.fta++; p.pts++; G[team].score++; break;
+    case 'ftx':  p.fta++; break;
+    case 'oreb': p.off++; break;
+    case 'reb':  p.def++; break;
+    case 'ast':  p.ast++; break;
+    case 'stl':  p.stl++; break;
+    case 'blk':  p.blk++; break;
+    case 'to':   p.to++; break;
+    case 'pf':   p.pf = (p.pf||0)+1; break;
+  }
+  updateScoreUI();
+  _refreshStatCard(team, p);
+  pushStats();
+  const scored = ['fg2m','fg3m','ftm'].includes(stat);
+  const pts = stat==='fg3m'?3:stat==='fg2m'?2:stat==='ftm'?1:0;
+  pushOverlayState(scored ? { lastScoreEvent:{team, pts, score:G[team].score} } : {});
+};
+
+window.undoStat = function(team) {
+  const last = _lastStat[team];
+  if (!last) { toast('Nothing to undo'); return; }
+  const p = G[team].players.find(x => x.id === last.pid);
+  if (!p) return;
+  switch(last.stat) {
+    case 'fg2m': p.fgm--; p.fga--; p.pts-=2; G[team].score-=2; break;
+    case 'fg2x': p.fga--; break;
+    case 'fg3m': p.fgm--; p.fga--; p.t3m--; p.t3a--; p.pts-=3; G[team].score-=3; break;
+    case 'fg3x': p.fga--; p.t3a--; break;
+    case 'ftm':  p.ftm--; p.fta--; p.pts--; G[team].score--; break;
+    case 'ftx':  p.fta--; break;
+    case 'oreb': p.off = Math.max(0,(p.off||0)-1); break;
+    case 'reb':  p.def = Math.max(0,(p.def||0)-1); break;
+    case 'ast':  p.ast = Math.max(0,(p.ast||0)-1); break;
+    case 'stl':  p.stl = Math.max(0,(p.stl||0)-1); break;
+    case 'blk':  p.blk = Math.max(0,(p.blk||0)-1); break;
+    case 'to':   p.to  = Math.max(0,(p.to||0)-1); break;
+    case 'pf':   p.pf  = Math.max(0,(p.pf||0)-1); break;
+  }
+  _lastStat[team] = null;
+  updateScoreUI();
+  _refreshStatCard(team, p);
+  pushStats();
+  pushOverlayState({});
+  toast('↩ Undone');
+};
+
+function _refreshStatCard(team, p) {
+  const el = id('sc-'+team+'-'+p.id);
+  if (!el) return;
+  el.querySelector('.sp-card-pts').textContent = (p.pts||0)+'pts';
+  const fouls = p.pf||0;
+  el.classList.toggle('foul4', fouls===4);
+  el.classList.toggle('foul5', fouls>=5);
+  el.querySelectorAll('.sp-card-fp').forEach((dot,i) => dot.classList.toggle('on', i<fouls));
+}
+
+function renderStatsTab() {
+  ['away','home'].forEach(team => {
+    const hdr = id('stats'+cap(team)+'Hdr');
+    if (hdr) hdr.textContent = (G[team].name||cap(team)).toUpperCase() + ' — LIVE STATS';
+    const lbl = id('stats'+cap(team)+'SelLabel');
+    if (lbl) lbl.textContent = '';
+    _selPlayer[team] = null;
+    const cont = id('stats'+cap(team)+'Players');
+    if (!cont) return;
+    const players = (G[team].players||[]).filter(p=>p.name);
+    if (!players.length) {
+      cont.innerHTML = '<div style="grid-column:1/-1;padding:14px;text-align:center;color:var(--muted);font-size:10px">No players loaded — go to Rosters tab first</div>';
+      renderActionBar(team);
+      return;
+    }
+    cont.innerHTML = players.map(p => {
+      const fouls = p.pf||0;
+      const foulClass = fouls>=5?' foul5':fouls===4?' foul4':'';
+      const pips = [0,1,2,3,4].map(i=>`<div class="sp-card-fp${i<fouls?' on':''}"></div>`).join('');
+      return `<button id="sc-${team}-${p.id}" class="sp-card${foulClass}" data-pid="${p.id}" onclick="selectPlayer('${team}','${p.id}')">
+        <div class="sp-card-num">${p.num||'?'}</div>
+        <div class="sp-card-name">${p.name.split(' ').pop()}</div>
+        <div class="sp-card-pts">${p.pts||0}pts</div>
+        <div class="sp-card-fouls">${pips}</div>
+      </button>`;
+    }).join('');
+    renderActionBar(team);
+  });
+}
+
+function pushStats() {
+  const toStatObj = (team) => ({
+    name: G[team].name || cap(team),
+    fouls: G[team].fouls || 0,
+    players: (G[team].players||[]).map(p => ({
+      id:p.id||'', num:p.num||'', name:p.name||'', pos:p.pos||'',
+      fgm:p.fgm||0, fga:p.fga||0, t3m:p.t3m||0, t3a:p.t3a||0,
+      ftm:p.ftm||0, fta:p.fta||0, off:p.off||0, def:p.def||0,
+      ast:p.ast||0, stl:p.stl||0, blk:p.blk||0, to:p.to||0,
+      pf:p.pf||0, pts:p.pts||0, min:p.min||0, pm:p.pm||0
+    }))
+  });
+  wsSend({ type:'patch', stats:{ away:toStatObj('away'), home:toStatObj('home') }});
+}
+
+// ═══════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════
+function id(x) { return document.getElementById(x); }
+function cap(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+function init() {
+  id('cfgDate').value = new Date().toISOString().split('T')[0];
+  buildPeriodPills();
+  renderClockFace();
+  renderTimeoutDots();
+  renderFoulPipsUI();
+  loadSavedRosters();
+  renderStatsTab();
+  renderAdZones();
+  updateTickerPreview();
+
+  // Restore saved WS URL and connect
+  const savedUrl = DB.get('nsmt_wsUrl');
+  if (savedUrl && id('wsUrlInput')) id('wsUrlInput').value = savedUrl;
+  connectWS(savedUrl || undefined);
+
+  id('cfgGraphicDur').value = '5';
+  G.durations.graphic = 5000;
+}
+
+init();
+</script>
+</body>
+</html>
+
+
+
+

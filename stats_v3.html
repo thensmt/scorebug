@@ -1,0 +1,2497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NSMT Stats">
+<meta name="theme-color" content="#080809">
+<title>NSMT Stats</title>
+<link rel="manifest" href="#" />
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+  import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+  // ══════════════════════════════════════════
+  // REPLACE WITH YOUR FIREBASE CONFIG
+  // Get this from Firebase Console → Project Settings → Your Apps
+  // ══════════════════════════════════════════
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  // Expose to global scope for use in non-module scripts
+  window._firebase = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc, collection, query, where, getDocs, orderBy };
+
+  // Auth state listener
+  onAuthStateChanged(auth, (user) => {
+    window._currentUser = user;
+    if (user) {
+      document.getElementById('authScreen').classList.remove('active');
+      document.getElementById('homeScreen').classList.add('active');
+      document.getElementById('userAvatar').src = user.photoURL || '';
+      document.getElementById('userAvatar').style.display = 'block';
+      document.getElementById('userDisplayName').textContent = user.displayName || user.email;
+      document.getElementById('signInBtn').style.display = 'none';
+      document.getElementById('signOutBtn').style.display = 'flex';
+      renderHome();
+    } else {
+      document.getElementById('homeScreen').classList.remove('active');
+      document.getElementById('authScreen').classList.add('active');
+    }
+  });
+
+  window.signInWithGoogle = async () => {
+    try {
+      document.getElementById('signInBtn').textContent = 'Signing in...';
+      await signInWithPopup(auth, provider);
+    } catch(e) {
+      document.getElementById('signInBtn').textContent = 'Sign in with Google';
+      console.error(e);
+      // Fallback: allow offline use
+      if(e.code === 'auth/network-request-failed' || e.code === 'auth/popup-blocked') {
+        window._currentUser = { uid: 'offline_user', displayName: 'Offline User', email: '' };
+        document.getElementById('authScreen').classList.remove('active');
+        document.getElementById('homeScreen').classList.add('active');
+        renderHome();
+      }
+    }
+  };
+
+  window.signOutUser = async () => {
+    await signOut(auth);
+  };
+
+  // Cloud sync: save game to Firestore
+  window.syncGameToCloud = async (game) => {
+    if(!window._currentUser || window._currentUser.uid === 'offline_user') return;
+    try {
+      const { db, doc, setDoc } = window._firebase;
+      await setDoc(doc(db, 'games', game.id), {
+        ...game,
+        userId: window._currentUser.uid,
+        userEmail: window._currentUser.email,
+        updatedAt: Date.now()
+      });
+    } catch(e) { console.warn('Cloud sync failed, saved locally', e); }
+  };
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root {
+  --gold:#F5C518; --bg:#080809; --surf:#111114; --surf2:#18181c; --surf3:#202025;
+  --border:#26262e; --text:#f0f0f0; --muted:#666674; --red:#e63946; --green:#2dc653;
+  --blue:#1a73e8; --nsmt-blue:#1877F2; --orange:#ff7c2a; --r:10px;
+  /* Responsive layout */
+  --max-w: 100%;
+  --sidebar-w: 280px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);}
+
+/* Full-width on all screen sizes — optimized for iPad */
+
+/* SCREENS */
+.screen{display:none;position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}
+.screen.active{display:flex;flex-direction:column;}
+.scroll-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);}
+
+/* TYPOGRAPHY */
+.heading{font-family:'Bebas Neue',cursive;letter-spacing:2px;}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;border-radius:var(--r);transition:transform .1s,opacity .15s;user-select:none;touch-action:manipulation;}
+.btn:active{transform:scale(.96);opacity:.85;}
+.btn-gold{background:var(--gold);color:#000;font-size:15px;padding:13px 20px;}
+.btn-surf{background:var(--surf2);color:var(--text);font-size:14px;padding:12px 18px;border:1px solid var(--border);}
+.btn-red{background:var(--red);color:#fff;font-size:14px;padding:12px 18px;}
+.btn-ghost{background:transparent;color:var(--muted);font-size:13px;padding:10px 14px;border:1px solid var(--border);}
+.btn-full{width:100%;}
+.btn-lg{font-size:17px;padding:16px 24px;}
+
+/* FORMS */
+input,select,textarea{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:11px 13px;font-size:15px;font-family:'DM Sans',sans-serif;border-radius:var(--r);outline:none;width:100%;transition:border-color .2s;-webkit-appearance:none;}
+input:focus,select:focus{border-color:var(--gold);}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23666674'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.field{margin-bottom:13px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+/* CARDS */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.card-title{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;color:var(--gold);margin-bottom:13px;}
+
+/* PAGE HEADER */
+.ph{background:#000;border-bottom:2px solid var(--gold);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;position:sticky;top:0;z-index:200;}
+.ph-logo-img{height:32px;width:auto;object-fit:contain;}
+.ph h2{font-family:'Bebas Neue',cursive;font-size:19px;letter-spacing:1px;color:var(--text);}
+.back-btn{background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;}
+.pad{padding:16px;}
+
+/* USER AVATAR in header */
+.user-area{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;display:none;}
+.user-name-sm{font-size:11px;color:var(--muted);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sign-out-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:5px 9px;border-radius:6px;cursor:pointer;display:none;align-items:center;gap:4px;}
+.sign-out-btn:active{border-color:var(--red);color:var(--red);}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
+.tag-green{background:rgba(45,198,83,.18);color:var(--green);}
+.tag-gold{background:rgba(245,197,24,.15);color:var(--gold);}
+.tag-red{background:rgba(230,57,70,.18);color:var(--red);}
+.tag-blue{background:rgba(24,119,242,.18);color:var(--nsmt-blue);}
+.tag-orange{background:rgba(255,124,42,.18);color:var(--orange);}
+
+/* TOAST */
+.toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--surf3);border:1px solid var(--border);color:var(--text);padding:9px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw;}
+.toast.show{opacity:1;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;display:flex;align-items:flex-end;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal-sheet{background:var(--surf);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px;margin-bottom:14px;}
+
+/* ════════════════════════════
+   AUTH SCREEN
+════════════════════════════ */
+#authScreen{background:radial-gradient(ellipse at 50% 0%,#0d1a2e 0%,var(--bg) 60%);display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.auth-card{background:var(--surf);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:100%;max-width:340px;margin:20px;text-align:center;}
+.auth-logo-wrap{margin-bottom:24px;}
+.auth-logo{max-width:180px;height:auto;}
+.auth-title{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;color:var(--gold);margin-bottom:6px;}
+.auth-subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.5;}
+.auth-google-btn{background:#fff;color:#111;border:none;border-radius:8px;padding:14px 20px;width:100%;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .1s,box-shadow .15s;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.auth-google-btn:active{transform:scale(.97);box-shadow:0 1px 4px rgba(0,0,0,.4);}
+.auth-google-icon{width:20px;height:20px;}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--muted);font-size:12px;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.auth-offline-btn{background:var(--surf2);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:12px 20px;width:100%;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s;}
+.auth-offline-btn:active{border-color:var(--gold);color:var(--gold);}
+.auth-features{margin-top:20px;text-align:left;}
+.auth-feat{display:flex;align-items:flex-start;gap:10px;padding:6px 0;font-size:12px;color:var(--muted);}
+.auth-feat-check{color:var(--gold);flex-shrink:0;font-size:14px;}
+.auth-footer{margin-top:20px;font-size:10px;color:var(--border);line-height:1.6;}
+
+/* ════════════════════════════
+   HOME SCREEN
+════════════════════════════ */
+#homeScreen{background:radial-gradient(ellipse at 50% 0%,#1a1a00 0%,var(--bg) 55%);}
+.home-hero{padding:28px 20px 20px;text-align:center;}
+.home-logo-img{max-width:200px;height:auto;margin-bottom:12px;}
+.home-tagline{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:4px;}
+.home-version{font-size:10px;color:var(--border);margin-top:4px;}
+.home-user-badge{display:inline-flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;margin-top:10px;}
+.hub-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;}
+.hub-name{font-size:12px;color:var(--text);font-weight:600;}
+.hub-cloud{font-size:10px;color:var(--green);}
+
+.menu-btn{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:18px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;width:100%;text-align:left;margin-bottom:10px;}
+.menu-btn:active{border-color:var(--gold);background:var(--surf2);transform:scale(.98);}
+.menu-icon{font-size:34px;flex-shrink:0;line-height:1;}
+.menu-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px;line-height:1;}
+.menu-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+.menu-arrow{margin-left:auto;color:var(--muted);font-size:20px;}
+
+.recent-label{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;}
+.recent-item{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:border-color .15s;}
+.recent-item:active{border-color:var(--gold);}
+.recent-score{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);min-width:90px;}
+.recent-info{flex:1;}
+.recent-teams{font-weight:700;font-size:13px;}
+.recent-sub{font-size:11px;color:var(--muted);}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ════════════════════════════
+   ROSTER MANAGER SCREEN
+════════════════════════════ */
+.roster-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:0;overflow:hidden;margin-bottom:10px;}
+.roster-card-head{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-bottom:1px solid var(--border);}
+.roster-card-name{font-weight:700;font-size:15px;}
+.roster-card-meta{font-size:11px;color:var(--muted);}
+.roster-card-actions{display:flex;gap:6px;}
+.roster-card-body{padding:10px 14px;}
+.player-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surf3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;margin:3px;}
+.player-chip-num{color:var(--gold);font-family:'Bebas Neue',cursive;font-size:14px;}
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px;font-size:18px;color:var(--muted);transition:color .15s;}
+.icon-btn:active{color:var(--gold);}
+.icon-btn.danger:active{color:var(--red);}
+
+.player-row{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+.player-row input{padding:9px 11px;font-size:14px;}
+
+/* ════════════════════════════
+   ADMIN / GAME SETUP SCREEN
+════════════════════════════ */
+.section-divider{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--muted);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.team-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+
+/* ════════════════════════════
+   LIVE GAME SCREEN
+════════════════════════════ */
+#liveScreen{overflow:hidden;}
+.live-wrap{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+/* scoreboard */
+.scoreboard{background:#000;border-bottom:1px solid var(--border);padding:8px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;flex-shrink:0;}
+.sb-team{}
+.sb-name{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.sb-name.right{text-align:right;}
+.sb-pts{font-family:'Bebas Neue',cursive;font-size:54px;line-height:1;color:#fff;}
+.sb-pts.right{text-align:right;}
+.sb-mid{text-align:center;}
+.sb-period{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold);letter-spacing:2px;}
+.sb-event{font-size:9px;color:var(--muted);margin-top:1px;}
+.sb-fouls{display:flex;justify-content:center;gap:3px;margin-top:3px;}
+.sb-foul{width:7px;height:7px;border-radius:50%;background:var(--border);}
+.sb-foul.active{background:var(--red);}
+
+/* live tabs */
+.live-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ltab{flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.ltab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* flow bar */
+.flow-bar{background:var(--surf2);border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;min-height:36px;}
+.flow-crumb{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.flow-crumb.done{color:var(--green);}
+.flow-crumb.active{color:var(--gold);}
+.flow-crumb.pending{color:var(--muted);}
+.flow-sep{color:var(--border);font-size:14px;}
+
+/* operator panel */
+.op-panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+/* team columns for player select */
+.teams-split{display:grid;grid-template-columns:1fr 1fr;height:100%;}
+.team-col{padding:8px;border-right:1px solid var(--border);overflow-y:auto;}
+.team-col:last-child{border-right:none;}
+.team-col-label{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--muted);text-align:center;margin-bottom:7px;}
+
+/* player buttons */
+.pbtn{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px 6px;margin-bottom:5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.pbtn:active{transform:scale(.94);}
+.pbtn.sel{background:rgba(245,197,24,.15);border-color:var(--gold);}
+.pbtn.foul4{border-color:var(--orange);}
+.pbtn.foul5{border-color:var(--red);opacity:.55;}
+.pbtn-num{font-family:'Bebas Neue',cursive;font-size:28px;line-height:1;color:var(--gold);}
+.pbtn-name{font-size:10px;font-weight:600;color:var(--text);line-height:1.2;text-align:center;}
+.pbtn-stat{font-size:9px;color:var(--muted);}
+.pbtn-fouls{display:flex;gap:2px;margin-top:2px;}
+.pbtn-fpip{width:5px;height:5px;border-radius:50%;background:var(--border);}
+.pbtn-fpip.on{background:var(--red);}
+
+/* event type grid */
+.evt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;}
+.evt-btn{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.evt-btn:active{transform:scale(.94);}
+.evt-btn.sel{background:rgba(245,197,24,.12);border-color:var(--gold);}
+.evt-icon{font-size:20px;}
+.evt-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);text-align:center;}
+
+/* made/miss */
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;}
+.result-btn{border:2px solid;border-radius:10px;padding:22px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .1s;touch-action:manipulation;}
+.result-btn:active{transform:scale(.95);}
+.result-btn.made{border-color:var(--green);background:rgba(45,198,83,.08);color:var(--green);}
+.result-btn.miss{border-color:var(--red);background:rgba(230,57,70,.08);color:var(--red);}
+.result-icon{font-size:38px;}
+.result-label{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;}
+
+/* context */
+.ctx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;}
+.ctx-btn{background:var(--surf2);border:2px solid var(--border);border-radius:8px;padding:11px 6px;cursor:pointer;text-align:center;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.ctx-btn:active{transform:scale(.94);}
+.ctx-btn.sel{background:rgba(58,134,255,.12);border-color:var(--blue);}
+.ctx-icon{font-size:18px;margin-bottom:3px;}
+.ctx-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+
+/* assist */
+.assist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px;}
+.abtn{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:9px 6px;cursor:pointer;text-align:center;transition:all .1s;touch-action:manipulation;}
+.abtn:active{transform:scale(.94);}
+.abtn.sel{background:rgba(245,197,24,.12);border-color:var(--gold);}
+.abtn-num{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);}
+.abtn-name{font-size:9px;color:var(--muted);}
+
+/* step header */
+.step-hdr{padding:8px 12px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--gold);background:var(--surf);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.step-num{background:var(--gold);color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;}
+.confirm-btn{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;margin-left:auto;}
+
+/* pbp */
+.pbp-item{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);}
+.pbp-q{font-family:'Bebas Neue',cursive;font-size:12px;color:var(--gold);min-width:20px;}
+.pbp-clock{font-size:11px;color:var(--muted);min-width:38px;}
+.pbp-text{font-size:12px;flex:1;}
+.pbp-pts{font-family:'Bebas Neue',cursive;font-size:14px;color:var(--gold);}
+.pbp-undo{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 4px;}
+
+/* box score tab */
+.box-wrap{overflow-x:auto;}
+.box-table{width:100%;min-width:560px;border-collapse:collapse;font-size:12px;}
+.box-table th{background:#000;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 7px;text-align:center;border-bottom:1px solid var(--border);}
+.box-table th:nth-child(2){text-align:left;}
+.box-table td{padding:7px 7px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;}
+.box-table td:first-child{color:var(--muted);font-size:10px;}
+.box-table td:nth-child(2){text-align:left;font-weight:600;}
+.box-table tr.tot td{background:var(--surf2);font-weight:700;}
+.box-pts{color:var(--gold);font-weight:700;}
+.box-team-hdr{background:var(--surf2);padding:9px 12px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;color:var(--gold);display:flex;justify-content:space-between;align-items:center;}
+
+/* bottom bar */
+.clock-bar{background:#0a0a0c;border-bottom:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.clock-bar-time{font-family:'Bebas Neue',cursive;font-size:36px;color:var(--gold);letter-spacing:4px;min-width:76px;cursor:pointer;line-height:1;}
+.clock-bar-run{flex:1;background:var(--green);color:#000;border:none;font-weight:900;font-size:15px;padding:12px 10px;border-radius:8px;cursor:pointer;letter-spacing:.5px;}
+.clock-bar-run.paused{background:var(--surf3);color:var(--text);border:1px solid var(--border);}
+.clock-bar-rst{background:var(--surf2);border:1px solid var(--border);color:var(--muted);font-size:15px;font-weight:700;padding:12px 14px;border-radius:8px;cursor:pointer;}
+.live-bottom{background:#000;border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:7px;flex-shrink:0;padding-bottom:calc(8px + env(safe-area-inset-bottom));}
+.lctrl{flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:10px 4px;border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;}
+.lctrl:active{border-color:var(--gold);color:var(--gold);}
+.lctrl.gold{background:var(--gold);color:#000;border-color:var(--gold);}
+.lctrl.red{background:var(--red);color:#fff;border-color:var(--red);}
+
+/* ════════════════════════════
+   REPORT SCREEN
+════════════════════════════ */
+.report-actions{padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);flex-shrink:0;}
+.report-body{flex:1;overflow-y:auto;background:#e0e0e0;padding:16px;}
+.report-frame{padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#111;background:white;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.25);max-width:700px;margin:0 auto;}
+.r-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #111;}
+.r-brand{font-weight:900;font-size:15px;line-height:1.2;}
+.r-brand-sub{font-size:8px;color:#666;font-weight:400;letter-spacing:2px;text-transform:uppercase;}
+.r-title-block{text-align:center;}
+.r-event{font-weight:700;font-size:15px;}
+.r-datetime{font-size:11px;color:#555;}
+.r-final{font-weight:700;font-size:11px;margin-top:2px;}
+.r-team-hdr{background:#111;color:#fff;padding:5px 9px;display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.r-team-name{font-weight:700;font-size:13px;}
+.r-score-badge{background:#fff;color:#111;font-weight:900;font-size:16px;padding:1px 7px;border-radius:2px;}
+.r-table{width:100%;border-collapse:collapse;margin-bottom:2px;}
+.r-table th{background:#f0f0f0;font-size:8px;font-weight:700;text-transform:uppercase;padding:4px 4px;border:1px solid #ddd;text-align:center;}
+.r-table th:first-child{width:18px;text-align:left;}
+.r-table th:nth-child(2){text-align:left;min-width:80px;}
+.r-table td{padding:3px 4px;border:1px solid #ddd;text-align:center;font-size:10px;}
+.r-table td:first-child{font-size:9px;color:#777;}
+.r-table td:nth-child(2){text-align:left;font-weight:600;}
+.r-table tr.rtot td{background:#f5f5f5;font-weight:700;}
+.r-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
+.r-sum-table{width:100%;border-collapse:collapse;font-size:9px;}
+.r-sum-table th{background:#f0f0f0;padding:3px 5px;border:1px solid #ddd;font-weight:700;text-align:left;}
+.r-sum-table th.center{text-align:center;}
+.r-sum-table td{padding:3px 5px;border:1px solid #ddd;text-align:center;}
+.r-sum-table td:first-child{text-align:left;}
+.r-footer{margin-top:12px;font-size:8px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:6px;}
+
+/* SOP STYLES */
+.sop-tab-btn{background:var(--surf2);border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;padding:9px 14px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all .15s;}
+.sop-tab-btn.active{background:var(--gold);color:#000;border-color:var(--gold);}
+.sop-tab-btn:active{transform:scale(.96);}
+.sop-tab{display:block;}
+.sop-tab.hidden{display:none;}
+
+.sop-step{display:flex;gap:14px;margin-bottom:18px;align-items:flex-start;}
+.sop-step-num{background:var(--gold);color:#000;font-family:'Bebas Neue',cursive;font-size:18px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.sop-step-body{flex:1;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.sop-step-title{font-family:'Bebas Neue',cursive;font-size:16px;letter-spacing:1px;color:var(--gold);margin-bottom:8px;}
+.sop-step-desc{font-size:13px;line-height:1.7;color:var(--text);}
+.sop-tip{background:rgba(58,134,255,.1);border:1px solid rgba(58,134,255,.25);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--blue);margin-top:10px;}
+
+.flow-demo{display:flex;align-items:center;gap:4px;flex-wrap:wrap;background:#000;border-radius:6px;padding:8px 10px;margin:8px 0;}
+.fd-step{font-size:11px;font-weight:700;color:var(--green);background:rgba(45,198,83,.1);border:1px solid rgba(45,198,83,.3);padding:4px 8px;border-radius:4px;}
+.fd-step.active{color:var(--gold);background:rgba(245,197,24,.1);border-color:rgba(245,197,24,.3);}
+.fd-arrow{color:var(--border);font-size:14px;}
+
+.sop-section-title{font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;color:var(--gold);margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.sop-checklist{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px;}
+.sop-check{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer;line-height:1.4;}
+.sop-check:last-child{border-bottom:none;padding-bottom:0;}
+.sop-check input{margin-top:2px;flex-shrink:0;width:16px;height:16px;accent-color:var(--gold);}
+
+.cheat-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:600px){.cheat-grid{grid-template-columns:1fr 1fr;}}
+.cheat-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
+.cheat-title{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:1.5px;color:var(--gold);margin-bottom:10px;}
+.cheat-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:flex-start;}
+.cheat-row:last-child{border-bottom:none;}
+.cheat-key{font-weight:700;color:var(--text);min-width:90px;flex-shrink:0;}
+.cheat-val{color:var(--muted);line-height:1.4;}
+.cheat-warn .cheat-key{color:var(--orange);}
+
+.glossary-section{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;color:var(--gold);padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:10px;}
+.glossary-grid{display:flex;flex-direction:column;gap:0;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.gl-item{display:flex;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);align-items:flex-start;}
+.gl-item:last-child{border-bottom:none;}
+.gl-abbr{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:1px;color:var(--gold);min-width:72px;flex-shrink:0;padding-top:1px;}
+.gl-def{font-size:12px;color:var(--muted);line-height:1.5;}
+.gl-def strong{color:var(--text);}
+
+@media print{
+  @page{ size:letter portrait; margin:.5in; }
+
+  /* Let the active screen flow naturally instead of being fixed+clipped */
+  body{ background:white!important; color:#111!important; }
+  .screen{ position:static!important; overflow:visible!important; height:auto!important; display:none!important; }
+  .screen.active{ display:block!important; }
+
+  /* Report screen chrome */
+  #reportScreen .ph,.report-actions{ display:none!important; }
+  .report-body{ overflow:visible!important; height:auto!important; }
+  .report-frame{ padding:0!important; font-size:11px; }
+
+  /* Scale tables to fill page width */
+  .r-table{ width:100%!important; font-size:10px!important; }
+  .r-table th{ font-size:8px!important; padding:3px!important; }
+  .r-table td{ font-size:10px!important; padding:3px!important; }
+  .r-summary{ display:grid!important; grid-template-columns:1fr 1fr 1fr!important; }
+  .r-team-hdr{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+  /* SOP screen */
+  #sopScreen .ph button{ display:none!important; }
+  .sop-tab-btn{ display:none!important; }
+  .sop-tab.hidden{ display:block!important; }
+  .sop-step-body,.cheat-card,.card,.glossary-grid,.sop-checklist{ background:white!important;border:1px solid #ddd!important;color:#111!important; }
+  .sop-step-title,.cheat-title,.glossary-section,.sop-section-title{ color:#000!important; }
+  .sop-step-desc,.cheat-val,.gl-def,.sop-check,.sop-tip{ color:#333!important; }
+  .gl-abbr,.cheat-key,.fd-step{ color:#000!important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════ AUTH SCREEN ════ -->
+<div id="authScreen" class="screen active">
+  <div class="auth-card">
+    <div class="auth-logo-wrap">
+      <img src="/NSMTWordmarkBlue.png" class="auth-logo" alt="NSMT" onerror="this.style.display='none';document.getElementById('authFallbackLogo').style.display='block'">
+      <div id="authFallbackLogo" style="display:none;font-family:'Bebas Neue',cursive;font-size:40px;color:#1877F2;letter-spacing:4px">NSMT</div>
+    </div>
+    <div class="auth-title">NSMT Stats</div>
+    <div class="auth-subtitle">Sign in to sync your games across all devices and access your archive anywhere.</div>
+    <button class="auth-google-btn" onclick="signInWithGoogle()" id="signInBtn">
+      <svg class="auth-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Sign in with Google
+    </button>
+    <div class="auth-divider">or</div>
+    <button class="auth-offline-btn" onclick="useOfflineMode()">Continue without account (offline only)</button>
+    <div class="auth-features">
+      <div class="auth-feat"><span class="auth-feat-check">✓</span>Real-time game statistics on any device</div>
+      <div class="auth-feat"><span class="auth-feat-check">✓</span>Games sync across all your devices</div>
+      <div class="auth-feat"><span class="auth-feat-check">✓</span>Team and player roster management</div>
+      <div class="auth-feat"><span class="auth-feat-check">✓</span>Professional game reports & PDF export</div>
+      <div class="auth-feat"><span class="auth-feat-check">✓</span>Works offline — never lose data</div>
+    </div>
+    <div class="auth-footer">
+      Nova Sports Media Team<br>
+      stats.thensmt.com • Northern Virginia High School Sports
+    </div>
+  </div>
+</div>
+
+<!-- ════ HOME ════ -->
+<div id="homeScreen" class="screen">
+  <div class="ph">
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT Stats"
+      onerror="this.outerHTML='<span style=\'font-family:Bebas Neue,cursive;font-size:20px;color:#1877F2;letter-spacing:3px\'>NSMT</span>'">
+    <div class="user-area">
+      <span id="userDisplayName" class="user-name-sm"></span>
+      <img id="userAvatar" class="user-avatar" src="" alt="User">
+      <button class="sign-out-btn" id="signOutBtn" onclick="signOutUser()">Sign Out</button>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="home-hero">
+      <div class="home-tagline">Basketball Stat Tracker</div>
+      <div id="homeUserBadge" style="margin-top:10px"></div>
+      <div class="home-version">v3.0 • stats.thensmt.com</div>
+    </div>
+    <div class="pad" style="padding-top:0">
+      <button class="menu-btn" onclick="goTo('modeSelectScreen')">
+        <div class="menu-icon">🏀</div>
+        <div>
+          <div class="menu-title">New Game</div>
+          <div class="menu-desc">Set up and start tracking a game</div>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('rosterScreen')">
+        <div class="menu-icon">📋</div>
+        <div>
+          <div class="menu-title">Roster Manager</div>
+          <div class="menu-desc">Save and manage team rosters</div>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('archiveScreen')">
+        <div class="menu-icon">📁</div>
+        <div>
+          <div class="menu-title">Game Archive</div>
+          <div class="menu-desc">Past games, reports, and exports</div>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('sopScreen')">
+        <div class="menu-icon">📖</div>
+        <div>
+          <div class="menu-title">Operator Guide & SOP</div>
+          <div class="menu-desc">Walkthrough, cheat sheet, and game-day checklist</div>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="loadMockGame()" style="border-color:#F5C518;opacity:.8">
+        <div class="menu-icon">🧪</div>
+        <div>
+          <div class="menu-title">Load Mock Game</div>
+          <div class="menu-desc">St. John's vs Paul VI — test with a full roster</div>
+        </div>
+        <div class="menu-arrow">›</div>
+      </button>
+    </div>
+    <div class="pad" style="padding-top:0">
+      <div class="recent-label">Recent Games</div>
+      <div id="recentList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODE SELECT ════ -->
+<div id="modeSelectScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>New Game</h2></div>
+  <div class="scroll-body pad">
+    <div style="margin-bottom:20px">
+      <div class="field"><label>Your Name</label><input type="text" id="msKeeperName" placeholder="Stat-keeper name"></div>
+      <div class="field"><label>Mode</label>
+        <select id="msMode" onchange="updateModeUI()">
+          <option value="keeper">NSMT Stat-Keeper (Full Game)</option>
+          <option value="coach">Coach Mode (My Team Only)</option>
+        </select>
+      </div>
+    </div>
+    <div id="modeDesc" class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.2)">
+      <div style="font-size:13px;color:var(--text)">
+        <strong style="color:var(--gold)">Stat-Keeper Mode:</strong> Track both teams, full box score, all advanced stats. Report goes to NSMT records.
+      </div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" style="margin-top:16px" onclick="goTo('gameSetupScreen')">Continue →</button>
+  </div>
+</div>
+
+<!-- ════ GAME SETUP ════ -->
+<div id="gameSetupScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('modeSelectScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>Game Setup</h2></div>
+  <div class="scroll-body pad">
+    <div class="card">
+      <div class="card-title">Game Info</div>
+      <div class="two-col">
+        <div class="field"><label>Event / Tournament</label><input type="text" id="gsEvent" placeholder="WCAC Championship"></div>
+        <div class="field"><label>Venue</label><input type="text" id="gsVenue" placeholder="DeMatha Catholic"></div>
+        <div class="field"><label>Date</label><input type="date" id="gsDate"></div>
+        <div class="field"><label>Time</label><input type="time" id="gsTime"></div>
+      </div>
+      <div class="two-col">
+        <div class="field"><label>Periods</label>
+          <select id="gsPeriods"><option value="4">4 Quarters</option><option value="2">2 Halves</option></select>
+        </div>
+        <div class="field"><label>Period Length (min)</label><input type="number" id="gsPeriodLen" value="8" min="1" max="20"></div>
+      </div>
+    </div>
+
+    <!-- Away Team -->
+    <div class="card">
+      <div class="team-header-row">
+        <div class="card-title" style="margin-bottom:0">Away Team</div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:7px 12px" onclick="openRosterPicker('away')">📋 Load Roster</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="two-col">
+          <div class="field"><label>Team Name</label><input type="text" id="gsAwayName" placeholder="St. John's" oninput="syncTeamLabel('away')"></div>
+          <div class="field"><label>Short Code</label><input type="text" id="gsAwayCode" placeholder="SJC" maxlength="4"></div>
+        </div>
+        <div class="section-divider" style="margin-top:4px">Players</div>
+        <div id="gsAwayRoster"></div>
+        <button class="btn btn-ghost btn-full" onclick="addGSPlayer('away')" style="margin-top:6px">+ Add Player</button>
+      </div>
+    </div>
+
+    <!-- Home Team (hidden in coach mode) -->
+    <div id="gsHomeCard" class="card">
+      <div class="team-header-row">
+        <div class="card-title" style="margin-bottom:0">Home Team</div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:7px 12px" onclick="openRosterPicker('home')">📋 Load Roster</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="two-col">
+          <div class="field"><label>Team Name</label><input type="text" id="gsHomeName" placeholder="Paul VI" oninput="syncTeamLabel('home')"></div>
+          <div class="field"><label>Short Code</label><input type="text" id="gsHomeCode" placeholder="PVI" maxlength="4"></div>
+        </div>
+        <div class="section-divider" style="margin-top:4px">Players</div>
+        <div id="gsHomeRoster"></div>
+        <button class="btn btn-ghost btn-full" onclick="addGSPlayer('home')" style="margin-top:6px">+ Add Player</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-surf" style="flex:1" onclick="saveRostersFromSetup()">💾 Save Rosters</button>
+      <button class="btn btn-gold" style="flex:2" onclick="initGame()">▶ Start Game</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ROSTER MANAGER ════ -->
+<div id="rosterScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>Rosters</h2>
+    <button class="btn btn-gold" style="margin-left:auto;padding:8px 14px;font-size:13px" onclick="openNewRosterModal()">+ New</button>
+  </div>
+  <div class="scroll-body pad">
+    <div id="rosterList"></div>
+    <div id="rosterEmpty" style="text-align:center;color:var(--muted);padding:40px 0;display:none">
+      <div style="font-size:36px;margin-bottom:10px">📋</div>
+      <div style="font-size:15px;font-weight:600">No saved rosters yet</div>
+      <div style="font-size:12px;margin-top:4px">Create one to reuse across games</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ARCHIVE ════ -->
+<div id="archiveScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>Archive</h2></div>
+  <div class="scroll-body pad">
+    <div id="archiveList"></div>
+    <div id="archiveEmpty" style="text-align:center;color:var(--muted);padding:40px 0;display:none">
+      <div style="font-size:36px;margin-bottom:10px">📁</div>
+      <div style="font-size:15px;font-weight:600">No completed games yet</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ LIVE GAME ════ -->
+<div id="liveScreen" class="screen">
+<div class="live-wrap">
+
+  <!-- Scoreboard -->
+  <div class="scoreboard">
+    <div class="sb-team">
+      <div class="sb-name" id="sbAwayName">AWAY</div>
+      <div class="sb-pts" id="sbAwayPts">0</div>
+    </div>
+    <div class="sb-mid">
+      <div class="sb-period" id="sbPeriod">Q1</div>
+      <div class="sb-clock" id="sbClock" onclick="openClockModal()" style="font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);cursor:pointer;letter-spacing:2px;line-height:1">8:00</div>
+      <div class="sb-event" id="sbEvent"></div>
+      <div class="sb-fouls" id="sbFouls"></div>
+    </div>
+    <div class="sb-team">
+      <div class="sb-name right" id="sbHomeName">HOME</div>
+      <div class="sb-pts right" id="sbHomePts">0</div>
+    </div>
+  </div>
+
+  <!-- Clock bar -->
+  <div class="clock-bar">
+    <div class="clock-bar-time" id="sbClock" onclick="openClockModal()" title="Tap to set time">8:00</div>
+    <button id="clockToggleBtn" class="clock-bar-run paused" onclick="toggleClock()">▶ START</button>
+    <button class="clock-bar-rst" onclick="resetClock()" title="Reset">↺</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="live-tabs">
+    <div class="ltab active" id="ltab0" onclick="setLiveTab(0)">Log</div>
+    <div class="ltab" id="ltab1" onclick="setLiveTab(1)">Box</div>
+    <div class="ltab" id="ltab2" onclick="setLiveTab(2)">PBP</div>
+  </div>
+
+  <!-- Flow bar -->
+  <div class="flow-bar" id="flowBar"></div>
+
+  <!-- Panel -->
+  <div class="op-panel" id="opPanel"></div>
+
+  <!-- Bottom bar -->
+  <div class="live-bottom">
+    <button class="lctrl" onclick="undoLast()">↩ Undo</button>
+    <button class="lctrl" onclick="openPeriodModal()">⏱ Period</button>
+    <button class="lctrl gold" onclick="showReport()">📋 Report</button>
+    <button class="lctrl red" onclick="confirmEnd()">End</button>
+  </div>
+
+</div>
+</div>
+
+<!-- ════ REPORT ════ -->
+<div id="reportScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>Game Report</h2></div>
+  <div class="report-actions">
+    <button class="btn btn-gold" onclick="printReport()">🖨️ Print / Save PDF</button>
+    <button class="btn btn-surf" onclick="exportGame()">📦 Export .nsmtgame</button>
+    <button class="btn btn-surf" onclick="goTo('homeScreen')">🏠 Home</button>
+  </div>
+  <div class="report-body">
+    <div class="report-frame" id="reportFrame"></div>
+  </div>
+</div>
+
+<!-- ════ SOP / OPERATOR GUIDE ════ -->
+<div id="sopScreen" class="screen">
+  <div class="ph">
+    <button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <img src="/NSMTWordmarkBlue.png" class="ph-logo-img" alt="NSMT" style="height:22px" onerror="this.style.display='none'">
+    <h2>Operator Guide</h2>
+    <button class="btn btn-gold" style="margin-left:auto;padding:8px 14px;font-size:13px" onclick="window.print()">🖨️ Print</button>
+  </div>
+  <div class="scroll-body pad" id="sopBody">
+
+    <!-- TABS -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+      <button class="sop-tab-btn active" onclick="showSopTab('walkthrough',this)">📱 Walkthrough</button>
+      <button class="sop-tab-btn" onclick="showSopTab('sop',this)">📋 Game-Day SOP</button>
+      <button class="sop-tab-btn" onclick="showSopTab('cheatsheet',this)">⚡ Cheat Sheet</button>
+      <button class="sop-tab-btn" onclick="showSopTab('glossary',this)">📖 Glossary</button>
+    </div>
+
+    <!-- WALKTHROUGH TAB -->
+    <div id="sop-walkthrough" class="sop-tab">
+
+      <div class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.25);margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:1px;color:var(--gold);margin-bottom:6px">Welcome to NSMT Stats</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6">This guide walks you through every screen in the app. If it's your first time, read this before your first game. It takes about 5 minutes.</div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">1</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Set Up Your Roster (Do This Before Game Day)</div>
+          <div class="sop-step-desc">Go to <strong>Roster Manager</strong> from the home screen. Tap <strong>+ New</strong> to create a roster for each team you cover regularly. Enter the team name, short code (e.g. PVI), and every player's jersey number and full name. Tap <strong>Save Roster</strong>. Rosters are saved permanently and can be reused every game — you'll never enter them again.</div>
+          <div class="sop-tip">💡 Tip: Save both teams' rosters before the season starts. During games you'll load them in seconds.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">2</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Start a New Game</div>
+          <div class="sop-step-desc">Tap <strong>New Game</strong> → enter your name → select your mode:<br><br>
+          <strong style="color:var(--gold)">Stat-Keeper Mode</strong> — tracks both teams. Use this for official NSMT coverage.<br>
+          <strong style="color:var(--gold)">Coach Mode</strong> — tracks one team only. Use this when working with a coaching staff.</div>
+          <div class="sop-tip">💡 Tap Continue, then fill in the event name, venue, date, and time on the Game Setup screen.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">3</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Load Your Rosters</div>
+          <div class="sop-step-desc">On the Game Setup screen, tap <strong>📋 Load Roster</strong> next to each team. Pick the saved roster from the list — all players populate instantly. If a team has a new player not in your saved roster, tap <strong>+ Add Player</strong> to add them manually. When done, tap <strong>💾 Save Rosters</strong> to update them for future games, then tap <strong>▶ Start Game</strong>.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">4</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">The Live Game Screen</div>
+          <div class="sop-step-desc">The live screen has three parts:<br><br>
+          <strong style="color:var(--gold)">Scoreboard (top)</strong> — shows live score, period, and team foul dots.<br>
+          <strong style="color:var(--gold)">Three tabs</strong> — Log Event (main operator view), Box Score (live stats table), Play-by-Play (event log).<br>
+          <strong style="color:var(--gold)">Bottom bar</strong> — Undo, Clock, Period, Report, End Game.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">5</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Logging an Event — The 5-Step Flow</div>
+          <div class="sop-step-desc">Every stat is logged in steps. The flow bar at the top shows where you are.<br><br>
+          <div class="flow-demo">
+            <div class="fd-step done">① Select Player</div>
+            <div class="fd-arrow">›</div>
+            <div class="fd-step done">② Select Action</div>
+            <div class="fd-arrow">›</div>
+            <div class="fd-step done">③ Made / Missed</div>
+            <div class="fd-arrow">›</div>
+            <div class="fd-step done">④ Context</div>
+            <div class="fd-arrow">›</div>
+            <div class="fd-step active">⑤ Assist?</div>
+          </div><br>
+          <strong>Step 1:</strong> Tap the player's jersey number (left column = away, right = home).<br>
+          <strong>Step 2:</strong> Tap the action — 2PT, 3PT, Free Throw, Rebound, Steal, etc.<br>
+          <strong>Step 3:</strong> For shots/FTs only — tap MADE ✅ or MISSED ❌.<br>
+          <strong>Step 4:</strong> For made field goals — tap the shot location (Paint / Mid / 3PT) and play context (Half Court / Fast Break / 2nd Chance / Off Turnover). Default is Half Court — just tap Next if no context.<br>
+          <strong>Step 5:</strong> Tap the assisting player if there was one, or tap No Assist. Stats log instantly.</div>
+          <div class="sop-tip">💡 For non-shot stats (Rebound, Steal, Block, TO, Foul) — it logs immediately after Step 2. No extra taps needed.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">6</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Undo a Mistake</div>
+          <div class="sop-step-desc">Tap <strong>↩ Undo</strong> in the bottom bar at any time to remove the last logged event. The stats and score update immediately. You can only undo one event at a time — so correct mistakes as soon as you notice them.</div>
+          <div class="sop-tip">💡 If you're mid-flow and selected the wrong player, tap ← Back in the action panel to go back without logging anything.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">7</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Managing Periods</div>
+          <div class="sop-step-desc">At the end of each quarter or half, tap <strong>⏱ Period</strong> in the bottom bar. Enter the official period scores if you have them (optional — useful for report accuracy), then tap <strong>Next Period →</strong>. Team fouls reset automatically. To add overtime, tap <strong>+ Add Overtime</strong> instead.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">8</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Setting the Clock</div>
+          <div class="sop-step-desc">Tap <strong>🕐 Clock</strong> and enter the current game time in MM:SS format (e.g. 6:32). This timestamps your play-by-play entries and helps with game flow in the report. You don't need to track it every possession — just update it at key moments like timeouts or end of period.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">9</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Ending the Game & Generating the Report</div>
+          <div class="sop-step-desc">Tap <strong>End</strong> in the bottom bar → confirm the final score → tap <strong>End Game & Generate Report</strong>. The official box score report generates automatically with full stats, advanced summary blocks, and period scores. Tap <strong>🖨️ Print / Save PDF</strong> to export it. The game saves to your archive automatically.</div>
+          <div class="sop-tip">💡 You can also tap 📋 Report at any point during the game to preview stats without ending it.</div>
+        </div>
+      </div>
+
+      <div class="sop-step">
+        <div class="sop-step-num">10</div>
+        <div class="sop-step-body">
+          <div class="sop-step-title">Exporting & Saving</div>
+          <div class="sop-step-desc">From the Report screen, tap <strong>📦 Export .nsmtgame</strong> to download a full game file. This is your backup and can be shared with NSMT HQ. All games also auto-save in your <strong>Game Archive</strong> on this device so you can reopen them anytime.</div>
+        </div>
+      </div>
+
+    </div><!-- end walkthrough tab -->
+
+    <!-- SOP TAB -->
+    <div id="sop-sop" class="sop-tab hidden">
+
+      <div class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.25);margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:1px;color:var(--gold);margin-bottom:4px">NSMT Stat-Keeper Game Day SOP</div>
+        <div style="font-size:12px;color:var(--muted)">Follow this checklist every game. No exceptions.</div>
+      </div>
+
+      <div class="sop-section-title">📅 48–72 Hours Before Game</div>
+      <div class="sop-checklist">
+        <label class="sop-check"><input type="checkbox"> Confirm game details: teams, venue, date, time</label>
+        <label class="sop-check"><input type="checkbox"> Open Roster Manager → verify both teams' rosters are saved and up to date</label>
+        <label class="sop-check"><input type="checkbox"> Add any new or missing players to saved rosters</label>
+        <label class="sop-check"><input type="checkbox"> Confirm iPad is charged and has the app loaded</label>
+        <label class="sop-check"><input type="checkbox"> Download app to home screen if not already done (Safari → Share → Add to Home Screen)</label>
+      </div>
+
+      <div class="sop-section-title">🏟️ Arrive at Venue (45 Min Before Tip)</div>
+      <div class="sop-checklist">
+        <label class="sop-check"><input type="checkbox"> Open NSMT Stats app</label>
+        <label class="sop-check"><input type="checkbox"> Tap New Game → enter your name → select Stat-Keeper Mode</label>
+        <label class="sop-check"><input type="checkbox"> Fill in: Event name, Venue, Date, Time</label>
+        <label class="sop-check"><input type="checkbox"> Load Away team roster → verify all players present</label>
+        <label class="sop-check"><input type="checkbox"> Load Home team roster → verify all players present</label>
+        <label class="sop-check"><input type="checkbox"> Add any late additions or roster changes manually</label>
+        <label class="sop-check"><input type="checkbox"> Save Rosters to update for future games</label>
+        <label class="sop-check"><input type="checkbox"> Confirm period type (4 Quarters or 2 Halves)</label>
+        <label class="sop-check"><input type="checkbox"> Tap Start Game</label>
+      </div>
+
+      <div class="sop-section-title">⏰ Pre-Game (5 Min Before Tip)</div>
+      <div class="sop-checklist">
+        <label class="sop-check"><input type="checkbox"> Identify starting 5 for each team (ask scorebook official if needed)</label>
+        <label class="sop-check"><input type="checkbox"> Locate yourself courtside with clear view of both benches and scoreboard</label>
+        <label class="sop-check"><input type="checkbox"> Set initial clock: tap 🕐 Clock → enter period length (e.g. 8:00)</label>
+        <label class="sop-check"><input type="checkbox"> Do a quick test: tap a player → tap 2PT → tap Back. Make sure flow works.</label>
+      </div>
+
+      <div class="sop-section-title">🏀 During the Game</div>
+      <div class="sop-checklist">
+        <label class="sop-check"><input type="checkbox"> Log every made AND missed field goal (both 2PT and 3PT)</label>
+        <label class="sop-check"><input type="checkbox"> Log every free throw attempt individually</label>
+        <label class="sop-check"><input type="checkbox"> Log rebounds (offensive and defensive)</label>
+        <label class="sop-check"><input type="checkbox"> Log assists on made baskets when visible</label>
+        <label class="sop-check"><input type="checkbox"> Log steals, blocks, turnovers, and fouls</label>
+        <label class="sop-check"><input type="checkbox"> Tag shot location (Paint / Mid / 3PT) and context (Fast Break, 2nd Chance, Off TO) when applicable</label>
+        <label class="sop-check"><input type="checkbox"> Update clock at timeouts and end of periods</label>
+        <label class="sop-check"><input type="checkbox"> Use ↩ Undo immediately if you log the wrong player or action</label>
+        <label class="sop-check"><input type="checkbox"> At end of each period: tap ⏱ Period → enter period score → advance</label>
+      </div>
+
+      <div class="sop-section-title">🏁 Post-Game (Immediately After Final Buzzer)</div>
+      <div class="sop-checklist">
+        <label class="sop-check"><input type="checkbox"> Tap End → verify final score → tap End Game & Generate Report</label>
+        <label class="sop-check"><input type="checkbox"> Review box score quickly — check team totals look correct</label>
+        <label class="sop-check"><input type="checkbox"> Tap 🖨️ Print / Save PDF → save to device or share to NSMT</label>
+        <label class="sop-check"><input type="checkbox"> Tap 📦 Export .nsmtgame → send file to NSMT HQ if required</label>
+        <label class="sop-check"><input type="checkbox"> Screenshot the final score for social if needed</label>
+      </div>
+
+      <div class="sop-section-title">🔴 Emergency Procedures</div>
+      <div class="card" style="margin-top:8px">
+        <div style="font-size:13px;line-height:1.8">
+          <strong style="color:var(--red)">App crashes mid-game:</strong> Re-open the app. Tap Game Archive or the recent game on the home screen. All events are auto-saved — you won't lose stats.<br><br>
+          <strong style="color:var(--red)">Wrong player logged:</strong> Tap ↩ Undo immediately. Re-log with the correct player.<br><br>
+          <strong style="color:var(--red)">Lost Wi-Fi:</strong> No impact. The app works fully offline. All data is stored on the device.<br><br>
+          <strong style="color:var(--red)">Need to correct a past event:</strong> You cannot edit individual past events in v1. Use Undo as you go. If a systematic error happened, contact NSMT HQ with the exported game file.
+        </div>
+      </div>
+
+    </div><!-- end sop tab -->
+
+    <!-- CHEAT SHEET TAB -->
+    <div id="sop-cheatsheet" class="sop-tab hidden">
+
+      <div class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.25);margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:1px;color:var(--gold);margin-bottom:4px">Quick Reference Cheat Sheet</div>
+        <div style="font-size:12px;color:var(--muted)">Print this and keep it courtside. Reference it during the first few games.</div>
+      </div>
+
+      <div class="cheat-grid">
+        <div class="cheat-card">
+          <div class="cheat-title">🏀 Shot Flow</div>
+          <div class="cheat-row"><span class="cheat-key">2PT Made</span><span class="cheat-val">Player → 2PT → Made → Location → Context → Assist?</span></div>
+          <div class="cheat-row"><span class="cheat-key">2PT Miss</span><span class="cheat-val">Player → 2PT → Missed ✓ (done)</span></div>
+          <div class="cheat-row"><span class="cheat-key">3PT Made</span><span class="cheat-val">Player → 3PT → Made → Context → Assist?</span></div>
+          <div class="cheat-row"><span class="cheat-key">3PT Miss</span><span class="cheat-val">Player → 3PT → Missed ✓ (done)</span></div>
+          <div class="cheat-row"><span class="cheat-key">FT Made</span><span class="cheat-val">Player → Free Throw → Made ✓ (done)</span></div>
+          <div class="cheat-row"><span class="cheat-key">FT Miss</span><span class="cheat-val">Player → Free Throw → Missed ✓ (done)</span></div>
+        </div>
+
+        <div class="cheat-card">
+          <div class="cheat-title">⚡ One-Tap Stats</div>
+          <div class="cheat-row"><span class="cheat-key">Rebound</span><span class="cheat-val">Player → Off Reb or Def Reb ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Steal</span><span class="cheat-val">Player (who stole it) → Steal ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Block</span><span class="cheat-val">Player (who blocked) → Block ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Turnover</span><span class="cheat-val">Player (who lost ball) → Turnover ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Foul</span><span class="cheat-val">Player (who fouled) → Foul ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Assist only</span><span class="cheat-val">Log on the made basket — tag in Step 5</span></div>
+        </div>
+
+        <div class="cheat-card">
+          <div class="cheat-title">📍 Shot Location Guide</div>
+          <div class="cheat-row"><span class="cheat-key">🟥 Paint</span><span class="cheat-val">Inside the lane / within ~8 ft</span></div>
+          <div class="cheat-row"><span class="cheat-key">🟨 Mid Range</span><span class="cheat-val">Between paint and 3PT line</span></div>
+          <div class="cheat-row"><span class="cheat-key">🟦 3-Point</span><span class="cheat-val">Behind the arc (auto-set for 3PT shots)</span></div>
+        </div>
+
+        <div class="cheat-card">
+          <div class="cheat-title">🔄 Play Context Guide</div>
+          <div class="cheat-row"><span class="cheat-key">⛹️ Half Court</span><span class="cheat-val">Default — normal set play</span></div>
+          <div class="cheat-row"><span class="cheat-key">💨 Fast Break</span><span class="cheat-val">Score after steal or quick outlet</span></div>
+          <div class="cheat-row"><span class="cheat-key">🔄 2nd Chance</span><span class="cheat-val">Score after offensive rebound</span></div>
+          <div class="cheat-row"><span class="cheat-key">💥 Off Turnover</span><span class="cheat-val">Score after opponent TO (but not fast break)</span></div>
+        </div>
+
+        <div class="cheat-card">
+          <div class="cheat-title">🎛️ Bottom Bar Controls</div>
+          <div class="cheat-row"><span class="cheat-key">↩ Undo</span><span class="cheat-val">Remove last event immediately</span></div>
+          <div class="cheat-row"><span class="cheat-key">🕐 Clock</span><span class="cheat-val">Set current game clock (MM:SS)</span></div>
+          <div class="cheat-row"><span class="cheat-key">⏱ Period</span><span class="cheat-val">End period, advance, add OT</span></div>
+          <div class="cheat-row"><span class="cheat-key">📋 Report</span><span class="cheat-val">Preview live box score (doesn't end game)</span></div>
+          <div class="cheat-row"><span class="cheat-key">End</span><span class="cheat-val">Finalize game and generate report</span></div>
+        </div>
+
+        <div class="cheat-card">
+          <div class="cheat-title">⚠️ Common Mistakes</div>
+          <div class="cheat-row cheat-warn"><span class="cheat-key">Wrong player?</span><span class="cheat-val">Tap ← Back before confirming OR Undo after</span></div>
+          <div class="cheat-row cheat-warn"><span class="cheat-key">Forgot assist?</span><span class="cheat-val">Can't add after — focus on getting it live</span></div>
+          <div class="cheat-row cheat-warn"><span class="cheat-key">Double-tapped?</span><span class="cheat-val">Tap ↩ Undo right away</span></div>
+          <div class="cheat-row cheat-warn"><span class="cheat-key">App asleep?</span><span class="cheat-val">Keep iPad screen-on setting active during games</span></div>
+        </div>
+      </div>
+
+    </div><!-- end cheatsheet tab -->
+
+    <!-- GLOSSARY TAB -->
+    <div id="sop-glossary" class="sop-tab hidden">
+
+      <div class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.25);margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:1px;color:var(--gold);margin-bottom:4px">Stats Glossary</div>
+        <div style="font-size:12px;color:var(--muted)">Every stat tracked by NSMT Stats and how it's defined.</div>
+      </div>
+
+      <div class="glossary-section">Basic Box Score</div>
+      <div class="glossary-grid">
+        <div class="gl-item"><div class="gl-abbr">PTS</div><div class="gl-def"><strong>Points</strong> — Calculated automatically: (2PT Made × 2) + (3PT Made × 3) + FT Made</div></div>
+        <div class="gl-item"><div class="gl-abbr">FGM / FGA</div><div class="gl-def"><strong>Field Goals Made / Attempted</strong> — All 2PT and 3PT attempts combined</div></div>
+        <div class="gl-item"><div class="gl-abbr">3PM / 3PA</div><div class="gl-def"><strong>3-Pointers Made / Attempted</strong> — Shots taken from behind the arc</div></div>
+        <div class="gl-item"><div class="gl-abbr">FTM / FTA</div><div class="gl-def"><strong>Free Throws Made / Attempted</strong> — Log each attempt individually</div></div>
+        <div class="gl-item"><div class="gl-abbr">OFF / DEF</div><div class="gl-def"><strong>Offensive / Defensive Rebounds</strong> — Off Reb = team keeps possession; Def Reb = team gains possession</div></div>
+        <div class="gl-item"><div class="gl-abbr">REB</div><div class="gl-def"><strong>Total Rebounds</strong> — Offensive + Defensive combined</div></div>
+        <div class="gl-item"><div class="gl-abbr">AST</div><div class="gl-def"><strong>Assists</strong> — A pass directly leading to a made basket. Tagged on the made shot in Step 5</div></div>
+        <div class="gl-item"><div class="gl-abbr">STL</div><div class="gl-def"><strong>Steals</strong> — Logged to the player who takes the ball from the opponent</div></div>
+        <div class="gl-item"><div class="gl-abbr">BLK</div><div class="gl-def"><strong>Blocks</strong> — Logged to the player who deflects the shot</div></div>
+        <div class="gl-item"><div class="gl-abbr">TO</div><div class="gl-def"><strong>Turnovers</strong> — Logged to the player who loses the ball (bad pass, travel, charge, etc.)</div></div>
+        <div class="gl-item"><div class="gl-abbr">PF</div><div class="gl-def"><strong>Personal Fouls</strong> — Logged to the player who commits the foul. Also increments team foul counter</div></div>
+      </div>
+
+      <div class="glossary-section" style="margin-top:16px">Advanced / Summary Stats</div>
+      <div class="glossary-grid">
+        <div class="gl-item"><div class="gl-abbr">Paint Pts</div><div class="gl-def"><strong>Points in the Paint</strong> — Made 2PT shots tagged with location = Paint</div></div>
+        <div class="gl-item"><div class="gl-abbr">Fast Break</div><div class="gl-def"><strong>Fast Break Points</strong> — Made baskets tagged with context = Fast Break</div></div>
+        <div class="gl-item"><div class="gl-abbr">2nd Chance</div><div class="gl-def"><strong>Second Chance Points</strong> — Made baskets tagged with context = 2nd Chance (after offensive rebound)</div></div>
+        <div class="gl-item"><div class="gl-abbr">Off TO</div><div class="gl-def"><strong>Points Off Turnovers</strong> — Made baskets tagged with context = Off Turnover</div></div>
+        <div class="gl-item"><div class="gl-abbr">FG%</div><div class="gl-def"><strong>Field Goal Percentage</strong> — FGM ÷ FGA × 100. Auto-calculated in reports</div></div>
+        <div class="gl-item"><div class="gl-abbr">3PT%</div><div class="gl-def"><strong>3-Point Percentage</strong> — 3PM ÷ 3PA × 100. Auto-calculated</div></div>
+        <div class="gl-item"><div class="gl-abbr">FT%</div><div class="gl-def"><strong>Free Throw Percentage</strong> — FTM ÷ FTA × 100. Auto-calculated</div></div>
+      </div>
+
+      <div class="glossary-section" style="margin-top:16px">App-Specific Terms</div>
+      <div class="glossary-grid">
+        <div class="gl-item"><div class="gl-abbr">.nsmtgame</div><div class="gl-def"><strong>Game Export File</strong> — The full game data file. Send this to NSMT HQ after each game for the central archive</div></div>
+        <div class="gl-item"><div class="gl-abbr">Game Pack</div><div class="gl-def"><strong>Pre-loaded Game File</strong> — (Future feature) Admin-created file with rosters and game info pre-filled for operators</div></div>
+        <div class="gl-item"><div class="gl-abbr">Flow Bar</div><div class="gl-def"><strong>Step Indicator</strong> — The bar at the top of the Log screen showing which step of event logging you're on</div></div>
+        <div class="gl-item"><div class="gl-abbr">Stat-Keeper Mode</div><div class="gl-def"><strong>Full Game Mode</strong> — Tracks both teams. Used for official NSMT coverage and report generation</div></div>
+        <div class="gl-item"><div class="gl-abbr">Coach Mode</div><div class="gl-def"><strong>Single Team Mode</strong> — Tracks one team only. Used when working directly with a coaching staff</div></div>
+      </div>
+
+    </div><!-- end glossary tab -->
+
+  </div><!-- end scroll-body -->
+</div><!-- end sopScreen -->
+
+<!-- ════ MODALS ════ -->
+
+<!-- Roster picker modal -->
+<div class="modal-overlay hidden" id="rosterPickerModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Load Saved Roster</div>
+    <div id="rosterPickerList"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:10px" onclick="closeModal('rosterPickerModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- New / Edit Roster modal -->
+<div class="modal-overlay hidden" id="rosterEditModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="rosterEditTitle">New Roster</div>
+    <div class="field"><label>Team Name</label><input type="text" id="reTeamName" placeholder="e.g. Paul VI Panthers"></div>
+    <div class="field"><label>Short Code</label><input type="text" id="reTeamCode" placeholder="PVI" maxlength="4"></div>
+    <div class="section-divider">Players</div>
+    <div id="rePlayerList"></div>
+    <button class="btn btn-ghost btn-full" onclick="addREPlayer()" style="margin:8px 0">+ Add Player</button>
+    <button class="btn btn-gold btn-full btn-lg" onclick="saveRosterEdit()">💾 Save Roster</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('rosterEditModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Clock modal -->
+<div class="modal-overlay hidden" id="clockModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Set Clock Time</div>
+    <div class="field"><label>Time (MM:SS)</label>
+      <input type="text" id="clockInput" placeholder="8:00" pattern="\d{1,2}:\d{2}" style="font-size:28px;text-align:center;letter-spacing:3px">
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="saveClock()">Set & Reset</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('clockModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Period modal -->
+<div class="modal-overlay hidden" id="periodModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="periodModalTitle">End of Period</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Advance to next period or add overtime.</div>
+    <div class="two-col" style="margin-bottom:14px">
+      <div class="field"><label id="pmAwayLabel">Away Q Score</label><input type="number" id="pmAway" min="0" placeholder="0"></div>
+      <div class="field"><label id="pmHomeLabel">Home Q Score</label><input type="number" id="pmHome" min="0" placeholder="0"></div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="advancePeriod()">Next Period →</button>
+    <button class="btn btn-surf btn-full" style="margin-top:8px" onclick="addOT()">+ Add Overtime</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('periodModal')">Cancel</button>
+  </div>
+</div>
+
+<!-- End game confirm -->
+<div class="modal-overlay hidden" id="endModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">End Game?</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:20px">This will finalize the game and generate the official report. You can still undo from the report screen.</div>
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px;text-align:center">
+      <div id="endModalScore" style="font-family:'Bebas Neue',cursive;font-size:36px;letter-spacing:2px;color:var(--gold)"></div>
+      <div id="endModalEvent" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="endGame()">✓ End Game & Generate Report</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('endModal')">Keep Playing</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// AUTH HELPERS
+// ═══════════════════════════════════════════
+function useOfflineMode(){
+  window._currentUser = { uid: 'offline_' + Date.now(), displayName: 'Offline', email: '', photoURL: '' };
+  document.getElementById('authScreen').classList.remove('active');
+  document.getElementById('homeScreen').classList.add('active');
+  document.getElementById('signInBtn') && (document.getElementById('signInBtn').style.display='none');
+  document.getElementById('signOutBtn') && (document.getElementById('signOutBtn').style.display='none');
+  document.getElementById('userDisplayName').textContent = 'Offline Mode';
+  renderHome();
+}
+
+// ═══════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════
+const DB = {
+  get(k, def=null){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch{return def;} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('Storage full',e);} },
+  del(k){ localStorage.removeItem(k); }
+};
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+let _prevScreen = 'homeScreen';
+function goTo(id){
+  const cur = document.querySelector('.screen.active');
+  if(cur) { _prevScreen = cur.id; cur.classList.remove('active'); }
+  const next = document.getElementById(id);
+  if(next) { next.classList.add('active'); next.scrollTop=0; }
+  onScreenEnter(id);
+}
+function goBack(){ goTo(_prevScreen); }
+function onScreenEnter(id){
+  if(id==='homeScreen') renderHome();
+  if(id==='rosterScreen') renderRosters();
+  if(id==='archiveScreen') renderArchive();
+  if(id==='gameSetupScreen') initGameSetup();
+  if(id==='sopScreen') initSOP();
+}
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function renderHome(){
+  const games = DB.get('games',[]);
+  const el = document.getElementById('recentList');
+
+  // User badge
+  const badge = document.getElementById('homeUserBadge');
+  if(badge && window._currentUser){
+    const u = window._currentUser;
+    const isCloud = u.uid && !u.uid.startsWith('offline');
+    badge.innerHTML = `<div class="home-user-badge">
+      ${u.photoURL ? `<img src="${u.photoURL}" class="hub-avatar" onerror="this.style.display='none'">` : ''}
+      <span class="hub-name">${u.displayName||u.email||'Operator'}</span>
+      <span class="hub-cloud">${isCloud ? '☁️ Cloud' : '📱 Offline'}</span>
+    </div>`;
+  }
+
+  if(!games.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">No recent games. Start one above.</div>'; return; }
+  el.innerHTML = games.slice().reverse().slice(0,5).map(g=>{
+    const aScore = calcTeamScore(g,'away');
+    const hScore = calcTeamScore(g,'home');
+    const live = g.status==='live';
+    return `<div class="recent-item" onclick="loadGame('${g.id}')">
+      ${live?'<div class="live-dot"></div>':''}
+      <div class="recent-score">${aScore}–${hScore}</div>
+      <div class="recent-info">
+        <div class="recent-teams">${g.away.name} vs ${g.home.name}</div>
+        <div class="recent-sub">${g.event||'Game'} • ${g.date||''} ${live?'<span class="tag tag-green">LIVE</span>':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// MODE SELECT
+// ═══════════════════════════════════════════
+function updateModeUI(){
+  const mode = document.getElementById('msMode').value;
+  const desc = document.getElementById('modeDesc');
+  if(mode==='keeper'){
+    desc.innerHTML='<div style="font-size:13px"><strong style="color:var(--gold)">Stat-Keeper Mode:</strong> Track both teams, full box score, all advanced stats. Report feeds NSMT records.</div>';
+  } else {
+    desc.innerHTML='<div style="font-size:13px"><strong style="color:var(--gold)">Coach Mode:</strong> Track your team only. Stats stay private or share with NSMT optionally.</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+// GAME SETUP
+// ═══════════════════════════════════════════
+let _gsAwayPlayers=[], _gsHomePlayers=[];
+let _rosterPickTarget='away';
+
+function initGameSetup(){
+  document.getElementById('gsDate').value = new Date().toISOString().split('T')[0];
+  if(!_gsAwayPlayers.length && !_gsHomePlayers.length){
+    _gsAwayPlayers=[]; _gsHomePlayers=[];
+    for(let i=0;i<8;i++){ addGSPlayer('away'); addGSPlayer('home'); }
+  }
+  renderGSRoster('away'); renderGSRoster('home');
+  const mode=document.getElementById('msMode')?document.getElementById('msMode').value:'keeper';
+  document.getElementById('gsHomeCard').style.display = mode==='coach'?'none':'block';
+}
+
+function addGSPlayer(team){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  arr.push({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2), num:'', name:'', starter:false});
+  renderGSRoster(team);
+}
+
+function renderGSRoster(team){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  const el = document.getElementById(`gs${team==='away'?'Away':'Home'}Roster`);
+  el.innerHTML = arr.map((p,i)=>`
+    <div class="player-row">
+      <input type="text" placeholder="#" value="${p.num}" oninput="updateGSPlayer('${team}',${i},'num',this.value)" style="text-align:center">
+      <input type="text" placeholder="Player name" value="${p.name}" oninput="updateGSPlayer('${team}',${i},'name',this.value)">
+      <button class="icon-btn danger" onclick="removeGSPlayer('${team}',${i})">×</button>
+    </div>`).join('');
+}
+
+function updateGSPlayer(team, i, field, val){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  if(arr[i]) arr[i][field]=val;
+}
+
+function removeGSPlayer(team, i){
+  if(team==='away') _gsAwayPlayers.splice(i,1); else _gsHomePlayers.splice(i,1);
+  renderGSRoster(team);
+}
+
+function syncTeamLabel(team){}
+
+function openRosterPicker(team){
+  _rosterPickTarget = team;
+  const rosters = DB.get('rosters',[]);
+  const el = document.getElementById('rosterPickerList');
+  if(!rosters.length){
+    el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">No saved rosters yet.<br><br><button class="btn btn-gold" onclick="closeModal(\'rosterPickerModal\');goTo(\'rosterScreen\')">Create a Roster</button></div>';
+  } else {
+    el.innerHTML = rosters.map(r=>`
+      <div class="recent-item" onclick="applyRoster('${r.id}')">
+        <div style="flex:1">
+          <div class="recent-teams">${r.name}</div>
+          <div class="recent-sub">${r.players.filter(p=>p.name).length} players • ${r.code||''}</div>
+        </div>
+        <div style="color:var(--gold);font-size:18px">›</div>
+      </div>`).join('');
+  }
+  openModal('rosterPickerModal');
+}
+
+function applyRoster(id){
+  const rosters = DB.get('rosters',[]);
+  const r = rosters.find(x=>x.id===id);
+  if(!r) return;
+  const team = _rosterPickTarget;
+  if(team==='away'){
+    document.getElementById('gsAwayName').value = r.name;
+    document.getElementById('gsAwayCode').value = r.code||'';
+    _gsAwayPlayers = r.players.map(p=>({...p,id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2)}));
+    renderGSRoster('away');
+  } else {
+    document.getElementById('gsHomeName').value = r.name;
+    document.getElementById('gsHomeCode').value = r.code||'';
+    _gsHomePlayers = r.players.map(p=>({...p,id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2)}));
+    renderGSRoster('home');
+  }
+  closeModal('rosterPickerModal');
+  toast(`${r.name} roster loaded`);
+}
+
+function saveRostersFromSetup(){
+  const away = { name:document.getElementById('gsAwayName').value.trim(), code:document.getElementById('gsAwayCode').value.trim(), players:_gsAwayPlayers.filter(p=>p.name) };
+  const home = { name:document.getElementById('gsHomeName').value.trim(), code:document.getElementById('gsHomeCode').value.trim(), players:_gsHomePlayers.filter(p=>p.name) };
+  if(away.name) saveOrUpdateRoster(away);
+  if(home.name) saveOrUpdateRoster(home);
+  toast('Rosters saved ✓');
+}
+
+function saveOrUpdateRoster(data){
+  const rosters = DB.get('rosters',[]);
+  const existing = rosters.findIndex(r=>r.name.toLowerCase()===data.name.toLowerCase());
+  if(existing>=0){ rosters[existing]={...rosters[existing], ...data, players:data.players}; }
+  else { rosters.push({id:'r_'+Date.now(), ...data}); }
+  DB.set('rosters', rosters);
+}
+
+// ═══════════════════════════════════════════
+// ROSTER MANAGER
+// ═══════════════════════════════════════════
+let _editingRosterId = null;
+
+function renderRosters(){
+  const rosters = DB.get('rosters',[]);
+  const el = document.getElementById('rosterList');
+  const empty = document.getElementById('rosterEmpty');
+  if(!rosters.length){ el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  el.innerHTML = rosters.map(r=>`
+    <div class="roster-card">
+      <div class="roster-card-head">
+        <div>
+          <div class="roster-card-name">${r.name} ${r.code?`<span class="tag tag-gold">${r.code}</span>`:''}</div>
+          <div class="roster-card-meta">${r.players.filter(p=>p.name).length} players</div>
+        </div>
+        <div class="roster-card-actions">
+          <button class="icon-btn" onclick="openEditRoster('${r.id}')">✏️</button>
+          <button class="icon-btn danger" onclick="deleteRoster('${r.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="roster-card-body">
+        ${r.players.filter(p=>p.name).map(p=>`<span class="player-chip"><span class="player-chip-num">${p.num||'—'}</span> ${p.name}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function openNewRosterModal(){
+  _editingRosterId = null;
+  document.getElementById('rosterEditTitle').textContent='New Roster';
+  document.getElementById('reTeamName').value='';
+  document.getElementById('reTeamCode').value='';
+  const pl = document.getElementById('rePlayerList');
+  pl.innerHTML='';
+  for(let i=0;i<10;i++) addREPlayer();
+  openModal('rosterEditModal');
+}
+
+function openEditRoster(id){
+  const rosters = DB.get('rosters',[]);
+  const r = rosters.find(x=>x.id===id);
+  if(!r) return;
+  _editingRosterId = id;
+  document.getElementById('rosterEditTitle').textContent='Edit Roster';
+  document.getElementById('reTeamName').value=r.name;
+  document.getElementById('reTeamCode').value=r.code||'';
+  const pl = document.getElementById('rePlayerList');
+  pl.innerHTML='';
+  (r.players.length?r.players:[...Array(10)].map(()=>({num:'',name:''}))).forEach(p=>{
+    addREPlayer(p.num, p.name);
+  });
+  openModal('rosterEditModal');
+}
+
+function addREPlayer(num='', name=''){
+  const el = document.getElementById('rePlayerList');
+  const row = document.createElement('div');
+  row.className='player-row';
+  row.innerHTML=`<input type="text" placeholder="#" value="${num}" style="text-align:center"><input type="text" placeholder="Player name" value="${name}"><button class="icon-btn danger" onclick="this.parentElement.remove()">×</button>`;
+  el.appendChild(row);
+}
+
+function saveRosterEdit(){
+  const name = document.getElementById('reTeamName').value.trim();
+  if(!name){ toast('Enter a team name'); return; }
+  const code = document.getElementById('reTeamCode').value.trim();
+  const rows = document.querySelectorAll('#rePlayerList .player-row');
+  const players = [];
+  rows.forEach(row=>{
+    const inputs = row.querySelectorAll('input');
+    const n = inputs[1].value.trim();
+    if(n) players.push({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2), num:inputs[0].value.trim(), name:n});
+  });
+  const rosters = DB.get('rosters',[]);
+  if(_editingRosterId){
+    const i = rosters.findIndex(r=>r.id===_editingRosterId);
+    if(i>=0) rosters[i]={...rosters[i], name, code, players};
+  } else {
+    rosters.push({id:'r_'+Date.now(), name, code, players});
+  }
+  DB.set('rosters', rosters);
+  closeModal('rosterEditModal');
+  renderRosters();
+  toast('Roster saved ✓');
+}
+
+function deleteRoster(id){
+  if(!confirm('Delete this roster?')) return;
+  const rosters = DB.get('rosters',[]).filter(r=>r.id!==id);
+  DB.set('rosters', rosters);
+  renderRosters();
+}
+
+// ═══════════════════════════════════════════
+// ARCHIVE
+// ═══════════════════════════════════════════
+function renderArchive(){
+  const games = DB.get('games',[]).filter(g=>g.status==='final').reverse();
+  const el = document.getElementById('archiveList');
+  const empty = document.getElementById('archiveEmpty');
+  if(!games.length){ el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  el.innerHTML = games.map(g=>{
+    const aScore=calcTeamScore(g,'away'), hScore=calcTeamScore(g,'home');
+    return `<div class="recent-item" onclick="viewArchivedGame('${g.id}')">
+      <div class="recent-score">${aScore}–${hScore}</div>
+      <div class="recent-info">
+        <div class="recent-teams">${g.away.name} vs ${g.home.name}</div>
+        <div class="recent-sub">${g.event||'Game'} • ${g.date||''} • <span class="tag tag-gold" style="font-size:9px">FINAL</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewArchivedGame(id){
+  const games = DB.get('games',[]);
+  G = games.find(g=>g.id===id);
+  if(G){ buildReport(); goTo('reportScreen'); }
+}
+
+// ═══════════════════════════════════════════
+// GAME ENGINE
+// ═══════════════════════════════════════════
+let G = null; // current game object
+window._clockRunning = false;
+let _clockInterval = null;
+let _clockResetTime = '8:00';
+
+function _clockToSecs(str){ const p=(str||'0:00').split(':'); return (parseInt(p[0])||0)*60+(parseInt(p[1])||0); }
+function _secsToClock(s){ s=Math.max(0,s); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+function _updateClockUI(){
+  const t = (G&&G.clock)||'0:00';
+  const sb  = document.getElementById('sbClock');
+  const btn = document.getElementById('clockToggleBtn');
+  if(sb) sb.textContent = t;
+  if(btn){
+    if(window._clockRunning){
+      btn.textContent = '⏸ PAUSE';
+      btn.classList.remove('paused');
+    } else {
+      btn.textContent = '▶ START';
+      btn.classList.add('paused');
+    }
+  }
+}
+
+function openClockModal(){
+  if(G) document.getElementById('clockInput').value = _clockResetTime;
+  _updateClockUI();
+  openModal('clockModal');
+}
+
+function saveClock(){
+  const val = document.getElementById('clockInput').value.trim();
+  if(!val || !G) return;
+  stopClock();
+  _clockResetTime = val;
+  G.clock = val;
+  _updateClockUI();
+  saveGame();
+  updateScoreboard();
+}
+
+function toggleClock(){ window._clockRunning ? stopClock() : startClock(); }
+
+function startClock(){
+  if(!G || window._clockRunning) return;
+  if(_clockToSecs(G.clock) <= 0) G.clock = _clockResetTime;
+  window._clockRunning = true;
+  _updateClockUI();
+  if(window.syncToWS) syncToWS();
+  _clockInterval = setInterval(function(){
+    let secs = _clockToSecs(G.clock) - 1;
+    if(secs <= 0){
+      G.clock = '0:00'; window._clockRunning = false;
+      clearInterval(_clockInterval); _clockInterval = null;
+      _updateClockUI(); if(window.syncToWS) syncToWS(); saveGame(); return;
+    }
+    G.clock = _secsToClock(secs);
+    _updateClockUI();
+    if(secs % 30 === 0) saveGame();
+  }, 1000);
+}
+
+function stopClock(){
+  window._clockRunning = false;
+  clearInterval(_clockInterval); _clockInterval = null;
+  _updateClockUI();
+  if(G) saveGame();
+  if(window.syncToWS) syncToWS();
+}
+
+function resetClock(){
+  stopClock();
+  if(!G) return;
+  G.clock = _clockResetTime;
+  _updateClockUI();
+  saveGame();
+  if(window.syncToWS) syncToWS();
+}
+
+function initGame(){
+  const awayName = document.getElementById('gsAwayName').value.trim()||'Away';
+  const homeName = document.getElementById('gsHomeName').value.trim()||'Home';
+  const awayCode = document.getElementById('gsAwayCode').value.trim()||awayName.slice(0,3).toUpperCase();
+  const homeCode = document.getElementById('gsHomeCode').value.trim()||homeName.slice(0,3).toUpperCase();
+
+  const awayPlayers = _gsAwayPlayers.filter(p=>p.name).map(p=>({...p}));
+  const homePlayers = _gsHomePlayers.filter(p=>p.name).map(p=>({...p}));
+
+  if(!awayPlayers.length||!homePlayers.length){ toast('Add at least one player per team'); return; }
+
+  G = {
+    id: 'g_'+Date.now(),
+    status: 'live',
+    mode: document.getElementById('msMode')?document.getElementById('msMode').value:'keeper',
+    keeper: document.getElementById('msKeeperName')?document.getElementById('msKeeperName').value:'',
+    event: document.getElementById('gsEvent').value.trim(),
+    venue: document.getElementById('gsVenue').value.trim(),
+    date: document.getElementById('gsDate').value,
+    time: document.getElementById('gsTime').value,
+    periods: parseInt(document.getElementById('gsPeriods').value),
+    periodLen: parseInt(document.getElementById('gsPeriodLen').value)||8,
+    currentPeriod: 1,
+    totalPeriods: parseInt(document.getElementById('gsPeriods').value),
+    clock: '',
+    away: { name:awayName, code:awayCode, players:awayPlayers, fouls:0 },
+    home: { name:homeName, code:homeCode, players:homePlayers, fouls:0 },
+    events: [],
+    periodScores: { away:[], home:[] },
+    stats: {}
+  };
+
+  // init stats per player
+  [...awayPlayers.map(p=>({...p,team:'away'})), ...homePlayers.map(p=>({...p,team:'home'}))].forEach(p=>{
+    G.stats[p.id] = {fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,paintPts:0,fastPts:0,secPts:0,offTOPts:0};
+  });
+
+  saveGame();
+  _gsAwayPlayers=[]; _gsHomePlayers=[];
+  goTo('liveScreen');
+  initLiveUI();
+}
+
+function saveGame(){
+  if(!G) return;
+  const games = DB.get('games',[]);
+  const i = games.findIndex(g=>g.id===G.id);
+  if(i>=0) games[i]=G; else games.push(G);
+  DB.set('games', games);
+  // Cloud sync (non-blocking)
+  if(window.syncGameToCloud) window.syncGameToCloud(G);
+}
+
+function loadGame(id){
+  const games = DB.get('games',[]);
+  G = games.find(g=>g.id===id);
+  if(!G) return;
+  if(G.status==='live'){ goTo('liveScreen'); initLiveUI(); }
+  else { buildReport(); goTo('reportScreen'); }
+}
+
+function loadMockGame(){
+  function mkP(num, name){ return {id:'p_mock_'+num+'_'+name.replace(/\s/g,''), num:num, name:name, starter:false}; }
+  const awayPlayers=[
+    mkP('0','Marcus Johnson'), mkP('3','DeShawn Williams'), mkP('5','Chris Taylor'),
+    mkP('11','Jordan Brown'),  mkP('21','Malik Davis'),     mkP('24','Anthony Rivers'),
+    mkP('32','Kevin Mitchell'),mkP('40','Darius Thompson')
+  ];
+  const homePlayers=[
+    mkP('2','James Carter'),   mkP('4','Tyler Harris'),     mkP('10','Devon Washington'),
+    mkP('15','Jalen Brooks'),  mkP('22','Marcus Lee'),      mkP('30','Dante Coleman'),
+    mkP('33','Zion Parker'),   mkP('50','Andre White')
+  ];
+  G = {
+    id:'g_mock_'+Date.now(), status:'live', mode:'keeper', keeper:'Test Operator',
+    event:'WCAC Championship', venue:'DeMatha Catholic HS', date:'2026-03-07', time:'19:00',
+    periods:4, periodLen:8, currentPeriod:1, totalPeriods:4, clock:'8:00',
+    away:{ name:"St. John's", code:'SJC', players:awayPlayers, fouls:0 },
+    home:{ name:'Paul VI',    code:'PVI', players:homePlayers, fouls:0 },
+    events:[], periodScores:{ away:[], home:[] }, stats:{}
+  };
+  [...awayPlayers, ...homePlayers].forEach(p=>{
+    G.stats[p.id]={fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,paintPts:0,fastPts:0,secPts:0,offTOPts:0};
+  });
+  saveGame();
+  goTo('liveScreen');
+  initLiveUI();
+  toast('Mock game loaded — St. John\'s vs Paul VI');
+}
+
+function calcTeamScore(game, team){
+  if(!game||!game.stats) return 0;
+  const players = game[team].players;
+  return players.reduce((sum,p)=>{
+    const s = game.stats[p.id];
+    if(!s) return sum;
+    return sum + s.pts;
+  },0);
+}
+
+function calcPts(s){ return (s.fgm-s.tpm)*2 + s.tpm*3 + s.ftm; }
+
+function getTeamTotals(team){
+  const players = G[team].players;
+  const tot = {fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,paintPts:0,fastPts:0,secPts:0,offTOPts:0,benchPts:0};
+  players.forEach(p=>{
+    const s=G.stats[p.id]; if(!s) return;
+    Object.keys(tot).forEach(k=>{ if(s[k]!==undefined) tot[k]+=s[k]; });
+    tot.pts += calcPts(s);
+  });
+  return tot;
+}
+
+// ═══════════════════════════════════════════
+// LIVE UI
+// ═══════════════════════════════════════════
+let liveTab=0;
+// Flow: select player → select event → (result for shots) → (context) → (assist) → done
+let flow = { step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+
+function initLiveUI(){
+  flow = { step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+  liveTab=0;
+  stopClock();
+  _clockResetTime = G.clock || _secsToClock((G.periodLen||8)*60);
+  document.getElementById('sbAwayName').textContent = G.away.code||G.away.name;
+  document.getElementById('sbHomeName').textContent = G.home.code||G.home.name;
+  document.getElementById('sbEvent').textContent = G.event||'';
+  setLiveTab(0);
+  updateScoreboard();
+}
+
+function updateScoreboard(){
+  const aScore = calcTeamScore(G,'away');
+  const hScore = calcTeamScore(G,'home');
+  document.getElementById('sbAwayPts').textContent = aScore;
+  document.getElementById('sbHomePts').textContent = hScore;
+  const p = G.currentPeriod;
+  const label = G.periods===2? (p<=2?`H${p}`:`OT${p-2}`) : (p<=4?`Q${p}`:`OT${p-4}`);
+  document.getElementById('sbPeriod').textContent = label;
+  // team fouls
+  const foulsEl = document.getElementById('sbFouls');
+  const foulCount = G.away.fouls||0;
+  foulsEl.innerHTML = [1,2,3,4,5,6,7].map(n=>`<div class="sb-foul${n<=foulCount?' active':''}"></div>`).join('');
+  _updateClockUI();
+  // sync everything to overlay
+  if(window.syncToWS) syncToWS();
+}
+
+function setLiveTab(n){
+  liveTab=n;
+  document.querySelectorAll('.ltab').forEach((t,i)=>t.classList.toggle('active',i===n));
+  if(n===0) renderOperatorPanel();
+  else if(n===1) renderBoxScorePanel();
+  else renderPBP();
+}
+
+function renderFlowBar(){
+  const steps = [];
+  if(flow.selectedPlayer){
+    const t = flow.selectedTeam;
+    const p = G[t].players.find(x=>x.id===flow.selectedPlayer);
+    steps.push(`<span class="flow-crumb done">${G[t].code} #${p?p.num:''} ${p?p.name.split(' ').pop():''}</span>`);
+  }
+  if(flow.selectedEvent){
+    steps.push('<span class="flow-sep">›</span>');
+    steps.push(`<span class="flow-crumb done">${flow.selectedEvent}</span>`);
+  }
+  if(flow.result){
+    steps.push('<span class="flow-sep">›</span>');
+    steps.push(`<span class="flow-crumb done">${flow.result.toUpperCase()}</span>`);
+  }
+  const currentStep = {
+    player:'Select Player',
+    event:'Select Action',
+    result:'Made or Missed?',
+    context:'Location / Context',
+    assist:'Assist?',
+  }[flow.step]||'';
+  if(currentStep) steps.push(`<span class="flow-sep">›</span><span class="flow-crumb active">${currentStep}</span>`);
+  document.getElementById('flowBar').innerHTML = steps.join('');
+}
+
+function renderOperatorPanel(){
+  renderFlowBar();
+  const el = document.getElementById('opPanel');
+  if(flow.step==='player') el.innerHTML = renderPlayerSelect();
+  else if(flow.step==='event') el.innerHTML = renderEventSelect();
+  else if(flow.step==='result') el.innerHTML = renderResultPanel();
+  else if(flow.step==='context') el.innerHTML = renderContextPanel();
+  else if(flow.step==='assist') el.innerHTML = renderAssistPanel();
+}
+
+function renderPlayerSelect(){
+  const mkTeam = (team)=>{
+    const players = G[team].players;
+    return `<div class="team-col">
+      <div class="team-col-label">${G[team].name}</div>
+      ${players.map(p=>{
+        const s=G.stats[p.id]||{};
+        const pf=s.pf||0; const pts=calcPts(s);
+        const cls = pf>=5?'foul5':pf===4?'foul4':'';
+        return `<button class="pbtn ${cls}" onclick="selectPlayer('${team}','${p.id}')">
+          <div class="pbtn-num">${p.num||'—'}</div>
+          <div class="pbtn-name">${p.name.split(' ').pop()}</div>
+          <div class="pbtn-stat">${pts}pts</div>
+          <div class="pbtn-fouls">${[1,2,3,4,5].map(n=>`<div class="pbtn-fpip${n<=pf?' on':''}"></div>`).join('')}</div>
+        </button>`;
+      }).join('')}
+    </div>`;
+  };
+  return `<div class="teams-split">${mkTeam('away')}${mkTeam('home')}</div>`;
+}
+
+function selectPlayer(team, pid){
+  flow.selectedTeam=team; flow.selectedPlayer=pid; flow.step='event';
+  renderOperatorPanel();
+}
+
+const EVENTS = [
+  {id:'SHOT_2PT', icon:'🏀', label:'2 PT', group:'shot'},
+  {id:'SHOT_3PT', icon:'🎯', label:'3 PT', group:'shot'},
+  {id:'FT', icon:'⭕', label:'Free Throw', group:'ft'},
+  {id:'OREB', icon:'💪', label:'Off Reb', group:'stat'},
+  {id:'DREB', icon:'🛡️', label:'Def Reb', group:'stat'},
+  {id:'AST', icon:'🤝', label:'Assist', group:'stat'},
+  {id:'STL', icon:'⚡', label:'Steal', group:'stat'},
+  {id:'BLK', icon:'✋', label:'Block', group:'stat'},
+  {id:'TO', icon:'💸', label:'Turnover', group:'stat'},
+  {id:'PF', icon:'🚨', label:'Foul', group:'stat'},
+  {id:'SUB_IN', icon:'⬆️', label:'Sub In', group:'sub'},
+  {id:'SUB_OUT', icon:'⬇️', label:'Sub Out', group:'sub'},
+];
+
+function renderEventSelect(){
+  const p = G[flow.selectedTeam].players.find(x=>x.id===flow.selectedPlayer);
+  return `<div class="step-hdr"><div class="step-num">2</div>Select Action — #${p?p.num:''} ${p?p.name.split(' ').pop():''}
+    <button class="btn btn-ghost" style="margin-left:auto;padding:6px 10px;font-size:12px" onclick="resetFlow()">← Back</button>
+  </div>
+  <div class="evt-grid">${EVENTS.map(e=>`
+    <button class="evt-btn" onclick="selectEvent('${e.id}')">
+      <div class="evt-icon">${e.icon}</div>
+      <div class="evt-label">${e.label}</div>
+    </button>`).join('')}
+  </div>`;
+}
+
+function selectEvent(evtId){
+  flow.selectedEvent=evtId;
+  const e = EVENTS.find(x=>x.id===evtId);
+  if(!e) return;
+  if(e.group==='shot'||e.group==='ft'){
+    flow.step='result';
+  } else {
+    // instant log
+    logStat();
+    return;
+  }
+  renderOperatorPanel();
+}
+
+function renderResultPanel(){
+  const e = EVENTS.find(x=>x.id===flow.selectedEvent);
+  const isFT = flow.selectedEvent==='FT';
+  return `<div class="step-hdr"><div class="step-num">3</div>${e?e.label:''} — Made or Missed?
+    <button class="btn btn-ghost" style="margin-left:auto;padding:6px 10px;font-size:12px" onclick="flow.step='event';renderOperatorPanel()">← Back</button>
+  </div>
+  <div class="result-grid">
+    <button class="result-btn made" onclick="selectResult('made')">
+      <div class="result-icon">✅</div><div class="result-label">Made</div>
+    </button>
+    <button class="result-btn miss" onclick="selectResult('missed')">
+      <div class="result-icon">❌</div><div class="result-label">Missed</div>
+    </button>
+  </div>`;
+}
+
+function selectResult(r){
+  flow.result=r;
+  const isFT = flow.selectedEvent==='FT';
+  const is3 = flow.selectedEvent==='SHOT_3PT';
+  if(isFT){
+    logStat(); return;
+  }
+  if(r==='made'){
+    flow.step='context';
+  } else {
+    logStat(); return;
+  }
+  renderOperatorPanel();
+}
+
+const LOCATIONS = [
+  {id:'paint', icon:'🟥', label:'In Paint'},
+  {id:'mid', icon:'🟨', label:'Mid Range'},
+  {id:'three', icon:'🟦', label:'3-Point'},
+];
+const CONTEXTS = [
+  {id:'half', icon:'⛹️', label:'Half Court'},
+  {id:'fast', icon:'💨', label:'Fast Break'},
+  {id:'second', icon:'🔄', label:'2nd Chance'},
+  {id:'offTO', icon:'💥', label:'Off Turnover'},
+];
+
+function renderContextPanel(){
+  const is3 = flow.selectedEvent==='SHOT_3PT';
+  const locBtns = LOCATIONS.map(l=>`
+    <button class="ctx-btn ${(flow.shotLoc===l.id||(!flow.shotLoc&&l.id==='mid'))?'sel':''} ${is3&&l.id==='three'?'sel':''}"
+      onclick="flow.shotLoc='${l.id}';this.parentElement.querySelectorAll('.ctx-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')">
+      <div class="ctx-icon">${l.icon}</div><div class="ctx-label">${l.label}</div>
+    </button>`).join('');
+  const ctxBtns = CONTEXTS.map(c=>`
+    <button class="ctx-btn ${flow.context===c.id?'sel':''}"
+      onclick="flow.context='${c.id}';document.querySelectorAll('#ctxGrid .ctx-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')">
+      <div class="ctx-icon">${c.icon}</div><div class="ctx-label">${c.label}</div>
+    </button>`).join('');
+  return `<div class="step-hdr"><div class="step-num">4</div>Shot Context
+    <button class="confirm-btn" onclick="flow.step='assist';renderOperatorPanel()">Next →</button>
+  </div>
+  <div style="padding:8px 10px 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Location</div>
+  <div class="ctx-grid">${locBtns}</div>
+  <div style="padding:8px 10px 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Play Context</div>
+  <div class="ctx-grid" id="ctxGrid">${ctxBtns}</div>
+  <div style="padding:10px">
+    <button class="btn btn-ghost btn-full" onclick="flow.step='assist';renderOperatorPanel()">Skip / Use Defaults →</button>
+  </div>`;
+}
+
+function renderAssistPanel(){
+  if(flow.result!=='made'){ logStat(); return ''; }
+  const team = flow.selectedTeam;
+  const players = G[team].players.filter(p=>p.id!==flow.selectedPlayer);
+  return `<div class="step-hdr"><div class="step-num">5</div>Assist? (tap player or skip)
+    <button class="confirm-btn" onclick="logStat()">No Assist</button>
+  </div>
+  <div class="assist-grid">
+    ${players.map(p=>`
+      <button class="abtn" onclick="flow.assistPlayer='${p.id}';logStat()">
+        <div class="abtn-num">${p.num||'—'}</div>
+        <div class="abtn-name">${p.name.split(' ').pop()}</div>
+      </button>`).join('')}
+    <button class="abtn" onclick="flow.assistPlayer=null;logStat()">
+      <div style="font-size:20px">🚫</div>
+      <div class="abtn-name">No Assist</div>
+    </button>
+  </div>`;
+}
+
+function logStat(){
+  if(!G||!flow.selectedPlayer) return;
+  const evt = flow.selectedEvent;
+  const pid = flow.selectedPlayer;
+  const s = G.stats[pid];
+  if(!s) return;
+
+  let pts=0, desc='', icon='';
+
+  if(evt==='SHOT_2PT'){
+    s.fga++; icon='🏀';
+    if(flow.result==='made'){
+      s.fgm++; pts=2; s.pts+=2;
+      if(flow.shotLoc==='paint') s.paintPts+=2;
+      if(flow.context==='fast') s.fastPts+=2;
+      if(flow.context==='second') s.secPts+=2;
+      if(flow.context==='offTO') s.offTOPts+=2;
+      desc='2PT Made';
+    } else { desc='2PT Missed'; }
+  } else if(evt==='SHOT_3PT'){
+    s.fga++; s.tpa++; icon='🎯';
+    if(flow.result==='made'){
+      s.fgm++; s.tpm++; pts=3; s.pts+=3;
+      if(flow.context==='fast') s.fastPts+=3;
+      if(flow.context==='second') s.secPts+=3;
+      if(flow.context==='offTO') s.offTOPts+=3;
+      desc='3PT Made';
+    } else { desc='3PT Missed'; }
+  } else if(evt==='FT'){
+    s.fta++; icon='⭕';
+    if(flow.result==='made'){ s.ftm++; pts=1; s.pts+=1; desc='FT Made'; }
+    else { desc='FT Missed'; }
+  } else if(evt==='OREB'){ s.oreb++; desc='Off Rebound'; icon='💪'; }
+  else if(evt==='DREB'){ s.dreb++; desc='Def Rebound'; icon='🛡️'; }
+  else if(evt==='AST'){ s.ast++; desc='Assist'; icon='🤝'; }
+  else if(evt==='STL'){ s.stl++; desc='Steal'; icon='⚡'; }
+  else if(evt==='BLK'){ s.blk++; desc='Block'; icon='✋'; }
+  else if(evt==='TO'){ s.to++; desc='Turnover'; icon='💸'; }
+  else if(evt==='PF'){
+    s.pf++; G[flow.selectedTeam].fouls=(G[flow.selectedTeam].fouls||0)+1;
+    desc='Personal Foul'; icon='🚨';
+  }
+
+  if(flow.assistPlayer){
+    const as=G.stats[flow.assistPlayer];
+    if(as) as.ast++;
+  }
+
+  // Store event
+  const p = G[flow.selectedTeam].players.find(x=>x.id===pid);
+  G.events.push({
+    id:'e_'+Date.now(), team:flow.selectedTeam, pid, evt,
+    result:flow.result, pts, period:G.currentPeriod, clock:G.clock,
+    context:flow.context, loc:flow.shotLoc, assistPid:flow.assistPlayer,
+    desc:`${icon} ${G[flow.selectedTeam].code} #${p?p.num:''} ${p?p.name.split(' ').pop():''} — ${desc}${pts?' (+'+pts+')':''}`,
+    timestamp: Date.now()
+  });
+
+  saveGame();
+  if(window.syncToWS) syncToWS();
+  updateScoreboard();
+  resetFlow();
+  if(liveTab===0) renderOperatorPanel();
+  if(pts>0) toast(`+${pts} ${G[flow.selectedTeam].code}`);
+}
+
+function resetFlow(){
+  flow={ step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+  renderOperatorPanel();
+}
+
+function undoLast(){
+  if(!G||!G.events.length){ toast('Nothing to undo'); return; }
+  const last = G.events[G.events.length-1];
+  const pid=last.pid, evt=last.evt, s=G.stats[pid];
+  if(s){
+    if(evt==='SHOT_2PT'){ s.fga--; if(last.result==='made'){s.fgm--;s.pts-=2;s.paintPts-=(s.paintPts>0?2:0);s.fastPts-=(last.context==='fast'?2:0);s.secPts-=(last.context==='second'?2:0);s.offTOPts-=(last.context==='offTO'?2:0);} }
+    else if(evt==='SHOT_3PT'){ s.fga--;s.tpa--;if(last.result==='made'){s.fgm--;s.tpm--;s.pts-=3;} }
+    else if(evt==='FT'){ s.fta--;if(last.result==='made'){s.ftm--;s.pts-=1;} }
+    else if(evt==='OREB') s.oreb--;
+    else if(evt==='DREB') s.dreb--;
+    else if(evt==='AST') s.ast--;
+    else if(evt==='STL') s.stl--;
+    else if(evt==='BLK') s.blk--;
+    else if(evt==='TO') s.to--;
+    else if(evt==='PF'){ s.pf--;G[last.team].fouls=Math.max(0,(G[last.team].fouls||1)-1); }
+    if(last.assistPid){const as=G.stats[last.assistPid];if(as&&as.ast>0)as.ast--;}
+  }
+  G.events.pop();
+  saveGame(); if(window.syncToWS) syncToWS(); updateScoreboard(); resetFlow(); toast('Undone ↩');
+}
+
+function renderBoxScorePanel(){
+  document.getElementById('flowBar').innerHTML='';
+  const el=document.getElementById('opPanel');
+  const mkTable=(team)=>{
+    const players=G[team].players;
+    const rows=players.map(p=>{
+      const s=G.stats[p.id]||{}; const pts=calcPts(s);
+      const tot=Object.values(s).reduce((a,v)=>a+(typeof v==='number'?v:0),0);
+      const dnp=tot===0;
+      return `<tr${dnp?' style="opacity:.4"':''}>
+        <td>${p.num||''}</td><td>${p.name}</td>
+        <td class="box-pts">${pts}</td>
+        <td>${s.fgm||0}-${s.fga||0}</td>
+        <td>${s.tpm||0}-${s.tpa||0}</td>
+        <td>${s.ftm||0}-${s.fta||0}</td>
+        <td>${(s.oreb||0)+(s.dreb||0)}</td>
+        <td>${s.ast||0}</td><td>${s.stl||0}</td><td>${s.blk||0}</td><td>${s.to||0}</td><td>${s.pf||0}</td>
+      </tr>`;
+    }).join('');
+    const t=getTeamTotals(team);
+    const fgp=t.fga>0?Math.round(t.fgm/t.fga*100)+'%':'—';
+    const tpp=t.tpa>0?Math.round(t.tpm/t.tpa*100)+'%':'—';
+    const ftp=t.fta>0?Math.round(t.ftm/t.fta*100)+'%':'—';
+    return `<div class="box-team-hdr">${G[team].name}<span class="tag tag-gold">${calcTeamScore(G,team)}</span></div>
+    <div class="box-wrap"><table class="box-table">
+      <thead><tr><th>#</th><th>Player</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead>
+      <tbody>${rows}<tr class="tot"><td></td><td><strong>TOTAL</strong></td><td class="box-pts">${t.pts}</td><td>${t.fgm}-${t.fga}<br><small>${fgp}</small></td><td>${t.tpm}-${t.tpa}<br><small>${tpp}</small></td><td>${t.ftm}-${t.fta}<br><small>${ftp}</small></td><td>${(t.oreb||0)+(t.dreb||0)}</td><td>${t.ast}</td><td>${t.stl}</td><td>${t.blk}</td><td>${t.to}</td><td>${t.pf}</td></tr></tbody>
+    </table></div>`;
+  };
+  el.innerHTML = mkTable('away')+mkTable('home');
+}
+
+function renderPBP(){
+  document.getElementById('flowBar').innerHTML='';
+  const el=document.getElementById('opPanel');
+  if(!G.events.length){ el.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">No events logged yet</div>'; return; }
+  const items=[...G.events].reverse().slice(0,40).map(e=>{
+    const pLabel=G.periods===2?(e.period<=2?`H${e.period}`:`OT${e.period-2}`):(e.period<=4?`Q${e.period}`:`OT${e.period-4}`);
+    return `<div class="pbp-item">
+      <div class="pbp-q">${pLabel}</div>
+      <div class="pbp-clock">${e.clock||'—'}</div>
+      <div class="pbp-text">${e.desc}</div>
+      ${e.pts?`<div class="pbp-pts">+${e.pts}</div>`:''}
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div>${items}</div>`;
+}
+
+// ═══════════════════════════════════════════
+// PERIOD / CLOCK MODALS
+// ═══════════════════════════════════════════
+function openPeriodModal(){
+  const p=G.currentPeriod;
+  const label=G.periods===2?(p<=2?`H${p}`:`OT${p-2}`):(p<=4?`Q${p}`:`OT${p-4}`);
+  document.getElementById('periodModalTitle').textContent=`End of ${label}`;
+  document.getElementById('pmAwayLabel').textContent=`${G.away.name} Score`;
+  document.getElementById('pmHomeLabel').textContent=`${G.home.name} Score`;
+  openModal('periodModal');
+}
+
+function advancePeriod(){
+  const aScore=parseInt(document.getElementById('pmAway').value)||0;
+  const hScore=parseInt(document.getElementById('pmHome').value)||0;
+  if(!G.periodScores.away) G.periodScores={away:[],home:[]};
+  G.periodScores.away[G.currentPeriod-1]=aScore;
+  G.periodScores.home[G.currentPeriod-1]=hScore;
+  G.currentPeriod++;
+  G.away.fouls=0; G.home.fouls=0;
+  if(G.currentPeriod>G.totalPeriods) G.totalPeriods=G.currentPeriod;
+  // Reset clock to period length
+  stopClock();
+  _clockResetTime = _secsToClock((G.periodLen||8)*60);
+  G.clock = _clockResetTime;
+  saveGame(); closeModal('periodModal'); updateScoreboard(); _updateClockUI();
+  toast(`Period ${G.currentPeriod} started`);
+}
+
+function addOT(){
+  G.totalPeriods++;
+  G.currentPeriod=G.totalPeriods;
+  G.away.fouls=0; G.home.fouls=0;
+  stopClock();
+  _clockResetTime = _secsToClock((G.periodLen||5)*60);
+  G.clock = _clockResetTime;
+  saveGame(); closeModal('periodModal'); updateScoreboard(); _updateClockUI();
+  toast(`Overtime added — OT${G.totalPeriods-G.periods}`);
+}
+
+function confirmEnd(){
+  const aScore=calcTeamScore(G,'away'), hScore=calcTeamScore(G,'home');
+  document.getElementById('endModalScore').textContent=`${G.away.code} ${aScore} – ${hScore} ${G.home.code}`;
+  document.getElementById('endModalEvent').textContent=G.event||'';
+  openModal('endModal');
+}
+
+function endGame(){
+  G.status='final'; G.endTime=Date.now();
+  saveGame(); closeModal('endModal');
+  if(window.syncToWS) syncToWS();
+  showReport();
+}
+
+// ═══════════════════════════════════════════
+// REPORT
+// ═══════════════════════════════════════════
+function showReport(){ buildReport(); goTo('reportScreen'); }
+
+function buildReport(){
+  if(!G) return;
+  const away=G.away, home=G.home;
+  const aScore=calcTeamScore(G,'away'), hScore=calcTeamScore(G,'home');
+  const at=getTeamTotals('away'), ht=getTeamTotals('home');
+
+  const pct=(m,a)=>a>0?((m/a)*100).toFixed(1)+'%':'—';
+  const fmt=(d,t)=>{ let s=''; if(d){const dt=new Date(d+'T12:00:00');s=`${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()%100}`;} if(t){const[h,m]=t.split(':');const hr=parseInt(h);s+=(s?' ':'')+`${hr%12||12}:${m}${hr>=12?'pm':'am'}`;} return s; };
+
+  const periodLabel=(i)=>{
+    if(G.periods===2) return i<=2?`${i===1?'1st Half':'2nd Half'}`:`OT${i-2}`;
+    return i<=4?['1st','2nd','3rd','4th'][i-1]:`OT${i-4}`;
+  };
+
+  let periodRows='';
+  for(let i=1;i<=G.totalPeriods;i++){
+    const aP=G.periodScores?.away?.[i-1]||'—';
+    const hP=G.periodScores?.home?.[i-1]||'—';
+    periodRows+=`<tr><td>${periodLabel(i)}</td><td>${aP}</td><td>${hP}</td></tr>`;
+  }
+  if(G.periods===4&&G.totalPeriods>=2){
+    const aH1=(G.periodScores?.away?.[0]||0)+(G.periodScores?.away?.[1]||0);
+    const hH1=(G.periodScores?.home?.[0]||0)+(G.periodScores?.home?.[1]||0);
+    periodRows+=`<tr style="font-style:italic;color:#666"><td>Halftime</td><td>${aH1||'—'}</td><td>${hH1||'—'}</td></tr>`;
+  }
+  periodRows+=`<tr style="font-weight:700"><td>Final</td><td>${aScore}</td><td>${hScore}</td></tr>`;
+
+  const playerRows=(team)=>G[team].players.map(p=>{
+    const s=G.stats[p.id]||{};
+    const pts=calcPts(s);
+    const hasStats=Object.values(s).some(v=>v>0);
+    if(!hasStats) return `<tr><td>${p.num||''}</td><td>${p.name}</td><td colspan="12" style="color:#aaa;font-style:italic">DNP</td></tr>`;
+    return `<tr>
+      <td>${p.num||''}</td><td><b>${pts}</b></td>
+      <td>${s.fgm||0}-${s.fga||0}</td>
+      <td>${s.tpm||0}-${s.tpa||0}</td>
+      <td>${s.ftm||0}-${s.fta||0}</td>
+      <td>${s.oreb||0}</td><td>${s.dreb||0}</td><td>${(s.oreb||0)+(s.dreb||0)}</td>
+      <td>${s.ast||0}</td><td>${s.stl||0}</td><td>${s.blk||0}</td><td>${s.to||0}</td><td>${s.pf||0}</td>
+    </tr>`;
+  }).join('');
+
+  const totRow=(t)=>`<tr class="rtot">
+    <td></td><td><b>${t.pts}</b></td>
+    <td>${t.fgm}-${t.fga}<br><small>${pct(t.fgm,t.fga)}</small></td>
+    <td>${t.tpm}-${t.tpa}<br><small>${pct(t.tpm,t.tpa)}</small></td>
+    <td>${t.ftm}-${t.fta}<br><small>${pct(t.ftm,t.fta)}</small></td>
+    <td>${t.oreb||0}</td><td>${t.dreb||0}</td><td>${(t.oreb||0)+(t.dreb||0)}</td>
+    <td>${t.ast}</td><td>${t.stl}</td><td>${t.blk}</td><td>${t.to}</td><td>${t.pf}</td>
+  </tr>`;
+
+  // Advanced context points
+  const ctxRows=(t,tot)=>`
+    <tr><td>Points in Paint</td><td>${tot.paintPts||0}</td><td>${(t==='away'?ht:at).paintPts||0}</td></tr>
+    <tr><td>Fast Break Pts</td><td>${tot.fastPts||0}</td><td>${(t==='away'?ht:at).fastPts||0}</td></tr>
+    <tr><td>2nd Chance Pts</td><td>${tot.secPts||0}</td><td>${(t==='away'?ht:at).secPts||0}</td></tr>
+    <tr><td>Off Turnover Pts</td><td>${tot.offTOPts||0}</td><td>${(t==='away'?ht:at).offTOPts||0}</td></tr>`;
+
+  document.getElementById('reportFrame').innerHTML=`
+    <div class="r-header">
+      <div class="r-brand">
+        <img src="/NSMTWordmarkBlue.png" style="height:36px;width:auto;display:block;margin-bottom:2px" onerror="this.outerHTML='<div style=\'font-weight:900;font-size:15px\'>NSMT<br><span style=\'font-size:8px;color:#666;font-weight:400;letter-spacing:2px;text-transform:uppercase\'>Nova Sports Media Team</span></div>'">
+        <span class="r-brand-sub">Nova Sports Media Team</span>
+      </div>
+      <div class="r-title-block">
+        <div class="r-event">${G.event||'Basketball Game'}</div>
+        <div class="r-datetime">${fmt(G.date,G.time)}${G.venue?' • '+G.venue:''}</div>
+        <div class="r-final">FINAL</div>
+      </div>
+      <div style="text-align:right;font-size:9px;color:#aaa">
+        ${G.keeper?`Keeper: ${G.keeper}<br>`:''}
+        ${new Date().toLocaleDateString()}<br>
+        thensmt.com
+      </div>
+    </div>
+
+    <!-- AWAY -->
+    <div class="r-team-hdr"><span class="r-team-name">${away.name}</span><span class="r-score-badge">${aScore}</span></div>
+    <table class="r-table">
+      <thead><tr><th>#</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>OFF</th><th>DEF</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead>
+      <tbody>${playerRows('away')}${totRow(at)}</tbody>
+    </table>
+
+    <!-- HOME -->
+    <div class="r-team-hdr" style="margin-top:10px"><span class="r-team-name">${home.name}</span><span class="r-score-badge">${hScore}</span></div>
+    <table class="r-table">
+      <thead><tr><th>#</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>OFF</th><th>DEF</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead>
+      <tbody>${playerRows('home')}${totRow(ht)}</tbody>
+    </table>
+
+    <!-- SUMMARY BLOCKS -->
+    <div class="r-summary">
+      <table class="r-sum-table">
+        <thead><tr><th>PERIOD SCORES</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead>
+        <tbody>${periodRows}</tbody>
+      </table>
+      <table class="r-sum-table">
+        <thead><tr><th>POINT TYPE</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead>
+        <tbody>
+          <tr><td>In Paint</td><td>${at.paintPts||0}</td><td>${ht.paintPts||0}</td></tr>
+          <tr><td>Fast Break</td><td>${at.fastPts||0}</td><td>${ht.fastPts||0}</td></tr>
+          <tr><td>2nd Chance</td><td>${at.secPts||0}</td><td>${ht.secPts||0}</td></tr>
+          <tr><td>Off Turnovers</td><td>${at.offTOPts||0}</td><td>${ht.offTOPts||0}</td></tr>
+        </tbody>
+      </table>
+      <table class="r-sum-table">
+        <thead><tr><th>TEAM STATS</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead>
+        <tbody>
+          <tr><td>FG%</td><td>${pct(at.fgm,at.fga)}</td><td>${pct(ht.fgm,ht.fga)}</td></tr>
+          <tr><td>3PT%</td><td>${pct(at.tpm,at.tpa)}</td><td>${pct(ht.tpm,ht.tpa)}</td></tr>
+          <tr><td>FT%</td><td>${pct(at.ftm,at.fta)}</td><td>${pct(ht.ftm,ht.fta)}</td></tr>
+          <tr><td>Rebounds</td><td>${(at.oreb||0)+(at.dreb||0)}</td><td>${(ht.oreb||0)+(ht.dreb||0)}</td></tr>
+          <tr><td>Assists</td><td>${at.ast}</td><td>${ht.ast}</td></tr>
+          <tr><td>Turnovers</td><td>${at.to}</td><td>${ht.to}</td></tr>
+          <tr><td>Steals</td><td>${at.stl}</td><td>${ht.stl}</td></tr>
+          <tr><td>Blocks</td><td>${at.blk}</td><td>${ht.blk}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SHOOTING SPLITS -->
+    <table class="r-sum-table" style="margin-top:8px;width:100%">
+      <thead>
+        <tr>
+          <th>SHOOTING SPLITS</th>
+          <th class="center" colspan="3">${away.code}</th>
+          <th class="center" colspan="3">${home.code}</th>
+        </tr>
+        <tr>
+          <th></th>
+          <th class="center">FT</th><th class="center">3PT</th><th class="center">FG</th>
+          <th class="center">FT</th><th class="center">3PT</th><th class="center">FG</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Game</td>
+          <td>${at.ftm}/${at.fta} ${pct(at.ftm,at.fta)}</td>
+          <td>${at.tpm}/${at.tpa} ${pct(at.tpm,at.tpa)}</td>
+          <td>${at.fgm}/${at.fga} ${pct(at.fgm,at.fga)}</td>
+          <td>${ht.ftm}/${ht.fta} ${pct(ht.ftm,ht.fta)}</td>
+          <td>${ht.tpm}/${ht.tpa} ${pct(ht.tpm,ht.tpa)}</td>
+          <td>${ht.fgm}/${ht.fga} ${pct(ht.fgm,ht.fga)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="r-footer">
+      Nova Sports Media Team — thensmt.com — Northern Virginia High School Sports<br>
+      ${G.event||''} ${fmt(G.date,G.time)} • Official Game Report
+    </div>
+  `;
+}
+
+function printReport(){
+  buildReport();
+  const content = document.getElementById('reportFrame').innerHTML;
+
+  const css = `
+    @page { size: letter portrait; margin: 0.5in; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #111; background: white; }
+
+    .r-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8pt; padding-bottom:6pt; border-bottom:2pt solid #111; }
+    .r-brand img { height:28pt; width:auto; display:block; }
+    .r-brand-sub { font-size:7pt; color:#666; letter-spacing:1px; text-transform:uppercase; margin-top:2pt; }
+    .r-title-block { text-align:center; }
+    .r-event { font-weight:900; font-size:13pt; text-transform:uppercase; letter-spacing:1px; }
+    .r-datetime { font-size:8pt; color:#555; margin-top:2pt; }
+    .r-final { font-size:10pt; font-weight:700; margin-top:3pt; letter-spacing:2px; text-transform:uppercase; }
+
+    .r-team-hdr { background:#222; color:#fff; padding:4pt 8pt; display:flex; justify-content:space-between; align-items:center; margin-top:8pt; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .r-team-name { font-weight:700; font-size:11pt; }
+    .r-score-badge { background:#fff; color:#111; font-weight:900; font-size:14pt; padding:1pt 6pt; border-radius:2pt; }
+
+    .r-table { width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:2pt; }
+    .r-table th { background:#ececec; font-size:6.5pt; font-weight:700; text-transform:uppercase; padding:2.5pt 2pt; border:0.5pt solid #ccc; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .r-table th:first-child  { width:20pt; text-align:left; }
+    .r-table th:nth-child(2) { width:80pt; text-align:left; }
+    .r-table td { padding:2pt 2pt; border:0.5pt solid #ddd; text-align:center; font-size:8pt; }
+    .r-table td:first-child  { color:#777; text-align:left; font-size:7pt; }
+    .r-table td:nth-child(2) { text-align:left; font-weight:600; }
+    .r-table tr.rtot td { background:#ececec; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .r-table small { font-size:6pt; color:#888; display:block; line-height:1; }
+
+    .r-summary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6pt; margin-top:8pt; }
+    .r-sum-table { width:100%; border-collapse:collapse; }
+    .r-sum-table th { background:#ececec; font-size:6.5pt; font-weight:700; text-transform:uppercase; padding:2.5pt 4pt; border:0.5pt solid #ccc; text-align:left; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .r-sum-table th.center { text-align:center; }
+    .r-sum-table td { font-size:8pt; padding:2pt 4pt; border:0.5pt solid #ddd; }
+    .r-sum-table td:not(:first-child) { text-align:center; }
+
+    .r-footer { margin-top:8pt; font-size:7pt; color:#999; text-align:center; border-top:0.5pt solid #ddd; padding-top:5pt; }
+  `;
+
+  const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=816">
+<title>NSMT Game Report</title>
+<style>${css}</style>
+</head><body>${content}
+<script>window.addEventListener('load',function(){ setTimeout(function(){ window.print(); },400); });<\/script>
+</body></html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function exportGame(){
+  if(!G) return;
+  const data = JSON.stringify(G, null, 2);
+  const blob = new Blob([data],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const teams=`${G.away.code||'AWAY'}_vs_${G.home.code||'HOME'}`;
+  a.href=url; a.download=`NSMT_${G.event||'Game'}_${G.date||'nodate'}_${teams}.nsmtgame`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+// Close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===el) el.classList.add('hidden'); });
+});
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+let _toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.getElementById('gsDate').value = new Date().toISOString().split('T')[0];
+
+// Demo game loader
+function loadDemoGame(){
+  _gsAwayPlayers=[
+    {id:'p1',num:'11',name:'Jymin Veney'},{id:'p2',num:'21',name:'Jordan Taylor'},
+    {id:'p3',num:'05',name:'Smith-Bey'},{id:'p4',num:'01',name:'Geremy Clark'},
+    {id:'p5',num:'12',name:'Zyion Chase'},{id:'p6',num:'00',name:'Tariq Boney'},
+    {id:'p7',num:'30',name:'Jon Larranaga'},{id:'p8',num:'02',name:'KJ Little'},
+  ];
+  _gsHomePlayers=[
+    {id:'p9',num:'23',name:'Jordan Smith'},{id:'p10',num:'22',name:'Brian Mitchell Jr'},
+    {id:'p11',num:'25',name:'Matthew Mena'},{id:'p12',num:'01',name:'Lawrence Brown Jr'},
+    {id:'p13',num:'14',name:'Ryan Bahr'},{id:'p14',num:'24',name:'Aiden Acquah'},
+    {id:'p15',num:'04',name:'Dylan Harsanyi'},{id:'p16',num:'42',name:'Jackson Sabrick'},
+    {id:'p17',num:'05',name:'Brandon Young'},
+  ];
+  document.getElementById('gsAwayName').value="St. John's";
+  document.getElementById('gsAwayCode').value='SJC';
+  document.getElementById('gsHomeName').value='Paul VI';
+  document.getElementById('gsHomeCode').value='PVI';
+  document.getElementById('gsEvent').value='WCAC Championship';
+  document.getElementById('gsVenue').value='';
+  renderGSRoster('away'); renderGSRoster('home');
+  goTo('gameSetupScreen');
+  toast('Demo loaded — tap Start Game');
+}
+
+// ═══════════════════════════════════════════
+// SOP / WALKTHROUGH
+// ═══════════════════════════════════════════
+function initSOP(){}
+
+function showSopTab(tab, btn){
+  document.querySelectorAll('.sop-tab').forEach(t=>t.classList.add('hidden'));
+  document.querySelectorAll('.sop-tab-btn').forEach(b=>b.classList.remove('active'));
+  const el = document.getElementById('sop-'+tab);
+  if(el) el.classList.remove('hidden');
+  if(btn) btn.classList.add('active');
+}
+
+// First-launch banner
+setTimeout(()=>{
+  if(DB.get('sopSeen',false)) return;
+  const banner = document.createElement('div');
+  banner.id='firstLaunchBanner';
+  banner.style.cssText='position:fixed;bottom:0;left:0;right:0;background:var(--gold);color:#000;padding:14px 18px;z-index:9999;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:700;flex-wrap:wrap;';
+  banner.innerHTML=`👋 First time? Read the Operator Guide before your first game.
+    <button onclick="DB.set('sopSeen',true);document.getElementById('firstLaunchBanner').remove();goTo('sopScreen')"
+      style="background:#000;color:var(--gold);border:none;padding:8px 14px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">Open Guide →</button>
+    <button onclick="DB.set('sopSeen',true);document.getElementById('firstLaunchBanner').remove()"
+      style="background:none;border:none;font-size:22px;cursor:pointer;margin-left:auto;">×</button>`;
+  document.body.appendChild(banner);
+}, 900);
+
+renderHome();
+</script>
+
+<!-- ── NSMT WebSocket Sync ── -->
+<script src="ws-client.js"></script>
+<script>
+(function () {
+  NSMTClient.onConnect(function () {
+    const dot = document.getElementById('wsSyncDot');
+    if (dot) { dot.style.background = '#2dc653'; dot.title = 'WS Connected'; }
+    // Push current game state as soon as WS connects (or reconnects)
+    if (G) syncToWS();
+  });
+  NSMTClient.onDisconnect(function () {
+    const dot = document.getElementById('wsSyncDot');
+    if (dot) { dot.style.background = '#666674'; dot.title = 'WS Disconnected'; }
+  });
+  NSMTClient.connect();
+
+  // Map v3 stat fields to WS schema (tpm→t3m, oreb→off, dreb→def)
+  function teamToWS(side) {
+    if (!G || !G[side]) return { name:'', fouls:0, players:[] };
+    return {
+      name:   G[side].name  || '',
+      fouls:  G[side].fouls || 0,
+      players: (G[side].players || []).map(function (p) {
+        const s = G.stats[p.id] || {};
+        return {
+          num: p.num||'', name: p.name||'',
+          fgm: s.fgm||0,  fga: s.fga||0,
+          t3m: s.tpm||0,  t3a: s.tpa||0,
+          ftm: s.ftm||0,  fta: s.fta||0,
+          off: s.oreb||0, def: s.dreb||0,
+          ast: s.ast||0,  stl: s.stl||0, blk: s.blk||0,
+          to:  s.to||0,   pf:  s.pf||0,  pts: s.pts||0
+        };
+      })
+    };
+  }
+
+  function getPeriodLabel() {
+    if (!G) return '';
+    const cp = G.currentPeriod || 1;
+    return (G.totalPeriods === 2)
+      ? (cp <= 2 ? 'H' + cp : 'OT' + (cp - 2))
+      : (cp <= 4 ? 'Q' + cp : 'OT' + (cp - 4));
+  }
+
+  function calcScore(side) {
+    if (!G) return 0;
+    return (G[side].players || []).reduce(function (sum, p) {
+      return sum + ((G.stats[p.id] || {}).pts || 0);
+    }, 0);
+  }
+
+  window.syncToWS = function () {
+    if (!G) return;
+    const quarter = getPeriodLabel();
+    NSMTClient.send({ type: 'patch', stats: {
+      away: teamToWS('away'),
+      home: teamToWS('home'),
+      meta: {
+        eventTitle:  G.event  || '',
+        gameDate:    G.date   || '',
+        gameStatus:  G.status === 'final' ? 'Final' : quarter
+      }
+    }});
+    NSMTClient.send({ type: 'patch', bug: {
+      awayScore:    calcScore('away'),
+      homeScore:    calcScore('home'),
+      awayName:     G.away.name,
+      homeName:     G.home.name,
+      awayFouls:    G.away.fouls || 0,
+      homeFouls:    G.home.fouls || 0,
+      quarter:      quarter,
+      clock:        G.clock || '',
+      clockRunning: !!window._clockRunning
+    }});
+  };
+
+  // Override Google sign-in: Firebase not configured + iOS Safari can't use popups
+  window.signInWithGoogle = function () {
+    if (window.useOfflineMode) useOfflineMode();
+  };
+
+  // Add a small WS status dot to the page
+  window.addEventListener('DOMContentLoaded', function () {
+    const dot = document.createElement('div');
+    dot.id = 'wsSyncDot';
+    dot.title = 'WS Disconnected';
+    dot.style.cssText = 'position:fixed;bottom:10px;right:10px;width:8px;height:8px;border-radius:50%;background:#666674;z-index:9999;pointer-events:none;';
+    document.body.appendChild(dot);
+  });
+})();
+</script>
+
+</body>
+</html>

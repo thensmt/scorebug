@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NSMT Unified Control (WS) — Play/Pause + Safe Updates</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#0b0d12; --card:#161a22; --line:#1f2430; --brand:#0E80FC; }
+  body{ margin:0; background:#0b0d12; color:#fff; font-family:'Rubik',sans-serif; }
+  header{ padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .status{ font-size:12px; color:#9ad0ff; }
+  .container{ padding:16px; display:grid; gap:16px;
+    grid-template-columns: minmax(320px,1fr) minmax(320px,1fr); }
+  .card{ background:#161a22; border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card.ticker-card{ grid-column:1 / -1; }
+  .card h2{ margin:0 0 12px; font-size:14px; color:#c9d6ff; text-transform:uppercase; letter-spacing:.8px; }
+  label{ font-size:12px; color:#a9b3c6; display:block; margin-bottom:6px; }
+  input,select,textarea{ width:100%; padding:8px 10px; border-radius:10px; border:1px solid #283043; background:#0f1219; color:#e7ecf8; }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:8px 10px; border-radius:10px; border:1px solid #283043; background:#0f1219; color:#e7ecf8; cursor:pointer; }
+  .btn.primary{ background:linear-gradient(180deg,#1a6fe8,#0E80FC); border-color:#2c5bd6; }
+  .btn.warn{ background:linear-gradient(180deg,#b41c1c,#8a1212); border-color:#7b1515; }
+  .btn.ghost{ background:#0f1219; border-color:#283043; }
+  .toggle-group{ display:inline-flex; border-radius:10px; overflow:hidden; border:1px solid #283043; }
+  .toggle-group .toggle{ border:none; background:#0f1219; color:#a9b3c6; padding:8px 12px; cursor:pointer; font-size:12px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; transition:background .18s ease,color .18s ease; }
+  .toggle-group .toggle + .toggle{ border-left:1px solid #283043; }
+  .toggle-group .toggle.active{ background:linear-gradient(180deg,#1a6fe8,#0E80FC); color:#fff; }
+  table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:14px; }
+  th,td{ border:1px solid #283043; padding:6px; text-align:center; }
+  th{ color:#c9d6ff; background:#101520; font-weight:600; }
+  #gamesTable th:first-child,#gamesTable td:first-child{ width:34px; }
+  #gamesTable tbody tr.row-selected{ background:#1e2535; }
+  .ticker-actions{ display:flex; flex-wrap:wrap; gap:10px; margin:8px 0 12px; align-items:center; }
+  .ticker-actions .btn,
+  .ticker-actions label.btn{ margin:0; }
+  .ticker-speed{ display:flex; align-items:center; gap:6px; color:#a9b3c6; font-size:12px; }
+  .ticker-speed input[type="range"]{ width:160px; }
+  .ticker-speed-value{ font-weight:600; color:#9ad0ff; min-width:32px; text-align:right; }
+  pre{ background:#0b0d12; border:1px solid #283043; border-radius:10px; padding:10px; max-height:220px; overflow:auto; }
+</style>
+</head>
+<body>
+<header><div>NSMT Unified Control (WebSocket)</div><div class="status" id="status">Disconnected</div></header>
+
+<div class="container">
+  <div class="card">
+    <h2>Teams &amp; Scores</h2>
+    <div class="row">
+      <div><label>Away Name</label><input id="awayName" value="Landstown"></div>
+      <div><label>Home Name</label><input id="homeName" value="South County"></div>
+    </div>
+    <div class="row">
+      <div><label>Away Logo (filename or URL)</label><input id="awayLogo" value="landstowneagles.png"></div>
+      <div><label>Home Logo (filename or URL)</label><input id="homeLogo" value="southcountystallions.png"></div>
+    </div>
+    <div class="row">
+      <div><label>Away Record</label><input id="awayRecord" value="23-4"></div>
+      <div><label>Home Record</label><input id="homeRecord" value="20-7"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Away Score</label><input id="awayScore" type="number" value="0"></div>
+      <div><label>Home Score</label><input id="homeScore" type="number" value="0"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Away TOs (0–5)</label><input id="awayTOs" type="number" min="0" max="5" value="5">
+        <div style="margin-top:6px; display:flex; gap:8px;">
+          <button class="btn warn" id="btnAwayTimeoutFull">Full Timeout</button>
+          <button class="btn" id="btnAwayTimeout30">30-Second</button>
+        </div>
+      </div>
+      <div>
+        <label>Home TOs (0–5)</label><input id="homeTOs" type="number" min="0" max="5" value="5">
+        <div style="margin-top:6px; display:flex; gap:8px;">
+          <button class="btn warn" id="btnHomeTimeoutFull">Full Timeout</button>
+          <button class="btn" id="btnHomeTimeout30">30-Second</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Clocks &amp; Event</h2>
+    <div class="row">
+      <div><label>Game Clock (MM:SS)</label><input id="clock" value="8:00"></div>
+      <div><label>Period</label>
+        <select id="quarter">
+          <option value="1st">1st</option>
+          <option value="2nd">2nd</option>
+          <option value="3rd">3rd</option>
+          <option value="4th">4th</option>
+          <option value="OT">OT</option>
+          <option value="2OT">2OT</option>
+          <option value="3OT">3OT</option>
+          <option value="4OT">4OT</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="btn primary" id="btnStart">Play ▶</button>
+      <button class="btn ghost" id="btnPause">Pause ⏸</button>
+      <button class="btn warn" id="btnReset">Reset ⟲</button>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div><label>Event Title</label><input id="sponsorLabel" value="VHSL CLASS 6 STATE SEMIFINAL"></div>
+      <div><label>Sponsor Logo URL</label><input id="sponsorLogo" placeholder="https://.../logo.png"></div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <div><label>Corner Logo (Top Left)</label><input id="cornerTLLogo" placeholder="https://.../logo.png"></div>
+      <div>
+        <label>Top Left Size</label>
+        <input id="cornerTLScale" type="range" min="50" max="200" step="5" value="100">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Corner Logo (Top Right)</label><input id="cornerTRLogo" placeholder="https://.../logo.png"></div>
+      <div>
+        <label>Top Right Size</label>
+        <input id="cornerTRScale" type="range" min="50" max="200" step="5" value="100">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Corner Logo (Bottom Left)</label><input id="cornerBLLogo" placeholder="https://.../logo.png"></div>
+      <div>
+        <label>Bottom Left Size</label>
+        <input id="cornerBLScale" type="range" min="50" max="200" step="5" value="100">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Corner Logo (Bottom Right)</label><input id="cornerBRLogo" placeholder="https://.../logo.png"></div>
+      <div>
+        <label>Bottom Right Size</label>
+        <input id="cornerBRScale" type="range" min="50" max="200" step="5" value="100">
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="btn" id="btnSponsorOn">Event Bar On</button>
+      <button class="btn ghost" id="btnSponsorOff">Event Bar Off</button>
+    </div>
+    <h2 style="margin-top:14px;">Payload Preview</h2>
+    <pre id="preview"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Other Game Tracker</h2>
+    <div class="row">
+      <div><label>Away Team</label><input id="otherAwayName" value="Manchester"></div>
+      <div><label>Home Team</label><input id="otherHomeName" value="Westfield"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Away Score</label><input id="otherAwayScore" type="number" value="0"></div>
+      <div><label>Home Score</label><input id="otherHomeScore" type="number" value="0"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div><label>Quarter</label><input id="otherQuarter" value="1st"></div>
+      <div><label>Clock</label><input id="otherClock" value="8:00"></div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div>
+        <label>Tracker Size</label>
+        <input id="otherGameScale" type="range" min="50" max="200" step="5" value="100">
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="btn" id="btnOtherOn">Show Tracker</button>
+      <button class="btn ghost" id="btnOtherOff">Hide Tracker</button>
+    </div>
+  </div>
+
+
+  <div class="card ticker-card">
+    <h2>Score Ticker (Flashing)</h2>
+    <div class="ticker-actions">
+      <label class="btn ghost" for="gamesFile">Import CSV</label>
+      <input type="file" id="gamesFile" accept=".csv" style="display:none;">
+      <button class="btn ghost" id="btnLoadSchedule" type="button">Load Default List</button>
+      <button class="btn" type="button" onclick="addRow()">➕ Add Game</button>
+      <button class="btn warn" type="button" onclick="removeSelectedRows()">🗑 Remove Selected</button>
+      <button class="btn primary" type="button" onclick="updateTicker()">Update Ticker</button>
+      <button class="btn" type="button" onclick="toggleTicker()">Show/Hide</button>
+      <div class="ticker-speed">
+        <span>Speed</span>
+        <input type="range" id="tickerSpeed" min="10" max="120" step="1" value="60">
+        <span class="ticker-speed-value" id="tickerSpeedValue">60s</span>
+      </div>
+    </div>
+    <table id="gamesTable">
+      <thead><tr><th></th><th>#</th><th>Away Team</th><th>Away Record</th><th>Away Score</th><th>Home Team</th><th>Home Record</th><th>Home Score</th><th>Quarter</th></tr></thead>
+      <tbody id="gamesBody"></tbody>
+    </table>
+    <h2 style="margin-top:14px;">Ticker Preview</h2>
+    <textarea id="tickerPreview" rows="3" readonly></textarea>
+  </div>
+</div>
+
+<script>
+  const isFile = location.protocol === 'file:';
+  const WS_URL = (isFile || location.hostname === 'localhost')
+    ? 'ws://localhost:8765'
+    : 'ws://' + location.host.replace(/:\\d+$/,'') + ':8765';
+  const tbody=document.getElementById('gamesBody'); const statusEl=document.getElementById('status');
+  const tickerSpeedInput=document.getElementById('tickerSpeed');
+  const tickerSpeedValue=document.getElementById('tickerSpeedValue');
+
+  let ws=null, bugState=null, tickerState={entries:[], show:false, speed:60};
+  let suppressSpeedPatch=false;
+  let clockMs=0;
+  let clockRunning=false;
+  let clockTimer=null;
+  let clockStartPerf=0;
+  let clockStartMs=0;
+  let lastClockText=null;
+  const nowMs = ()=> (window.performance && performance.now) ? performance.now() : Date.now();
+
+  function connect(){
+    ws = new WebSocket(WS_URL);
+    ws.onopen = ()=>{ statusEl.textContent='Connected'; ws.send(JSON.stringify({type:'get_state'})); };
+    ws.onclose = ()=>{ statusEl.textContent='Disconnected (retrying...)'; setTimeout(connect, 1000); };
+    ws.onmessage = (evt)=>{
+      const msg = JSON.parse(evt.data);
+      if(msg.type==='snapshot' || msg.type==='state'){
+        const s = msg.data; bugState = s.bug; tickerState = s.ticker; populateForm(); renderPreview();
+      }
+    };
+  }
+  function patch(obj){ ws && ws.send(JSON.stringify({type:'patch', ...obj})); }
+  function setState(payload){ ws && ws.send(JSON.stringify({type:'set_state', ...payload})); }
+
+  function setTickerSpeedUI(speed, patchNow=false){
+    if(!tickerSpeedInput) return;
+    let val = parseInt(speed,10);
+    if(Number.isNaN(val)) val = 60;
+    val = Math.min(120, Math.max(10, val));
+    suppressSpeedPatch = true;
+    tickerSpeedInput.value = val;
+    suppressSpeedPatch = false;
+    if(tickerSpeedValue) tickerSpeedValue.textContent = `${val}s`;
+    tickerState.speed = val;
+    if(patchNow){
+      patch({ticker:{speed: val}});
+    }
+  }
+  function populateForm(){
+    const b = bugState || {};
+    const set=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.value = val!=null?val:''; };
+    set('homeName',b.homeName); set('awayName',b.awayName);
+    set('homeLogo',b.homeLogo); set('awayLogo',b.awayLogo);
+    set('homeRecord',b.homeRecord); set('awayRecord',b.awayRecord);
+    set('homeScore',b.homeScore); set('awayScore',b.awayScore);
+    set('clock',b.clock); set('quarter',b.quarter);
+    document.getElementById('homeTOs').value = b.homeTOs || 0;
+    document.getElementById('awayTOs').value = b.awayTOs || 0;
+    document.getElementById('sponsorLabel').value = b.sponsorLabel || 'NIT - 1st ROUND';
+    document.getElementById('sponsorLogo').value = b.sponsorLogo || '';
+    document.getElementById('cornerTLLogo').value = b.cornerTLLogo || '';
+    document.getElementById('cornerTRLogo').value = b.cornerTRLogo || '';
+    document.getElementById('cornerBLLogo').value = b.cornerBLLogo || '';
+    document.getElementById('cornerBRLogo').value = b.cornerBRLogo || '';
+    document.getElementById('cornerTLScale').value = b.cornerTLScale || 100;
+    document.getElementById('cornerTRScale').value = b.cornerTRScale || 100;
+    document.getElementById('cornerBLScale').value = b.cornerBLScale || 100;
+    document.getElementById('cornerBRScale').value = b.cornerBRScale || 100;
+    document.getElementById('otherGameScale').value = b.otherGameScale || 100;
+    set('otherAwayName',b.otherAwayName);
+    set('otherHomeName',b.otherHomeName);
+    set('otherAwayScore',b.otherAwayScore);
+    set('otherHomeScore',b.otherHomeScore);
+    set('otherQuarter',b.otherQuarter);
+    set('otherClock',b.otherClock);
+    setTickerPreview();
+    syncClockFromState(b);
+  }
+  function renderPreview(){
+    preview.textContent = JSON.stringify({bug:bugState, ticker:tickerState}, null, 2);
+    setTickerSpeedUI(tickerState.speed || 60, false);
+  }
+  function parseClock(str){
+    const parts=String(str||'0:00').split(':');
+    const m=parseInt(parts[0],10)||0;
+    const s=parseInt(parts[1],10)||0;
+    return (m*60+s)*1000;
+  }
+  function fmtClock(ms){
+    ms=Math.max(0,ms|0);
+    const m=Math.floor(ms/60000);
+    const s=Math.floor((ms%60000)/1000);
+    return `${m}:${s<10?'0':''}${s}`;
+  }
+  function setClockRunning(run){
+    if(run===clockRunning) return;
+    if(clockRunning){
+      const elapsed = nowMs() - clockStartPerf;
+      clockMs = Math.max(0, clockStartMs - elapsed);
+    }
+    clockRunning=run;
+    if(clockTimer){ clearInterval(clockTimer); clockTimer=null; }
+    if(clockRunning){
+      clockStartPerf = nowMs();
+      clockStartMs = clockMs;
+      clockTimer=setInterval(()=>{
+        const elapsed = nowMs() - clockStartPerf;
+        clockMs=Math.max(0,clockStartMs - elapsed);
+        const input=document.getElementById('clock');
+        if(input && document.activeElement!==input){
+          input.value = fmtClock(clockMs);
+        }
+        if(clockMs<=0){
+          setClockRunning(false);
+        }
+      }, 100);
+    }
+  }
+  function syncClockFromState(b){
+    const text = b && b.clock != null ? b.clock : '0:00';
+    const running = !!(b && b.clockRunning);
+    const clockChanged = text !== lastClockText;
+    lastClockText = text;
+    if(!running || clockChanged){
+      clockMs = parseClock(text);
+    }
+    setClockRunning(running);
+  }
+
+  // ---- granular updates: only send the field that changed ----
+  const bind = (id, key, parser = (v)=>v) => {
+    const el = document.getElementById(id);
+    el.addEventListener('change', ()=>{
+      const val = parser(el.value);
+      patch({ bug: { [key]: val } });
+    });
+  };
+  bind('homeName','homeName'); bind('awayName','awayName');
+  bind('homeLogo','homeLogo'); bind('awayLogo','awayLogo');
+  bind('homeRecord','homeRecord'); bind('awayRecord','awayRecord');
+  bind('homeScore','homeScore', v=>parseInt(v||0,10)); bind('awayScore','awayScore', v=>parseInt(v||0,10));
+  bind('quarter','quarter');
+  bind('homeTOs','homeTOs', v=>parseInt(v||0,10)); bind('awayTOs','awayTOs', v=>parseInt(v||0,10));
+  bind('sponsorLabel','sponsorLabel'); bind('sponsorLogo','sponsorLogo');
+  bind('cornerTLLogo','cornerTLLogo'); bind('cornerTRLogo','cornerTRLogo');
+  bind('cornerBLLogo','cornerBLLogo'); bind('cornerBRLogo','cornerBRLogo');
+  bind('cornerTLScale','cornerTLScale', v=>parseInt(v||100,10));
+  bind('cornerTRScale','cornerTRScale', v=>parseInt(v||100,10));
+  bind('cornerBLScale','cornerBLScale', v=>parseInt(v||100,10));
+  bind('cornerBRScale','cornerBRScale', v=>parseInt(v||100,10));
+  bind('otherAwayName','otherAwayName');
+  bind('otherHomeName','otherHomeName');
+  bind('otherAwayScore','otherAwayScore', v=>parseInt(v||0,10));
+  bind('otherHomeScore','otherHomeScore', v=>parseInt(v||0,10));
+  bind('otherQuarter','otherQuarter');
+  bind('otherClock','otherClock');
+  bind('otherGameScale','otherGameScale', v=>parseInt(v||100,10));
+
+  if(tickerSpeedInput){
+    const handleSpeedChange = ()=>{
+      const val = Math.max(10, Math.min(120, parseInt(tickerSpeedInput.value,10)||60));
+      if(tickerSpeedValue) tickerSpeedValue.textContent = `${val}s`;
+      tickerState.speed = val;
+      if(!suppressSpeedPatch){
+        patch({ticker:{speed: val}});
+      }
+    };
+    tickerSpeedInput.addEventListener('input', handleSpeedChange);
+    tickerSpeedInput.addEventListener('change', handleSpeedChange);
+    setTickerSpeedUI(tickerState.speed || 60, false);
+  }
+
+  // Clock text is ONLY sent when you actually edit the input or hit Reset
+  document.getElementById('clock').addEventListener('change', ()=>{
+    patch({ bug: { clock: document.getElementById('clock').value } });
+  });
+
+  // Play / Pause / Reset for GAME CLOCK (no implicit reset)
+  document.getElementById('btnStart').onclick = ()=>{
+    const input=document.getElementById('clock');
+    clockMs = parseClock(input ? input.value : '0:00');
+    patch({ bug: { clock: fmtClock(clockMs), clockRunning: true } });
+  };
+  document.getElementById('btnPause').onclick = ()=>{
+    patch({ bug: { clock: fmtClock(clockMs), clockRunning: false } });
+  };
+  document.getElementById('btnReset').onclick = ()=>{
+    // Explicit reset to 8:00 and pause
+    clockMs = parseClock('8:00');
+    const input=document.getElementById('clock');
+    if(input) input.value = '8:00';
+    patch({ bug: { clock: '8:00', clockRunning: false } });
+  };
+
+  // Sponsor toggles
+  document.getElementById('btnSponsorOn').onclick  = ()=> patch({ bug: { sponsorShow: true } });
+  document.getElementById('btnSponsorOff').onclick = ()=> patch({ bug: { sponsorShow: false } });
+  document.getElementById('btnOtherOn').onclick  = ()=> patch({ bug: { otherGameShow: true } });
+  document.getElementById('btnOtherOff').onclick = ()=> patch({ bug: { otherGameShow: false } });
+  document.getElementById('btnAwayTimeoutFull').onclick = ()=> patch({ bug: { timeoutTeam: 'away', timeoutType: 'full', timeoutAt: Date.now() } });
+  document.getElementById('btnAwayTimeout30').onclick = ()=> patch({ bug: { timeoutTeam: 'away', timeoutType: '30', timeoutAt: Date.now() } });
+  document.getElementById('btnHomeTimeoutFull').onclick = ()=> patch({ bug: { timeoutTeam: 'home', timeoutType: 'full', timeoutAt: Date.now() } });
+  document.getElementById('btnHomeTimeout30').onclick = ()=> patch({ bug: { timeoutTeam: 'home', timeoutType: '30', timeoutAt: Date.now() } });
+
+  // ---- ticker table helpers ----
+  function addRow(data={}){
+    const row=tbody.insertRow();
+    const selectCell=row.insertCell();
+    const checkbox=document.createElement('input');
+    checkbox.type='checkbox';
+    checkbox.className='row-select';
+    selectCell.appendChild(checkbox);
+    const indexCell=row.insertCell();
+    indexCell.textContent='';
+    const createInput=(val='')=>{
+      const input=document.createElement('input');
+      input.value = val || '';
+      input.addEventListener('input', setTickerPreview);
+      return input;
+    };
+    const awayTeamCell=row.insertCell();
+    awayTeamCell.appendChild(createInput(data.awayTeam));
+    const awayRecCell=row.insertCell();
+    awayRecCell.appendChild(createInput(data.awayRecord));
+    const awayScoreCell=row.insertCell();
+    awayScoreCell.appendChild(createInput(data.awayScore));
+    const homeTeamCell=row.insertCell();
+    homeTeamCell.appendChild(createInput(data.homeTeam));
+    const homeRecCell=row.insertCell();
+    homeRecCell.appendChild(createInput(data.homeRecord));
+    const homeScoreCell=row.insertCell();
+    homeScoreCell.appendChild(createInput(data.homeScore));
+    const quarterCell=row.insertCell();
+    const sel=document.createElement('select');
+    const quarterOptions=['','1Q','2Q','3Q','4Q','OT','2OT','3OT','FINAL','HT',
+      '1st Quarter','2nd Quarter','3rd Quarter','4th Quarter','Halftime','Final'];
+    quarterOptions.forEach(q=>{
+      const o=document.createElement('option');
+      o.value=q; o.textContent=q || '';
+      sel.appendChild(o);
+    });
+    if(data.quarter && !quarterOptions.includes(data.quarter)){
+      const extra=document.createElement('option');
+      extra.value=data.quarter;
+      extra.textContent=data.quarter;
+      sel.appendChild(extra);
+    }
+    sel.value = data.quarter || '';
+    sel.addEventListener('change', setTickerPreview);
+    quarterCell.appendChild(sel);
+    checkbox.addEventListener('change', ()=>{ row.classList.toggle('row-selected', checkbox.checked); });
+    row.classList.toggle('row-selected', checkbox.checked);
+    updateRowNumbers();
+    setTickerPreview();
+  }
+  function updateRowNumbers(){
+    [...tbody.rows].forEach((r,idx)=>{ if(r.cells[1]) r.cells[1].textContent = idx+1; });
+  }
+  function removeSelectedRows(){
+    let removed=false;
+    for(let i=tbody.rows.length-1;i>=0;i--){
+      const row=tbody.rows[i];
+      const box=row.querySelector('.row-select');
+      if(box && box.checked){
+        tbody.deleteRow(i);
+        removed=true;
+      }
+    }
+    if(removed){
+      updateRowNumbers();
+      setTickerPreview();
+    }
+  }
+  function readRows(){
+    return [...tbody.rows].map(r=>{
+      return {
+        awayTeam:(r.cells[2]?.firstChild?.value||'').trim(),
+        awayRecord:(r.cells[3]?.firstChild?.value||'').trim(),
+        awayScore:(r.cells[4]?.firstChild?.value||'').trim(),
+        homeTeam:(r.cells[5]?.firstChild?.value||'').trim(),
+        homeRecord:(r.cells[6]?.firstChild?.value||'').trim(),
+        homeScore:(r.cells[7]?.firstChild?.value||'').trim(),
+        quarter:(r.cells[8]?.firstChild?.value||'').trim()
+      };
+    }).filter(x=>x.awayTeam||x.homeTeam);
+  }
+  function formatTickerRow(row){
+    if(!row.awayTeam && !row.homeTeam) return '';
+    const awayName = row.awayTeam + (row.awayRecord ? ` (${row.awayRecord})` : '');
+    const homeName = row.homeTeam + (row.homeRecord ? ` (${row.homeRecord})` : '');
+    const combinedScore = (row.awayScore && row.homeScore) ? `${row.awayScore}-${row.homeScore}` : '';
+    let text;
+    if(row.awayTeam && row.homeTeam){
+      if(combinedScore){
+        text = `${awayName} ${combinedScore} ${homeName}`;
+      }else{
+        const awayScore = row.awayScore ? ` ${row.awayScore}` : '';
+        const homeScore = row.homeScore ? ` ${row.homeScore}` : '';
+        text = `${awayName}${awayScore} vs ${homeName}${homeScore}`;
+      }
+    }else if(row.awayTeam){
+      text = row.awayScore ? `${awayName} ${row.awayScore}` : awayName;
+    }else{
+      text = row.homeScore ? `${homeName} ${row.homeScore}` : homeName;
+    }
+    return row.quarter ? `${text} — ${row.quarter}` : text;
+  }
+  function updateTicker(){
+    const rows=readRows();
+    const prev=tickerState.__prev||[];
+    const entries=rows.map((row,i)=>{
+      const text=formatTickerRow(row);
+      let flash=0;
+      const p=prev[i];
+      if(p && (String(p.awayScore)!==String(row.awayScore) || String(p.homeScore)!==String(row.homeScore))){
+        flash=2;
+      }
+      return {text, flash};
+    });
+    tickerState = { entries, show:true, speed:tickerState.speed||60, __prev:rows };
+    setState({ticker:{ entries, show:tickerState.show, speed:tickerState.speed }});
+    setTickerPreview(); renderPreview();
+  }
+  function toggleTicker(){ tickerState.show = !tickerState.show; patch({ticker:{show:tickerState.show}}); }
+  function setTickerPreview(){
+    const rows=readRows();
+    const texts = rows.map(formatTickerRow).filter(Boolean);
+    tickerPreview.value = texts.join('\n');
+  }
+
+  function clearRows(){ tbody.innerHTML=''; }
+  function loadRows(rows){
+    tbody.innerHTML='';
+    if(Array.isArray(rows) && rows.length){
+      rows.forEach(data=>addRow(data));
+    }else{
+      addRow({});
+    }
+    tickerState.__prev = readRows();
+  }
+  function parseCsv(text){
+    if(!text) return [];
+    const lines=text.trim().split(/\r?\n/).filter(l=>l.trim().length);
+    if(!lines.length) return [];
+    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+    const idx=(name)=>headers.indexOf(name);
+    const awayIdx=idx('away team');
+    const awayRecIdx=idx('away record');
+    const awayScoreIdx=idx('away score');
+    const homeIdx=idx('home team');
+    const homeRecIdx=idx('home record');
+    const homeScoreIdx=idx('home score');
+    const quarterIdx=idx('quarter');
+    return lines.slice(1).map(line=>{
+      const parts=line.split(',').map(p=>p.trim());
+      const val=(i)=> (i>=0 && i<parts.length)?parts[i]:'';
+      return {
+        awayTeam: val(awayIdx),
+        awayRecord: val(awayRecIdx),
+        awayScore: val(awayScoreIdx),
+        homeTeam: val(homeIdx),
+        homeRecord: val(homeRecIdx),
+        homeScore: val(homeScoreIdx),
+        quarter: val(quarterIdx)
+      };
+    }).filter(row=>row.awayTeam || row.homeTeam);
+  }
+  function handleGamesFile(evt){
+    const file=evt.target.files && evt.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const rows=parseCsv(reader.result);
+        loadRows(rows);
+      }catch(err){
+        console.error('Unable to parse CSV', err);
+      }
+    };
+    reader.readAsText(file);
+    evt.target.value='';
+  }
+  function loadDefaultGames(){
+    fetch('ticker_games.csv')
+      .then(resp=> resp.ok ? resp.text() : Promise.reject(resp.statusText))
+      .then(text=>{
+        const rows=parseCsv(text);
+        loadRows(rows);
+      })
+      .catch(err=>{
+        console.warn('Could not load default ticker CSV:', err);
+        if(!tbody.rows.length){
+          addRow({});
+          tickerState.__prev = readRows();
+        }
+      });
+  }
+
+  const fileInput=document.getElementById('gamesFile');
+  if(fileInput){ fileInput.addEventListener('change', handleGamesFile); }
+  const loadBtn=document.getElementById('btnLoadSchedule');
+  if(loadBtn){ loadBtn.addEventListener('click', (evt)=>{ evt.preventDefault(); loadDefaultGames(); }); }
+
+  loadDefaultGames();
+  connect();
+</script>
+</body>
+</html>

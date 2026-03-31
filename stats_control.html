@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NSMT Stats">
+<title>NSMT Stats</title>
+<link rel="manifest" href="#" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap');
+:root {
+  --gold:#F5C518; --bg:#080809; --surf:#111114; --surf2:#18181c; --surf3:#202025;
+  --border:#26262e; --text:#f0f0f0; --muted:#666674; --red:#e63946; --green:#2dc653;
+  --blue:#3a86ff; --orange:#ff7c2a; --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);}
+
+.screen{display:none;position:fixed;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.screen.active{display:flex;flex-direction:column;}
+.scroll-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom);}
+
+.heading{font-family:'Bebas Neue',cursive;letter-spacing:2px;}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:700;border-radius:var(--r);transition:transform .1s,opacity .15s;user-select:none;touch-action:manipulation;}
+.btn:active{transform:scale(.96);opacity:.85;}
+.btn-gold{background:var(--gold);color:#000;font-size:15px;padding:13px 20px;}
+.btn-surf{background:var(--surf2);color:var(--text);font-size:14px;padding:12px 18px;border:1px solid var(--border);}
+.btn-red{background:var(--red);color:#fff;font-size:14px;padding:12px 18px;}
+.btn-ghost{background:transparent;color:var(--muted);font-size:13px;padding:10px 14px;border:1px solid var(--border);}
+.btn-full{width:100%;}
+.btn-lg{font-size:17px;padding:16px 24px;}
+
+input,select,textarea{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:11px 13px;font-size:15px;font-family:'DM Sans',sans-serif;border-radius:var(--r);outline:none;width:100%;transition:border-color .2s;-webkit-appearance:none;}
+input:focus,select:focus{border-color:var(--gold);}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23666674'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.field{margin-bottom:13px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.card-title{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;color:var(--gold);margin-bottom:13px;}
+
+.ph{background:#000;border-bottom:2px solid var(--gold);padding:12px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:200;}
+.ph-logo{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);letter-spacing:3px;line-height:1;}
+.ph-logo span{color:#fff;}
+.ph h2{font-family:'Bebas Neue',cursive;font-size:19px;letter-spacing:1px;color:var(--text);}
+.back-btn{background:none;border:none;color:var(--muted);font-size:26px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;}
+.pad{padding:16px;}
+
+.tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px;}
+.tag-green{background:rgba(45,198,83,.18);color:var(--green);}
+.tag-gold{background:rgba(245,197,24,.15);color:var(--gold);}
+.tag-red{background:rgba(230,57,70,.18);color:var(--red);}
+.tag-blue{background:rgba(58,134,255,.18);color:var(--blue);}
+.tag-orange{background:rgba(255,124,42,.18);color:var(--orange);}
+
+.toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--surf3);border:1px solid var(--border);color:var(--text);padding:9px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;max-width:90vw;}
+.toast.show{opacity:1;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;display:flex;align-items:flex-end;justify-content:center;}
+.modal-overlay.hidden{display:none;}
+.modal-sheet{background:var(--surf);border:1px solid var(--border);border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px;margin-bottom:14px;}
+
+/* HOME */
+#homeScreen{background:radial-gradient(ellipse at 50% 0%,#1a1a00 0%,var(--bg) 55%);}
+.home-hero{padding:44px 20px 28px;text-align:center;}
+.home-biglogo{font-family:'Bebas Neue',cursive;font-size:60px;color:var(--gold);letter-spacing:5px;line-height:1;}
+.home-biglogo span{color:#fff;}
+.home-tagline{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;}
+.home-version{font-size:10px;color:var(--border);margin-top:4px;}
+
+.menu-btn{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:18px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;width:100%;text-align:left;margin-bottom:10px;}
+.menu-btn:active{border-color:var(--gold);background:var(--surf2);transform:scale(.98);}
+.menu-icon{font-size:34px;flex-shrink:0;line-height:1;}
+.menu-title{font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px;line-height:1;}
+.menu-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+.menu-arrow{margin-left:auto;color:var(--muted);font-size:20px;}
+
+.recent-label{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:2px;color:var(--muted);margin-bottom:10px;}
+.recent-item{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:border-color .15s;}
+.recent-item:active{border-color:var(--gold);}
+.recent-score{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);min-width:90px;}
+.recent-info{flex:1;}
+.recent-teams{font-weight:700;font-size:13px;}
+.recent-sub{font-size:11px;color:var(--muted);}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ROSTER MANAGER */
+.roster-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:0;overflow:hidden;margin-bottom:10px;}
+.roster-card-head{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;background:var(--surf2);border-bottom:1px solid var(--border);}
+.roster-card-name{font-weight:700;font-size:15px;}
+.roster-card-meta{font-size:11px;color:var(--muted);}
+.roster-card-actions{display:flex;gap:6px;}
+.roster-card-body{padding:10px 14px;}
+.player-chip{display:inline-flex;align-items:center;gap:5px;background:var(--surf3);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;margin:3px;}
+.player-chip-num{color:var(--gold);font-family:'Bebas Neue',cursive;font-size:14px;}
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px;font-size:18px;color:var(--muted);transition:color .15s;}
+.icon-btn:active{color:var(--gold);}
+.icon-btn.danger:active{color:var(--red);}
+.player-row{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+.player-row input{padding:9px 11px;font-size:14px;}
+
+/* GAME SETUP */
+.section-divider{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--muted);margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.team-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+
+/* LIVE GAME */
+#liveScreen{overflow:hidden;}
+.live-wrap{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+.scoreboard{background:#000;border-bottom:1px solid var(--border);padding:8px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;flex-shrink:0;}
+.sb-name{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.sb-name.right{text-align:right;}
+.sb-pts{font-family:'Bebas Neue',cursive;font-size:54px;line-height:1;color:#fff;}
+.sb-pts.right{text-align:right;}
+.sb-mid{text-align:center;}
+.sb-period{font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold);letter-spacing:2px;}
+.sb-event{font-size:9px;color:var(--muted);margin-top:1px;}
+.sb-fouls{display:flex;justify-content:center;gap:3px;margin-top:3px;}
+.sb-foul{width:7px;height:7px;border-radius:50%;background:var(--border);}
+.sb-foul.active{background:var(--red);}
+.ws-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);display:inline-block;margin-top:4px;}
+.ws-dot.on{background:var(--green);}
+
+.live-tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ltab{flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.ltab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+.flow-bar{background:var(--surf2);border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;min-height:36px;}
+.flow-crumb{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.flow-crumb.done{color:var(--green);}
+.flow-crumb.active{color:var(--gold);}
+.flow-sep{color:var(--border);font-size:14px;}
+
+.op-panel{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+.teams-split{display:grid;grid-template-columns:1fr 1fr;height:100%;}
+.team-col{padding:8px;border-right:1px solid var(--border);overflow-y:auto;}
+.team-col:last-child{border-right:none;}
+.team-col-label{font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--muted);text-align:center;margin-bottom:7px;}
+
+.pbtn{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:8px 6px;margin-bottom:5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.pbtn:active{transform:scale(.94);}
+.pbtn.sel{background:rgba(245,197,24,.15);border-color:var(--gold);}
+.pbtn.foul4{border-color:var(--orange);}
+.pbtn.foul5{border-color:var(--red);opacity:.55;}
+.pbtn-num{font-family:'Bebas Neue',cursive;font-size:28px;line-height:1;color:var(--gold);}
+.pbtn-name{font-size:10px;font-weight:600;color:var(--text);line-height:1.2;text-align:center;}
+.pbtn-stat{font-size:9px;color:var(--muted);}
+.pbtn-fouls{display:flex;gap:2px;margin-top:2px;}
+.pbtn-fpip{width:5px;height:5px;border-radius:50%;background:var(--border);}
+.pbtn-fpip.on{background:var(--red);}
+
+.evt-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;}
+.evt-btn{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:12px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.evt-btn:active{transform:scale(.94);}
+.evt-icon{font-size:20px;}
+.evt-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);text-align:center;}
+
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;}
+.result-btn{border:2px solid;border-radius:10px;padding:22px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .1s;touch-action:manipulation;}
+.result-btn:active{transform:scale(.95);}
+.result-btn.made{border-color:var(--green);background:rgba(45,198,83,.08);color:var(--green);}
+.result-btn.miss{border-color:var(--red);background:rgba(230,57,70,.08);color:var(--red);}
+.result-icon{font-size:38px;}
+.result-label{font-family:'Bebas Neue',cursive;font-size:26px;letter-spacing:2px;}
+
+.ctx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;}
+.ctx-btn{background:var(--surf2);border:2px solid var(--border);border-radius:8px;padding:11px 6px;cursor:pointer;text-align:center;transition:all .1s;color:var(--text);touch-action:manipulation;}
+.ctx-btn:active{transform:scale(.94);}
+.ctx-btn.sel{background:rgba(58,134,255,.12);border-color:var(--blue);}
+.ctx-icon{font-size:18px;margin-bottom:3px;}
+.ctx-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);}
+
+.assist-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px;}
+.abtn{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:9px 6px;cursor:pointer;text-align:center;transition:all .1s;touch-action:manipulation;}
+.abtn:active{transform:scale(.94);}
+.abtn.sel{background:rgba(245,197,24,.12);border-color:var(--gold);}
+.abtn-num{font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);}
+.abtn-name{font-size:9px;color:var(--muted);}
+
+.step-hdr{padding:8px 12px;font-family:'Bebas Neue',cursive;font-size:13px;letter-spacing:2px;color:var(--gold);background:var(--surf);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.step-num{background:var(--gold);color:#000;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;}
+.confirm-btn{background:var(--green);color:#000;border:none;border-radius:6px;padding:6px 12px;font-weight:700;font-size:12px;cursor:pointer;margin-left:auto;}
+
+.pbp-item{display:flex;align-items:flex-start;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);}
+.pbp-q{font-family:'Bebas Neue',cursive;font-size:12px;color:var(--gold);min-width:20px;}
+.pbp-clock{font-size:11px;color:var(--muted);min-width:38px;}
+.pbp-text{font-size:12px;flex:1;}
+.pbp-pts{font-family:'Bebas Neue',cursive;font-size:14px;color:var(--gold);}
+
+.box-wrap{overflow-x:auto;}
+.box-table{width:100%;min-width:560px;border-collapse:collapse;font-size:12px;}
+.box-table th{background:#000;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:5px 7px;text-align:center;border-bottom:1px solid var(--border);}
+.box-table th:nth-child(2){text-align:left;}
+.box-table td{padding:7px 7px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;}
+.box-table td:first-child{color:var(--muted);font-size:10px;}
+.box-table td:nth-child(2){text-align:left;font-weight:600;}
+.box-table tr.tot td{background:var(--surf2);font-weight:700;}
+.box-pts{color:var(--gold);font-weight:700;}
+.box-team-hdr{background:var(--surf2);padding:9px 12px;font-family:'Bebas Neue',cursive;font-size:15px;letter-spacing:2px;color:var(--gold);display:flex;justify-content:space-between;align-items:center;}
+
+.live-bottom{background:#000;border-top:1px solid var(--border);padding:8px 12px;display:flex;gap:7px;flex-shrink:0;padding-bottom:calc(8px + env(safe-area-inset-bottom));}
+.lctrl{flex:1;background:var(--surf2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:700;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding:10px 4px;border-radius:8px;cursor:pointer;text-align:center;transition:all .15s;}
+.lctrl:active{border-color:var(--gold);color:var(--gold);}
+.lctrl.gold{background:var(--gold);color:#000;border-color:var(--gold);}
+.lctrl.red{background:var(--red);color:#fff;border-color:var(--red);}
+
+/* REPORT */
+.report-actions{padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);flex-shrink:0;}
+.report-body{flex:1;overflow-y:auto;background:white;}
+.report-frame{padding:20px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#111;background:white;}
+.r-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #111;}
+.r-brand{font-weight:900;font-size:15px;line-height:1.2;}
+.r-brand-sub{font-size:8px;color:#666;font-weight:400;letter-spacing:2px;text-transform:uppercase;}
+.r-title-block{text-align:center;}
+.r-event{font-weight:700;font-size:15px;}
+.r-datetime{font-size:11px;color:#555;}
+.r-final{font-weight:700;font-size:11px;margin-top:2px;}
+.r-team-hdr{background:#111;color:#fff;padding:5px 9px;display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
+.r-team-name{font-weight:700;font-size:13px;}
+.r-score-badge{background:#fff;color:#111;font-weight:900;font-size:16px;padding:1px 7px;border-radius:2px;}
+.r-table{width:100%;border-collapse:collapse;margin-bottom:2px;}
+.r-table th{background:#f0f0f0;font-size:8px;font-weight:700;text-transform:uppercase;padding:4px 4px;border:1px solid #ddd;text-align:center;}
+.r-table th:first-child{width:18px;text-align:left;}
+.r-table th:nth-child(2){text-align:left;min-width:80px;}
+.r-table td{padding:3px 4px;border:1px solid #ddd;text-align:center;font-size:10px;}
+.r-table td:first-child{font-size:9px;color:#777;}
+.r-table td:nth-child(2){text-align:left;font-weight:600;}
+.r-table tr.rtot td{background:#f5f5f5;font-weight:700;}
+.r-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
+.r-sum-table{width:100%;border-collapse:collapse;font-size:9px;}
+.r-sum-table th{background:#f0f0f0;padding:3px 5px;border:1px solid #ddd;font-weight:700;text-align:left;}
+.r-sum-table th.center{text-align:center;}
+.r-sum-table td{padding:3px 5px;border:1px solid #ddd;text-align:center;}
+.r-sum-table td:first-child{text-align:left;}
+.r-footer{margin-top:12px;font-size:8px;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:6px;}
+
+/* SOP */
+.sop-tab-btn{background:var(--surf2);border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:700;font-size:13px;padding:9px 14px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:all .15s;}
+.sop-tab-btn.active{background:var(--gold);color:#000;border-color:var(--gold);}
+.sop-tab-btn:active{transform:scale(.96);}
+.sop-tab{display:block;}
+.sop-tab.hidden{display:none;}
+.cheat-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+@media(min-width:600px){.cheat-grid{grid-template-columns:1fr 1fr;}}
+.cheat-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
+.cheat-title{font-family:'Bebas Neue',cursive;font-size:14px;letter-spacing:1.5px;color:var(--gold);margin-bottom:10px;}
+.cheat-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:flex-start;}
+.cheat-row:last-child{border-bottom:none;}
+.cheat-key{font-weight:700;color:var(--text);min-width:90px;flex-shrink:0;}
+.cheat-val{color:var(--muted);line-height:1.4;}
+.flow-demo{display:flex;align-items:center;gap:4px;flex-wrap:wrap;background:#000;border-radius:6px;padding:8px 10px;margin:8px 0;}
+.fd-step{font-size:11px;font-weight:700;color:var(--green);background:rgba(45,198,83,.1);border:1px solid rgba(45,198,83,.3);padding:4px 8px;border-radius:4px;}
+.fd-step.active{color:var(--gold);background:rgba(245,197,24,.1);border-color:rgba(245,197,24,.3);}
+.fd-arrow{color:var(--border);font-size:14px;}
+
+@media print{
+  #reportScreen .ph,.report-actions{display:none!important;}
+  .report-body{overflow:visible;}
+  body{background:white;color:#111;}
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div id="homeScreen" class="screen active">
+  <div class="scroll-body">
+    <div class="home-hero">
+      <div class="home-biglogo">NSMT <span>STATS</span></div>
+      <div class="home-tagline">Nova Sports Media Team • Basketball</div>
+      <div class="home-version">v2.1 • WebSocket Edition</div>
+    </div>
+    <div class="pad" style="padding-top:0">
+      <button class="menu-btn" onclick="goTo('modeSelectScreen')">
+        <div class="menu-icon">🏀</div>
+        <div><div class="menu-title">New Game</div><div class="menu-desc">Set up and start tracking a game</div></div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('rosterScreen')">
+        <div class="menu-icon">📋</div>
+        <div><div class="menu-title">Roster Manager</div><div class="menu-desc">Save and manage team rosters</div></div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('archiveScreen')">
+        <div class="menu-icon">📁</div>
+        <div><div class="menu-title">Game Archive</div><div class="menu-desc">Past games, reports, and exports</div></div>
+        <div class="menu-arrow">›</div>
+      </button>
+      <button class="menu-btn" onclick="goTo('sopScreen')">
+        <div class="menu-icon">📖</div>
+        <div><div class="menu-title">Operator Guide</div><div class="menu-desc">Walkthrough and cheat sheet</div></div>
+        <div class="menu-arrow">›</div>
+      </button>
+    </div>
+    <div class="pad" style="padding-top:0">
+      <div class="recent-label">Recent Games</div>
+      <div id="recentList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODE SELECT -->
+<div id="modeSelectScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button><h2>New Game</h2></div>
+  <div class="scroll-body pad">
+    <div style="margin-bottom:20px">
+      <div class="field"><label>Your Name</label><input type="text" id="msKeeperName" placeholder="Stat-keeper name"></div>
+      <div class="field"><label>Mode</label>
+        <select id="msMode" onchange="updateModeUI()">
+          <option value="keeper">NSMT Stat-Keeper (Full Game)</option>
+          <option value="coach">Coach Mode (My Team Only)</option>
+        </select>
+      </div>
+    </div>
+    <div id="modeDesc" class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.2)">
+      <div style="font-size:13px;color:var(--text)"><strong style="color:var(--gold)">Stat-Keeper Mode:</strong> Track both teams, full box score, all advanced stats.</div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" style="margin-top:16px" onclick="goTo('gameSetupScreen')">Continue →</button>
+  </div>
+</div>
+
+<!-- GAME SETUP -->
+<div id="gameSetupScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('modeSelectScreen')">‹</button><h2>Game Setup</h2></div>
+  <div class="scroll-body pad">
+    <div class="card">
+      <div class="card-title">Game Info</div>
+      <div class="two-col">
+        <div class="field"><label>Event / Tournament</label><input type="text" id="gsEvent" placeholder="WCAC Championship"></div>
+        <div class="field"><label>Venue</label><input type="text" id="gsVenue" placeholder="DeMatha Catholic"></div>
+        <div class="field"><label>Date</label><input type="date" id="gsDate"></div>
+        <div class="field"><label>Time</label><input type="time" id="gsTime"></div>
+      </div>
+      <div class="two-col">
+        <div class="field"><label>Periods</label>
+          <select id="gsPeriods"><option value="4">4 Quarters</option><option value="2">2 Halves</option></select>
+        </div>
+        <div class="field"><label>Period Length (min)</label><input type="number" id="gsPeriodLen" value="8" min="1" max="20"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="team-header-row">
+        <div class="card-title" style="margin-bottom:0">Away Team</div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:7px 12px" onclick="openRosterPicker('away')">📋 Load Roster</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="two-col">
+          <div class="field"><label>Team Name</label><input type="text" id="gsAwayName" placeholder="St. John's"></div>
+          <div class="field"><label>Short Code</label><input type="text" id="gsAwayCode" placeholder="SJC" maxlength="4"></div>
+        </div>
+        <div class="section-divider" style="margin-top:4px">Players</div>
+        <div id="gsAwayRoster"></div>
+        <button class="btn btn-ghost btn-full" onclick="addGSPlayer('away')" style="margin-top:6px">+ Add Player</button>
+      </div>
+    </div>
+
+    <div id="gsHomeCard" class="card">
+      <div class="team-header-row">
+        <div class="card-title" style="margin-bottom:0">Home Team</div>
+        <button class="btn btn-ghost" style="font-size:12px;padding:7px 12px" onclick="openRosterPicker('home')">📋 Load Roster</button>
+      </div>
+      <div style="margin-top:12px">
+        <div class="two-col">
+          <div class="field"><label>Team Name</label><input type="text" id="gsHomeName" placeholder="Paul VI"></div>
+          <div class="field"><label>Short Code</label><input type="text" id="gsHomeCode" placeholder="PVI" maxlength="4"></div>
+        </div>
+        <div class="section-divider" style="margin-top:4px">Players</div>
+        <div id="gsHomeRoster"></div>
+        <button class="btn btn-ghost btn-full" onclick="addGSPlayer('home')" style="margin-top:6px">+ Add Player</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-surf" style="flex:1" onclick="saveRostersFromSetup()">💾 Save Rosters</button>
+      <button class="btn btn-gold" style="flex:2" onclick="initGame()">▶ Start Game</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROSTER MANAGER -->
+<div id="rosterScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button><h2>Roster Manager</h2>
+    <button class="btn btn-gold" style="margin-left:auto;padding:8px 14px;font-size:13px" onclick="openNewRosterModal()">+ New</button>
+  </div>
+  <div class="scroll-body pad">
+    <div id="rosterList"></div>
+    <div id="rosterEmpty" style="text-align:center;color:var(--muted);padding:40px 0;display:none">
+      <div style="font-size:36px;margin-bottom:10px">📋</div>
+      <div style="font-size:15px;font-weight:600">No saved rosters yet</div>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHIVE -->
+<div id="archiveScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goTo('homeScreen')">‹</button><h2>Game Archive</h2></div>
+  <div class="scroll-body pad">
+    <div id="archiveList"></div>
+    <div id="archiveEmpty" style="text-align:center;color:var(--muted);padding:40px 0;display:none">
+      <div style="font-size:36px;margin-bottom:10px">📁</div>
+      <div style="font-size:15px;font-weight:600">No completed games yet</div>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE GAME -->
+<div id="liveScreen" class="screen">
+<div class="live-wrap">
+  <div class="scoreboard">
+    <div class="sb-team">
+      <div class="sb-name" id="sbAwayName">AWAY</div>
+      <div class="sb-pts" id="sbAwayPts">0</div>
+    </div>
+    <div class="sb-mid">
+      <div class="sb-period" id="sbPeriod">Q1</div>
+      <div class="sb-event" id="sbEvent"></div>
+      <div class="sb-fouls" id="sbFouls"></div>
+      <div style="display:flex;justify-content:center;margin-top:3px"><div class="ws-dot" id="wsDot" title="WS Sync"></div></div>
+    </div>
+    <div class="sb-team">
+      <div class="sb-name right" id="sbHomeName">HOME</div>
+      <div class="sb-pts right" id="sbHomePts">0</div>
+    </div>
+  </div>
+
+  <div class="live-tabs">
+    <div class="ltab active" id="ltab0" onclick="setLiveTab(0)">Log</div>
+    <div class="ltab" id="ltab1" onclick="setLiveTab(1)">Box</div>
+    <div class="ltab" id="ltab2" onclick="setLiveTab(2)">PBP</div>
+  </div>
+
+  <div class="flow-bar" id="flowBar"></div>
+  <div class="op-panel" id="opPanel"></div>
+
+  <div class="live-bottom">
+    <button class="lctrl" onclick="undoLast()">↩ Undo</button>
+    <button class="lctrl" onclick="openClockModal()">🕐 Clock</button>
+    <button class="lctrl" onclick="openPeriodModal()">⏱ Period</button>
+    <button class="lctrl gold" onclick="showReport()">📋 Report</button>
+    <button class="lctrl red" onclick="confirmEnd()">End</button>
+  </div>
+</div>
+</div>
+
+<!-- REPORT -->
+<div id="reportScreen" class="screen">
+  <div class="ph"><button class="back-btn" onclick="goBack()">‹</button><div class="ph-logo">NSMT <span>REPORT</span></div></div>
+  <div class="report-actions">
+    <button class="btn btn-gold" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn btn-surf" onclick="exportGame()">📦 Export .nsmtgame</button>
+    <button class="btn btn-surf" onclick="goBack()">← Back</button>
+  </div>
+  <div class="report-body"><div class="report-frame" id="reportFrame"></div></div>
+</div>
+
+<!-- SOP -->
+<div id="sopScreen" class="screen">
+  <div class="ph">
+    <button class="back-btn" onclick="goTo('homeScreen')">‹</button>
+    <div class="ph-logo">NSMT <span>GUIDE</span></div>
+  </div>
+  <div class="scroll-body pad">
+    <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px">
+      <button class="sop-tab-btn active" onclick="showSopTab('walkthrough',this)">📱 Walkthrough</button>
+      <button class="sop-tab-btn" onclick="showSopTab('cheatsheet',this)">⚡ Cheat Sheet</button>
+    </div>
+    <div id="sop-walkthrough" class="sop-tab">
+      <div class="card" style="background:rgba(245,197,24,.06);border-color:rgba(245,197,24,.25)">
+        <div style="font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold);margin-bottom:6px">5-Step Stat Flow</div>
+        <div class="flow-demo">
+          <div class="fd-step">① Player</div><div class="fd-arrow">›</div>
+          <div class="fd-step">② Action</div><div class="fd-arrow">›</div>
+          <div class="fd-step">③ Made/Miss</div><div class="fd-arrow">›</div>
+          <div class="fd-step">④ Context</div><div class="fd-arrow">›</div>
+          <div class="fd-step active">⑤ Assist?</div>
+        </div>
+        <div style="font-size:13px;color:var(--text);margin-top:8px;line-height:1.7">
+          Non-shot stats (Rebound, Steal, Block, TO, Foul) log instantly after Step 2.<br>
+          Use <strong>↩ Undo</strong> to remove the last event.<br>
+          The green dot in the scoreboard means live sync to the OBS overlay is active.
+        </div>
+      </div>
+    </div>
+    <div id="sop-cheatsheet" class="sop-tab hidden">
+      <div class="cheat-grid">
+        <div class="cheat-card">
+          <div class="cheat-title">🏀 Shot Flow</div>
+          <div class="cheat-row"><span class="cheat-key">2PT Made</span><span class="cheat-val">Player → 2PT → Made → Location → Context → Assist?</span></div>
+          <div class="cheat-row"><span class="cheat-key">2PT Miss</span><span class="cheat-val">Player → 2PT → Missed ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">3PT Made</span><span class="cheat-val">Player → 3PT → Made → Context → Assist?</span></div>
+          <div class="cheat-row"><span class="cheat-key">3PT Miss</span><span class="cheat-val">Player → 3PT → Missed ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Free Throw</span><span class="cheat-val">Player → Free Throw → Made/Missed ✓</span></div>
+        </div>
+        <div class="cheat-card">
+          <div class="cheat-title">⚡ One-Tap Stats</div>
+          <div class="cheat-row"><span class="cheat-key">Rebound</span><span class="cheat-val">Player → Off Reb or Def Reb ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Steal</span><span class="cheat-val">Player (who stole) → Steal ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Block</span><span class="cheat-val">Player (who blocked) → Block ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Turnover</span><span class="cheat-val">Player (who lost ball) → Turnover ✓</span></div>
+          <div class="cheat-row"><span class="cheat-key">Foul</span><span class="cheat-val">Player (who fouled) → Foul ✓</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay hidden" id="rosterPickerModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Load Saved Roster</div>
+    <div id="rosterPickerList"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:10px" onclick="closeModal('rosterPickerModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="rosterEditModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="rosterEditTitle">New Roster</div>
+    <div class="field"><label>Team Name</label><input type="text" id="reTeamName" placeholder="e.g. Paul VI Panthers"></div>
+    <div class="field"><label>Short Code</label><input type="text" id="reTeamCode" placeholder="PVI" maxlength="4"></div>
+    <div class="section-divider">Players</div>
+    <div id="rePlayerList"></div>
+    <button class="btn btn-ghost btn-full" onclick="addREPlayer()" style="margin:8px 0">+ Add Player</button>
+    <button class="btn btn-gold btn-full btn-lg" onclick="saveRosterEdit()">💾 Save Roster</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('rosterEditModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="clockModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Game Clock</div>
+    <div class="field"><label>Current Clock (MM:SS)</label><input type="text" id="clockInput" placeholder="6:32"></div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="saveClock()">Set Clock</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('clockModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="periodModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="periodModalTitle">End of Period</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Advance to next period or add overtime.</div>
+    <div class="two-col" style="margin-bottom:14px">
+      <div class="field"><label id="pmAwayLabel">Away Score</label><input type="number" id="pmAway" min="0" placeholder="0"></div>
+      <div class="field"><label id="pmHomeLabel">Home Score</label><input type="number" id="pmHome" min="0" placeholder="0"></div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="advancePeriod()">Next Period →</button>
+    <button class="btn btn-surf btn-full" style="margin-top:8px" onclick="addOT()">+ Add Overtime</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('periodModal')">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="endModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">End Game?</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:20px">This will finalize the game and generate the official report.</div>
+    <div style="background:var(--surf2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px;text-align:center">
+      <div id="endModalScore" style="font-family:'Bebas Neue',cursive;font-size:36px;letter-spacing:2px;color:var(--gold)"></div>
+      <div id="endModalEvent" style="font-size:12px;color:var(--muted)"></div>
+    </div>
+    <button class="btn btn-gold btn-full btn-lg" onclick="endGame()">✓ End Game & Generate Report</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="closeModal('endModal')">Keep Playing</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// WEBSOCKET SYNC
+// ═══════════════════════════════════════════
+const WS_URL = (location.protocol === 'file:' || location.hostname === 'localhost')
+  ? 'ws://localhost:8765'
+  : 'ws://' + location.hostname + ':8765';
+
+let _ws = null;
+let _wsConnected = false;
+let _wsReconnectTimer = null;
+
+function connectWS() {
+  clearTimeout(_wsReconnectTimer);
+  try {
+    _ws = new WebSocket(WS_URL);
+    _ws.onopen = () => {
+      _wsConnected = true;
+      const dot = document.getElementById('wsDot');
+      if (dot) dot.classList.add('on');
+    };
+    _ws.onclose = () => {
+      _wsConnected = false;
+      const dot = document.getElementById('wsDot');
+      if (dot) dot.classList.remove('on');
+      _wsReconnectTimer = setTimeout(connectWS, 3000);
+    };
+    _ws.onerror = () => { _wsConnected = false; };
+  } catch(e) {
+    _wsReconnectTimer = setTimeout(connectWS, 3000);
+  }
+}
+
+function wsSend(data) {
+  if (_ws && _wsConnected) {
+    try { _ws.send(JSON.stringify(data)); } catch(e) {}
+  }
+}
+
+function getPeriodLabel(g, n) {
+  return g.periods === 2
+    ? (n <= 2 ? `H${n}` : `OT${n-2}`)
+    : (n <= 4 ? `Q${n}` : `OT${n-4}`);
+}
+
+function teamToWS(team) {
+  return {
+    name: G[team].name,
+    fouls: G[team].fouls || 0,
+    players: G[team].players.map(p => {
+      const s = G.stats[p.id] || {};
+      return {
+        num: p.num || '', name: p.name || '',
+        fgm: s.fgm||0, fga: s.fga||0,
+        t3m: s.tpm||0, t3a: s.tpa||0,
+        ftm: s.ftm||0, fta: s.fta||0,
+        off: s.oreb||0, def: s.dreb||0,
+        ast: s.ast||0, stl: s.stl||0, blk: s.blk||0,
+        to: s.to||0, pf: s.pf||0, min: 0, pm: 0
+      };
+    })
+  };
+}
+
+function syncToWS() {
+  if (!G || !_wsConnected) return;
+  const aScore = calcTeamScore(G, 'away');
+  const hScore = calcTeamScore(G, 'home');
+  const quarter = getPeriodLabel(G, G.currentPeriod);
+  wsSend({ type: 'patch', bug: {
+    awayScore: aScore, homeScore: hScore,
+    awayName: G.away.name, homeName: G.home.name,
+    quarter
+  }});
+  wsSend({ type: 'patch', stats: {
+    away: teamToWS('away'),
+    home: teamToWS('home'),
+    meta: {
+      eventTitle: G.event || '',
+      gameDate: G.date || '',
+      gameStatus: G.status === 'final' ? 'Final' : quarter
+    }
+  }});
+}
+
+connectWS();
+
+// ═══════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════
+const DB = {
+  get(k, def=null){ try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch{return def;} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){console.warn('Storage full',e);} },
+  del(k){ localStorage.removeItem(k); }
+};
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+let _prevScreen = 'homeScreen';
+function goTo(id){
+  const cur = document.querySelector('.screen.active');
+  if(cur) { _prevScreen = cur.id; cur.classList.remove('active'); }
+  const next = document.getElementById(id);
+  if(next) { next.classList.add('active'); next.scrollTop=0; }
+  onScreenEnter(id);
+}
+function goBack(){ goTo(_prevScreen); }
+function onScreenEnter(id){
+  if(id==='homeScreen') renderHome();
+  if(id==='rosterScreen') renderRosters();
+  if(id==='archiveScreen') renderArchive();
+  if(id==='gameSetupScreen') initGameSetup();
+}
+
+// ═══════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════
+function renderHome(){
+  const games = DB.get('games',[]);
+  const el = document.getElementById('recentList');
+  if(!games.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0">No recent games. Start one above.</div>'; return; }
+  el.innerHTML = games.slice().reverse().slice(0,5).map(g=>{
+    const aScore = calcTeamScore(g,'away');
+    const hScore = calcTeamScore(g,'home');
+    const live = g.status==='live';
+    return `<div class="recent-item" onclick="loadGame('${g.id}')">
+      ${live?'<div class="live-dot"></div>':''}
+      <div class="recent-score">${aScore}–${hScore}</div>
+      <div class="recent-info">
+        <div class="recent-teams">${g.away.name} vs ${g.home.name}</div>
+        <div class="recent-sub">${g.event||'Game'} • ${g.date||''} ${live?'<span class="tag tag-green">LIVE</span>':''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// MODE SELECT
+// ═══════════════════════════════════════════
+function updateModeUI(){
+  const mode = document.getElementById('msMode').value;
+  document.getElementById('modeDesc').innerHTML = mode==='keeper'
+    ? '<div style="font-size:13px"><strong style="color:var(--gold)">Stat-Keeper Mode:</strong> Track both teams, full box score, all advanced stats.</div>'
+    : '<div style="font-size:13px"><strong style="color:var(--gold)">Coach Mode:</strong> Track your team only.</div>';
+}
+
+// ═══════════════════════════════════════════
+// GAME SETUP
+// ═══════════════════════════════════════════
+let _gsAwayPlayers=[], _gsHomePlayers=[];
+let _rosterPickTarget='away';
+
+function initGameSetup(){
+  document.getElementById('gsDate').value = new Date().toISOString().split('T')[0];
+  if(!_gsAwayPlayers.length && !_gsHomePlayers.length){
+    for(let i=0;i<8;i++){ addGSPlayer('away'); addGSPlayer('home'); }
+  }
+  renderGSRoster('away'); renderGSRoster('home');
+  const mode=document.getElementById('msMode')?document.getElementById('msMode').value:'keeper';
+  document.getElementById('gsHomeCard').style.display = mode==='coach'?'none':'block';
+}
+
+function addGSPlayer(team){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  arr.push({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2), num:'', name:''});
+  renderGSRoster(team);
+}
+
+function renderGSRoster(team){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  const el = document.getElementById(`gs${team==='away'?'Away':'Home'}Roster`);
+  el.innerHTML = arr.map((p,i)=>`
+    <div class="player-row">
+      <input type="text" placeholder="#" value="${p.num}" oninput="updateGSPlayer('${team}',${i},'num',this.value)" style="text-align:center">
+      <input type="text" placeholder="Player name" value="${p.name}" oninput="updateGSPlayer('${team}',${i},'name',this.value)">
+      <button class="icon-btn danger" onclick="removeGSPlayer('${team}',${i})">×</button>
+    </div>`).join('');
+}
+
+function updateGSPlayer(team, i, field, val){
+  const arr = team==='away'?_gsAwayPlayers:_gsHomePlayers;
+  if(arr[i]) arr[i][field]=val;
+}
+
+function removeGSPlayer(team, i){
+  if(team==='away') _gsAwayPlayers.splice(i,1); else _gsHomePlayers.splice(i,1);
+  renderGSRoster(team);
+}
+
+function syncTeamLabel(){}
+
+function openRosterPicker(team){
+  _rosterPickTarget = team;
+  const rosters = DB.get('rosters',[]);
+  const el = document.getElementById('rosterPickerList');
+  if(!rosters.length){
+    el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px">No saved rosters yet.<br><br><button class="btn btn-gold" onclick="closeModal(\'rosterPickerModal\');goTo(\'rosterScreen\')">Create a Roster</button></div>';
+  } else {
+    el.innerHTML = rosters.map(r=>`
+      <div class="recent-item" onclick="applyRoster('${r.id}')">
+        <div style="flex:1">
+          <div class="recent-teams">${r.name}</div>
+          <div class="recent-sub">${r.players.filter(p=>p.name).length} players • ${r.code||''}</div>
+        </div>
+        <div style="color:var(--gold);font-size:18px">›</div>
+      </div>`).join('');
+  }
+  openModal('rosterPickerModal');
+}
+
+function applyRoster(id){
+  const rosters = DB.get('rosters',[]);
+  const r = rosters.find(x=>x.id===id);
+  if(!r) return;
+  const team = _rosterPickTarget;
+  if(team==='away'){
+    document.getElementById('gsAwayName').value = r.name;
+    document.getElementById('gsAwayCode').value = r.code||'';
+    _gsAwayPlayers = r.players.map(p=>({...p,id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2)}));
+    renderGSRoster('away');
+  } else {
+    document.getElementById('gsHomeName').value = r.name;
+    document.getElementById('gsHomeCode').value = r.code||'';
+    _gsHomePlayers = r.players.map(p=>({...p,id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2)}));
+    renderGSRoster('home');
+  }
+  closeModal('rosterPickerModal');
+  toast(`${r.name} loaded`);
+}
+
+function saveRostersFromSetup(){
+  const away = { name:document.getElementById('gsAwayName').value.trim(), code:document.getElementById('gsAwayCode').value.trim(), players:_gsAwayPlayers.filter(p=>p.name) };
+  const home = { name:document.getElementById('gsHomeName').value.trim(), code:document.getElementById('gsHomeCode').value.trim(), players:_gsHomePlayers.filter(p=>p.name) };
+  if(away.name) saveOrUpdateRoster(away);
+  if(home.name) saveOrUpdateRoster(home);
+  toast('Rosters saved ✓');
+}
+
+function saveOrUpdateRoster(data){
+  const rosters = DB.get('rosters',[]);
+  const existing = rosters.findIndex(r=>r.name.toLowerCase()===data.name.toLowerCase());
+  if(existing>=0){ rosters[existing]={...rosters[existing],...data,players:data.players}; }
+  else { rosters.push({id:'r_'+Date.now(),...data}); }
+  DB.set('rosters', rosters);
+}
+
+// ═══════════════════════════════════════════
+// ROSTER MANAGER
+// ═══════════════════════════════════════════
+let _editingRosterId = null;
+
+function renderRosters(){
+  const rosters = DB.get('rosters',[]);
+  const el = document.getElementById('rosterList');
+  const empty = document.getElementById('rosterEmpty');
+  if(!rosters.length){ el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  el.innerHTML = rosters.map(r=>`
+    <div class="roster-card">
+      <div class="roster-card-head">
+        <div>
+          <div class="roster-card-name">${r.name} ${r.code?`<span class="tag tag-gold">${r.code}</span>`:''}</div>
+          <div class="roster-card-meta">${r.players.filter(p=>p.name).length} players</div>
+        </div>
+        <div class="roster-card-actions">
+          <button class="icon-btn" onclick="openEditRoster('${r.id}')">✏️</button>
+          <button class="icon-btn danger" onclick="deleteRoster('${r.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="roster-card-body">
+        ${r.players.filter(p=>p.name).map(p=>`<span class="player-chip"><span class="player-chip-num">${p.num||'—'}</span> ${p.name}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function openNewRosterModal(){
+  _editingRosterId = null;
+  document.getElementById('rosterEditTitle').textContent='New Roster';
+  document.getElementById('reTeamName').value='';
+  document.getElementById('reTeamCode').value='';
+  document.getElementById('rePlayerList').innerHTML='';
+  for(let i=0;i<10;i++) addREPlayer();
+  openModal('rosterEditModal');
+}
+
+function openEditRoster(id){
+  const rosters = DB.get('rosters',[]);
+  const r = rosters.find(x=>x.id===id);
+  if(!r) return;
+  _editingRosterId = id;
+  document.getElementById('rosterEditTitle').textContent='Edit Roster';
+  document.getElementById('reTeamName').value=r.name;
+  document.getElementById('reTeamCode').value=r.code||'';
+  document.getElementById('rePlayerList').innerHTML='';
+  (r.players.length?r.players:[...Array(10)].map(()=>({num:'',name:''}))).forEach(p=>addREPlayer(p.num,p.name));
+  openModal('rosterEditModal');
+}
+
+function addREPlayer(num='', name=''){
+  const el = document.getElementById('rePlayerList');
+  const row = document.createElement('div');
+  row.className='player-row';
+  row.innerHTML=`<input type="text" placeholder="#" value="${num}" style="text-align:center"><input type="text" placeholder="Player name" value="${name}"><button class="icon-btn danger" onclick="this.parentElement.remove()">×</button>`;
+  el.appendChild(row);
+}
+
+function saveRosterEdit(){
+  const name = document.getElementById('reTeamName').value.trim();
+  if(!name){ toast('Enter a team name'); return; }
+  const code = document.getElementById('reTeamCode').value.trim();
+  const players = [];
+  document.querySelectorAll('#rePlayerList .player-row').forEach(row=>{
+    const inputs = row.querySelectorAll('input');
+    const n = inputs[1].value.trim();
+    if(n) players.push({id:'p_'+Date.now()+'_'+Math.random().toString(36).slice(2), num:inputs[0].value.trim(), name:n});
+  });
+  const rosters = DB.get('rosters',[]);
+  if(_editingRosterId){
+    const i = rosters.findIndex(r=>r.id===_editingRosterId);
+    if(i>=0) rosters[i]={...rosters[i],name,code,players};
+  } else {
+    rosters.push({id:'r_'+Date.now(),name,code,players});
+  }
+  DB.set('rosters', rosters);
+  closeModal('rosterEditModal');
+  renderRosters();
+  toast('Roster saved ✓');
+}
+
+function deleteRoster(id){
+  if(!confirm('Delete this roster?')) return;
+  DB.set('rosters', DB.get('rosters',[]).filter(r=>r.id!==id));
+  renderRosters();
+}
+
+// ═══════════════════════════════════════════
+// ARCHIVE
+// ═══════════════════════════════════════════
+function renderArchive(){
+  const games = DB.get('games',[]).filter(g=>g.status==='final').reverse();
+  const el = document.getElementById('archiveList');
+  const empty = document.getElementById('archiveEmpty');
+  if(!games.length){ el.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+  el.innerHTML = games.map(g=>{
+    const aScore=calcTeamScore(g,'away'), hScore=calcTeamScore(g,'home');
+    return `<div class="recent-item" onclick="viewArchivedGame('${g.id}')">
+      <div class="recent-score">${aScore}–${hScore}</div>
+      <div class="recent-info">
+        <div class="recent-teams">${g.away.name} vs ${g.home.name}</div>
+        <div class="recent-sub">${g.event||'Game'} • ${g.date||''} • <span class="tag tag-gold" style="font-size:9px">FINAL</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewArchivedGame(id){
+  G = DB.get('games',[]).find(g=>g.id===id);
+  if(G){ buildReport(); goTo('reportScreen'); }
+}
+
+// ═══════════════════════════════════════════
+// GAME ENGINE
+// ═══════════════════════════════════════════
+let G = null;
+
+function initGame(){
+  const awayName = document.getElementById('gsAwayName').value.trim()||'Away';
+  const homeName = document.getElementById('gsHomeName').value.trim()||'Home';
+  const awayCode = document.getElementById('gsAwayCode').value.trim()||awayName.slice(0,3).toUpperCase();
+  const homeCode = document.getElementById('gsHomeCode').value.trim()||homeName.slice(0,3).toUpperCase();
+  const awayPlayers = _gsAwayPlayers.filter(p=>p.name).map(p=>({...p}));
+  const homePlayers = _gsHomePlayers.filter(p=>p.name).map(p=>({...p}));
+  if(!awayPlayers.length||!homePlayers.length){ toast('Add at least one player per team'); return; }
+
+  G = {
+    id: 'g_'+Date.now(), status: 'live',
+    mode: document.getElementById('msMode')?.value||'keeper',
+    keeper: document.getElementById('msKeeperName')?.value||'',
+    event: document.getElementById('gsEvent').value.trim(),
+    venue: document.getElementById('gsVenue').value.trim(),
+    date: document.getElementById('gsDate').value,
+    time: document.getElementById('gsTime').value,
+    periods: parseInt(document.getElementById('gsPeriods').value),
+    periodLen: parseInt(document.getElementById('gsPeriodLen').value)||8,
+    currentPeriod: 1,
+    totalPeriods: parseInt(document.getElementById('gsPeriods').value),
+    clock: '',
+    away: { name:awayName, code:awayCode, players:awayPlayers, fouls:0 },
+    home: { name:homeName, code:homeCode, players:homePlayers, fouls:0 },
+    events: [], periodScores: { away:[], home:[] }, stats: {}
+  };
+
+  [...awayPlayers.map(p=>({...p,team:'away'})), ...homePlayers.map(p=>({...p,team:'home'}))].forEach(p=>{
+    G.stats[p.id] = {fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,paintPts:0,fastPts:0,secPts:0,offTOPts:0};
+  });
+
+  saveGame();
+  syncToWS();
+  _gsAwayPlayers=[]; _gsHomePlayers=[];
+  goTo('liveScreen');
+  initLiveUI();
+}
+
+function saveGame(){
+  if(!G) return;
+  const games = DB.get('games',[]);
+  const i = games.findIndex(g=>g.id===G.id);
+  if(i>=0) games[i]=G; else games.push(G);
+  DB.set('games', games);
+}
+
+function loadGame(id){
+  G = DB.get('games',[]).find(g=>g.id===id);
+  if(!G) return;
+  if(G.status==='live'){ goTo('liveScreen'); initLiveUI(); }
+  else { buildReport(); goTo('reportScreen'); }
+}
+
+function calcTeamScore(game, team){
+  if(!game||!game.stats) return 0;
+  return game[team].players.reduce((sum,p)=>sum+(game.stats[p.id]?.pts||0), 0);
+}
+
+function calcPts(s){ return (s.fgm-s.tpm)*2 + s.tpm*3 + s.ftm; }
+
+function getTeamTotals(team){
+  const tot = {fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,to:0,pf:0,pts:0,paintPts:0,fastPts:0,secPts:0,offTOPts:0};
+  G[team].players.forEach(p=>{
+    const s=G.stats[p.id]; if(!s) return;
+    Object.keys(tot).forEach(k=>{ if(s[k]!==undefined) tot[k]+=s[k]; });
+    tot.pts += calcPts(s);
+  });
+  return tot;
+}
+
+// ═══════════════════════════════════════════
+// LIVE UI
+// ═══════════════════════════════════════════
+let liveTab=0;
+let flow = { step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+
+function initLiveUI(){
+  flow = { step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+  liveTab=0;
+  document.getElementById('sbAwayName').textContent = G.away.code||G.away.name;
+  document.getElementById('sbHomeName').textContent = G.home.code||G.home.name;
+  document.getElementById('sbEvent').textContent = G.event||'';
+  setLiveTab(0);
+  updateScoreboard();
+}
+
+function updateScoreboard(){
+  document.getElementById('sbAwayPts').textContent = calcTeamScore(G,'away');
+  document.getElementById('sbHomePts').textContent = calcTeamScore(G,'home');
+  document.getElementById('sbPeriod').textContent = getPeriodLabel(G, G.currentPeriod);
+  const foulCount = G.away.fouls||0;
+  document.getElementById('sbFouls').innerHTML = [1,2,3,4,5,6,7].map(n=>`<div class="sb-foul${n<=foulCount?' active':''}"></div>`).join('');
+}
+
+function setLiveTab(n){
+  liveTab=n;
+  document.querySelectorAll('.ltab').forEach((t,i)=>t.classList.toggle('active',i===n));
+  if(n===0) renderOperatorPanel();
+  else if(n===1) renderBoxScorePanel();
+  else renderPBP();
+}
+
+function renderFlowBar(){
+  const steps = [];
+  if(flow.selectedPlayer){
+    const p = G[flow.selectedTeam].players.find(x=>x.id===flow.selectedPlayer);
+    steps.push(`<span class="flow-crumb done">${G[flow.selectedTeam].code} #${p?.num||''} ${p?.name.split(' ').pop()||''}</span>`);
+  }
+  if(flow.selectedEvent){ steps.push('<span class="flow-sep">›</span>',`<span class="flow-crumb done">${flow.selectedEvent}</span>`); }
+  if(flow.result){ steps.push('<span class="flow-sep">›</span>',`<span class="flow-crumb done">${flow.result.toUpperCase()}</span>`); }
+  const label = {player:'Select Player',event:'Select Action',result:'Made or Missed?',context:'Location / Context',assist:'Assist?'}[flow.step]||'';
+  if(label) steps.push(`<span class="flow-sep">›</span><span class="flow-crumb active">${label}</span>`);
+  document.getElementById('flowBar').innerHTML = steps.join('');
+}
+
+function renderOperatorPanel(){
+  renderFlowBar();
+  const el = document.getElementById('opPanel');
+  if(flow.step==='player') el.innerHTML = renderPlayerSelect();
+  else if(flow.step==='event') el.innerHTML = renderEventSelect();
+  else if(flow.step==='result') el.innerHTML = renderResultPanel();
+  else if(flow.step==='context') el.innerHTML = renderContextPanel();
+  else if(flow.step==='assist') el.innerHTML = renderAssistPanel();
+}
+
+function renderPlayerSelect(){
+  const mkTeam = (team)=>`<div class="team-col">
+    <div class="team-col-label">${G[team].name}</div>
+    ${G[team].players.map(p=>{
+      const s=G.stats[p.id]||{}, pf=s.pf||0, pts=calcPts(s);
+      return `<button class="pbtn ${pf>=5?'foul5':pf===4?'foul4':''}" onclick="selectPlayer('${team}','${p.id}')">
+        <div class="pbtn-num">${p.num||'—'}</div>
+        <div class="pbtn-name">${p.name.split(' ').pop()}</div>
+        <div class="pbtn-stat">${pts}pts</div>
+        <div class="pbtn-fouls">${[1,2,3,4,5].map(n=>`<div class="pbtn-fpip${n<=pf?' on':''}"></div>`).join('')}</div>
+      </button>`;
+    }).join('')}
+  </div>`;
+  return `<div class="teams-split">${mkTeam('away')}${mkTeam('home')}</div>`;
+}
+
+function selectPlayer(team, pid){ flow.selectedTeam=team; flow.selectedPlayer=pid; flow.step='event'; renderOperatorPanel(); }
+
+const EVENTS = [
+  {id:'SHOT_2PT', icon:'🏀', label:'2 PT', group:'shot'},
+  {id:'SHOT_3PT', icon:'🎯', label:'3 PT', group:'shot'},
+  {id:'FT', icon:'⭕', label:'Free Throw', group:'ft'},
+  {id:'OREB', icon:'💪', label:'Off Reb', group:'stat'},
+  {id:'DREB', icon:'🛡️', label:'Def Reb', group:'stat'},
+  {id:'AST', icon:'🤝', label:'Assist', group:'stat'},
+  {id:'STL', icon:'⚡', label:'Steal', group:'stat'},
+  {id:'BLK', icon:'✋', label:'Block', group:'stat'},
+  {id:'TO', icon:'💸', label:'Turnover', group:'stat'},
+  {id:'PF', icon:'🚨', label:'Foul', group:'stat'},
+  {id:'SUB_IN', icon:'⬆️', label:'Sub In', group:'sub'},
+  {id:'SUB_OUT', icon:'⬇️', label:'Sub Out', group:'sub'},
+];
+
+function renderEventSelect(){
+  const p = G[flow.selectedTeam].players.find(x=>x.id===flow.selectedPlayer);
+  return `<div class="step-hdr"><div class="step-num">2</div>Select Action — #${p?.num||''} ${p?.name.split(' ').pop()||''}
+    <button class="btn btn-ghost" style="margin-left:auto;padding:6px 10px;font-size:12px" onclick="resetFlow()">← Back</button>
+  </div>
+  <div class="evt-grid">${EVENTS.map(e=>`
+    <button class="evt-btn" onclick="selectEvent('${e.id}')">
+      <div class="evt-icon">${e.icon}</div><div class="evt-label">${e.label}</div>
+    </button>`).join('')}</div>`;
+}
+
+function selectEvent(evtId){
+  flow.selectedEvent=evtId;
+  const e = EVENTS.find(x=>x.id===evtId);
+  if(e?.group==='shot'||e?.group==='ft'){ flow.step='result'; renderOperatorPanel(); }
+  else { logStat(); }
+}
+
+function renderResultPanel(){
+  const e = EVENTS.find(x=>x.id===flow.selectedEvent);
+  return `<div class="step-hdr"><div class="step-num">3</div>${e?.label||''} — Made or Missed?
+    <button class="btn btn-ghost" style="margin-left:auto;padding:6px 10px;font-size:12px" onclick="flow.step='event';renderOperatorPanel()">← Back</button>
+  </div>
+  <div class="result-grid">
+    <button class="result-btn made" onclick="selectResult('made')"><div class="result-icon">✅</div><div class="result-label">Made</div></button>
+    <button class="result-btn miss" onclick="selectResult('missed')"><div class="result-icon">❌</div><div class="result-label">Missed</div></button>
+  </div>`;
+}
+
+function selectResult(r){
+  flow.result=r;
+  if(flow.selectedEvent==='FT'){ logStat(); return; }
+  if(r==='made'){ flow.step='context'; renderOperatorPanel(); }
+  else { logStat(); }
+}
+
+const LOCATIONS = [{id:'paint',icon:'🟥',label:'In Paint'},{id:'mid',icon:'🟨',label:'Mid Range'},{id:'three',icon:'🟦',label:'3-Point'}];
+const CONTEXTS  = [{id:'half',icon:'⛹️',label:'Half Court'},{id:'fast',icon:'💨',label:'Fast Break'},{id:'second',icon:'🔄',label:'2nd Chance'},{id:'offTO',icon:'💥',label:'Off Turnover'}];
+
+function renderContextPanel(){
+  const is3 = flow.selectedEvent==='SHOT_3PT';
+  const locBtns = LOCATIONS.map(l=>`
+    <button class="ctx-btn ${(flow.shotLoc===l.id||(is3&&l.id==='three'))?'sel':''}"
+      onclick="flow.shotLoc='${l.id}';this.parentElement.querySelectorAll('.ctx-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')">
+      <div class="ctx-icon">${l.icon}</div><div class="ctx-label">${l.label}</div></button>`).join('');
+  const ctxBtns = CONTEXTS.map(c=>`
+    <button class="ctx-btn ${flow.context===c.id?'sel':''}"
+      onclick="flow.context='${c.id}';document.querySelectorAll('#ctxGrid .ctx-btn').forEach(b=>b.classList.remove('sel'));this.classList.add('sel')">
+      <div class="ctx-icon">${c.icon}</div><div class="ctx-label">${c.label}</div></button>`).join('');
+  return `<div class="step-hdr"><div class="step-num">4</div>Shot Context
+    <button class="confirm-btn" onclick="flow.step='assist';renderOperatorPanel()">Next →</button>
+  </div>
+  <div style="padding:8px 10px 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Location</div>
+  <div class="ctx-grid">${locBtns}</div>
+  <div style="padding:8px 10px 2px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">Play Context</div>
+  <div class="ctx-grid" id="ctxGrid">${ctxBtns}</div>
+  <div style="padding:10px"><button class="btn btn-ghost btn-full" onclick="flow.step='assist';renderOperatorPanel()">Skip →</button></div>`;
+}
+
+function renderAssistPanel(){
+  if(flow.result!=='made'){ logStat(); return ''; }
+  const players = G[flow.selectedTeam].players.filter(p=>p.id!==flow.selectedPlayer);
+  return `<div class="step-hdr"><div class="step-num">5</div>Assist? (tap player or skip)
+    <button class="confirm-btn" onclick="logStat()">No Assist</button>
+  </div>
+  <div class="assist-grid">
+    ${players.map(p=>`<button class="abtn" onclick="flow.assistPlayer='${p.id}';logStat()">
+      <div class="abtn-num">${p.num||'—'}</div><div class="abtn-name">${p.name.split(' ').pop()}</div></button>`).join('')}
+    <button class="abtn" onclick="flow.assistPlayer=null;logStat()"><div style="font-size:20px">🚫</div><div class="abtn-name">No Assist</div></button>
+  </div>`;
+}
+
+function logStat(){
+  if(!G||!flow.selectedPlayer) return;
+  const evt=flow.selectedEvent, pid=flow.selectedPlayer, s=G.stats[pid];
+  if(!s) return;
+  let pts=0, desc='', icon='';
+
+  if(evt==='SHOT_2PT'){
+    s.fga++; icon='🏀';
+    if(flow.result==='made'){ s.fgm++; pts=2; s.pts+=2; if(flow.shotLoc==='paint')s.paintPts+=2; if(flow.context==='fast')s.fastPts+=2; if(flow.context==='second')s.secPts+=2; if(flow.context==='offTO')s.offTOPts+=2; desc='2PT Made'; }
+    else desc='2PT Missed';
+  } else if(evt==='SHOT_3PT'){
+    s.fga++; s.tpa++; icon='🎯';
+    if(flow.result==='made'){ s.fgm++; s.tpm++; pts=3; s.pts+=3; if(flow.context==='fast')s.fastPts+=3; if(flow.context==='second')s.secPts+=3; if(flow.context==='offTO')s.offTOPts+=3; desc='3PT Made'; }
+    else desc='3PT Missed';
+  } else if(evt==='FT'){
+    s.fta++; icon='⭕';
+    if(flow.result==='made'){ s.ftm++; pts=1; s.pts+=1; desc='FT Made'; } else desc='FT Missed';
+  } else if(evt==='OREB'){ s.oreb++; desc='Off Rebound'; icon='💪'; }
+  else if(evt==='DREB'){ s.dreb++; desc='Def Rebound'; icon='🛡️'; }
+  else if(evt==='AST'){ s.ast++; desc='Assist'; icon='🤝'; }
+  else if(evt==='STL'){ s.stl++; desc='Steal'; icon='⚡'; }
+  else if(evt==='BLK'){ s.blk++; desc='Block'; icon='✋'; }
+  else if(evt==='TO'){ s.to++; desc='Turnover'; icon='💸'; }
+  else if(evt==='PF'){ s.pf++; G[flow.selectedTeam].fouls=(G[flow.selectedTeam].fouls||0)+1; desc='Personal Foul'; icon='🚨'; }
+
+  if(flow.assistPlayer){ const as=G.stats[flow.assistPlayer]; if(as) as.ast++; }
+
+  const p = G[flow.selectedTeam].players.find(x=>x.id===pid);
+  G.events.push({
+    id:'e_'+Date.now(), team:flow.selectedTeam, pid, evt,
+    result:flow.result, pts, period:G.currentPeriod, clock:G.clock,
+    context:flow.context, loc:flow.shotLoc, assistPid:flow.assistPlayer,
+    desc:`${icon} ${G[flow.selectedTeam].code} #${p?.num||''} ${p?.name.split(' ').pop()||''} — ${desc}${pts?' (+'+pts+')':''}`,
+    timestamp: Date.now()
+  });
+
+  saveGame();
+  syncToWS();
+  updateScoreboard();
+  resetFlow();
+  if(liveTab===0) renderOperatorPanel();
+  if(pts>0) toast(`+${pts} ${G[flow.selectedTeam].code}`);
+}
+
+function resetFlow(){
+  flow={ step:'player', selectedTeam:null, selectedPlayer:null, selectedEvent:null, result:null, context:'half', shotLoc:'mid', assistPlayer:null };
+  renderOperatorPanel();
+}
+
+function undoLast(){
+  if(!G||!G.events.length){ toast('Nothing to undo'); return; }
+  const last=G.events[G.events.length-1], pid=last.pid, evt=last.evt, s=G.stats[pid];
+  if(s){
+    if(evt==='SHOT_2PT'){ s.fga--; if(last.result==='made'){s.fgm--;s.pts-=2;if(last.loc==='paint'&&s.paintPts>0)s.paintPts-=2;if(last.context==='fast'&&s.fastPts>0)s.fastPts-=2;if(last.context==='second'&&s.secPts>0)s.secPts-=2;if(last.context==='offTO'&&s.offTOPts>0)s.offTOPts-=2;} }
+    else if(evt==='SHOT_3PT'){ s.fga--;s.tpa--;if(last.result==='made'){s.fgm--;s.tpm--;s.pts-=3;} }
+    else if(evt==='FT'){ s.fta--;if(last.result==='made'){s.ftm--;s.pts-=1;} }
+    else if(evt==='OREB') s.oreb--;
+    else if(evt==='DREB') s.dreb--;
+    else if(evt==='AST') s.ast--;
+    else if(evt==='STL') s.stl--;
+    else if(evt==='BLK') s.blk--;
+    else if(evt==='TO') s.to--;
+    else if(evt==='PF'){ s.pf--;G[last.team].fouls=Math.max(0,(G[last.team].fouls||1)-1); }
+    if(last.assistPid){const as=G.stats[last.assistPid];if(as&&as.ast>0)as.ast--;}
+  }
+  G.events.pop();
+  saveGame();
+  syncToWS();
+  updateScoreboard();
+  resetFlow();
+  toast('Undone ↩');
+}
+
+function renderBoxScorePanel(){
+  document.getElementById('flowBar').innerHTML='';
+  const mkTable=(team)=>{
+    const rows=G[team].players.map(p=>{
+      const s=G.stats[p.id]||{}, pts=calcPts(s), dnp=Object.values(s).every(v=>v===0);
+      return `<tr${dnp?' style="opacity:.4"':''}>
+        <td>${p.num||''}</td><td>${p.name}</td><td class="box-pts">${pts}</td>
+        <td>${s.fgm||0}-${s.fga||0}</td><td>${s.tpm||0}-${s.tpa||0}</td><td>${s.ftm||0}-${s.fta||0}</td>
+        <td>${(s.oreb||0)+(s.dreb||0)}</td><td>${s.ast||0}</td><td>${s.stl||0}</td><td>${s.blk||0}</td><td>${s.to||0}</td><td>${s.pf||0}</td>
+      </tr>`;
+    }).join('');
+    const t=getTeamTotals(team);
+    const pct=(m,a)=>a>0?Math.round(m/a*100)+'%':'—';
+    return `<div class="box-team-hdr">${G[team].name}<span class="tag tag-gold">${calcTeamScore(G,team)}</span></div>
+    <div class="box-wrap"><table class="box-table">
+      <thead><tr><th>#</th><th>Player</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead>
+      <tbody>${rows}<tr class="tot"><td></td><td><strong>TOTAL</strong></td><td class="box-pts">${t.pts}</td><td>${t.fgm}-${t.fga} ${pct(t.fgm,t.fga)}</td><td>${t.tpm}-${t.tpa} ${pct(t.tpm,t.tpa)}</td><td>${t.ftm}-${t.fta} ${pct(t.ftm,t.fta)}</td><td>${(t.oreb||0)+(t.dreb||0)}</td><td>${t.ast}</td><td>${t.stl}</td><td>${t.blk}</td><td>${t.to}</td><td>${t.pf}</td></tr></tbody>
+    </table></div>`;
+  };
+  document.getElementById('opPanel').innerHTML = mkTable('away')+mkTable('home');
+}
+
+function renderPBP(){
+  document.getElementById('flowBar').innerHTML='';
+  const el=document.getElementById('opPanel');
+  if(!G.events.length){ el.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">No events logged yet</div>'; return; }
+  el.innerHTML='<div>'+[...G.events].reverse().slice(0,40).map(e=>`
+    <div class="pbp-item">
+      <div class="pbp-q">${getPeriodLabel(G,e.period)}</div>
+      <div class="pbp-clock">${e.clock||'—'}</div>
+      <div class="pbp-text">${e.desc}</div>
+      ${e.pts?`<div class="pbp-pts">+${e.pts}</div>`:''}
+    </div>`).join('')+'</div>';
+}
+
+// ═══════════════════════════════════════════
+// PERIOD / CLOCK
+// ═══════════════════════════════════════════
+function openClockModal(){ openModal('clockModal'); document.getElementById('clockInput').focus(); }
+function saveClock(){ G.clock=document.getElementById('clockInput').value.trim(); saveGame(); closeModal('clockModal'); updateScoreboard(); }
+
+function openPeriodModal(){
+  document.getElementById('periodModalTitle').textContent=`End of ${getPeriodLabel(G,G.currentPeriod)}`;
+  document.getElementById('pmAwayLabel').textContent=`${G.away.name} Score`;
+  document.getElementById('pmHomeLabel').textContent=`${G.home.name} Score`;
+  openModal('periodModal');
+}
+
+function advancePeriod(){
+  if(!G.periodScores.away) G.periodScores={away:[],home:[]};
+  G.periodScores.away[G.currentPeriod-1]=parseInt(document.getElementById('pmAway').value)||0;
+  G.periodScores.home[G.currentPeriod-1]=parseInt(document.getElementById('pmHome').value)||0;
+  G.currentPeriod++;
+  G.away.fouls=0; G.home.fouls=0;
+  if(G.currentPeriod>G.totalPeriods) G.totalPeriods=G.currentPeriod;
+  saveGame(); syncToWS(); closeModal('periodModal'); updateScoreboard();
+  toast(`Period ${G.currentPeriod} started`);
+}
+
+function addOT(){
+  G.totalPeriods++; G.currentPeriod=G.totalPeriods;
+  G.away.fouls=0; G.home.fouls=0;
+  saveGame(); syncToWS(); closeModal('periodModal'); updateScoreboard();
+  toast('Overtime added');
+}
+
+function confirmEnd(){
+  const a=calcTeamScore(G,'away'), h=calcTeamScore(G,'home');
+  document.getElementById('endModalScore').textContent=`${G.away.code} ${a} – ${h} ${G.home.code}`;
+  document.getElementById('endModalEvent').textContent=G.event||'';
+  openModal('endModal');
+}
+
+function endGame(){
+  G.status='final'; G.endTime=Date.now();
+  saveGame();
+  wsSend({ type:'patch', stats:{ away:teamToWS('away'), home:teamToWS('home'), meta:{eventTitle:G.event||'',gameDate:G.date||'',gameStatus:'Final'} }});
+  closeModal('endModal');
+  showReport();
+}
+
+// ═══════════════════════════════════════════
+// REPORT
+// ═══════════════════════════════════════════
+function showReport(){ buildReport(); goTo('reportScreen'); }
+
+function buildReport(){
+  if(!G) return;
+  const away=G.away, home=G.home;
+  const aScore=calcTeamScore(G,'away'), hScore=calcTeamScore(G,'home');
+  const at=getTeamTotals('away'), ht=getTeamTotals('home');
+  const pct=(m,a)=>a>0?((m/a)*100).toFixed(1)+'%':'—';
+  const fmt=(d,t)=>{ let s=''; if(d){const dt=new Date(d+'T12:00:00');s=`${dt.getMonth()+1}/${dt.getDate()}/${dt.getFullYear()%100}`;} if(t){const[h,m]=t.split(':');const hr=parseInt(h);s+=(s?' ':'')+`${hr%12||12}:${m}${hr>=12?'pm':'am'}`;} return s; };
+  const pLabel=(i)=>{ if(G.periods===2) return i<=2?`${i===1?'1st Half':'2nd Half'}`:`OT${i-2}`; return i<=4?['1st','2nd','3rd','4th'][i-1]:`OT${i-4}`; };
+
+  let periodRows='';
+  for(let i=1;i<=G.totalPeriods;i++){
+    periodRows+=`<tr><td>${pLabel(i)}</td><td>${G.periodScores?.away?.[i-1]||'—'}</td><td>${G.periodScores?.home?.[i-1]||'—'}</td></tr>`;
+  }
+  periodRows+=`<tr style="font-weight:700"><td>Final</td><td>${aScore}</td><td>${hScore}</td></tr>`;
+
+  const playerRows=(team)=>G[team].players.map(p=>{
+    const s=G.stats[p.id]||{}, pts=calcPts(s);
+    if(!Object.values(s).some(v=>v>0)) return `<tr><td>${p.num||''}</td><td>${p.name}</td><td colspan="12" style="color:#aaa;font-style:italic">DNP</td></tr>`;
+    return `<tr><td>${p.num||''}</td><td><b>${pts}</b></td><td>${s.fgm||0}-${s.fga||0}</td><td>${s.tpm||0}-${s.tpa||0}</td><td>${s.ftm||0}-${s.fta||0}</td><td>${s.oreb||0}</td><td>${s.dreb||0}</td><td>${(s.oreb||0)+(s.dreb||0)}</td><td>${s.ast||0}</td><td>${s.stl||0}</td><td>${s.blk||0}</td><td>${s.to||0}</td><td>${s.pf||0}</td></tr>`;
+  }).join('');
+
+  const totRow=(t)=>`<tr class="rtot"><td></td><td><b>${t.pts}</b></td><td>${t.fgm}-${t.fga}<br><small>${pct(t.fgm,t.fga)}</small></td><td>${t.tpm}-${t.tpa}<br><small>${pct(t.tpm,t.tpa)}</small></td><td>${t.ftm}-${t.fta}<br><small>${pct(t.ftm,t.fta)}</small></td><td>${t.oreb||0}</td><td>${t.dreb||0}</td><td>${(t.oreb||0)+(t.dreb||0)}</td><td>${t.ast}</td><td>${t.stl}</td><td>${t.blk}</td><td>${t.to}</td><td>${t.pf}</td></tr>`;
+
+  document.getElementById('reportFrame').innerHTML=`
+    <div class="r-header">
+      <div class="r-brand">NSMT<br><span class="r-brand-sub">Nova Sports Media Team</span></div>
+      <div class="r-title-block"><div class="r-event">${G.event||'Basketball Game'}</div><div class="r-datetime">${fmt(G.date,G.time)}${G.venue?' • '+G.venue:''}</div><div class="r-final">FINAL</div></div>
+      <div style="text-align:right;font-size:9px;color:#aaa">${G.keeper?`Keeper: ${G.keeper}<br>`:''}${new Date().toLocaleDateString()}<br>thensmt.com</div>
+    </div>
+    <div class="r-team-hdr"><span class="r-team-name">${away.name}</span><span class="r-score-badge">${aScore}</span></div>
+    <table class="r-table"><thead><tr><th>#</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>OFF</th><th>DEF</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead><tbody>${playerRows('away')}${totRow(at)}</tbody></table>
+    <div class="r-team-hdr" style="margin-top:10px"><span class="r-team-name">${home.name}</span><span class="r-score-badge">${hScore}</span></div>
+    <table class="r-table"><thead><tr><th>#</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>OFF</th><th>DEF</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th></tr></thead><tbody>${playerRows('home')}${totRow(ht)}</tbody></table>
+    <div class="r-summary">
+      <table class="r-sum-table"><thead><tr><th>PERIOD SCORES</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead><tbody>${periodRows}</tbody></table>
+      <table class="r-sum-table"><thead><tr><th>POINT TYPE</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead>
+        <tbody><tr><td>In Paint</td><td>${at.paintPts||0}</td><td>${ht.paintPts||0}</td></tr><tr><td>Fast Break</td><td>${at.fastPts||0}</td><td>${ht.fastPts||0}</td></tr><tr><td>2nd Chance</td><td>${at.secPts||0}</td><td>${ht.secPts||0}</td></tr><tr><td>Off Turnovers</td><td>${at.offTOPts||0}</td><td>${ht.offTOPts||0}</td></tr></tbody>
+      </table>
+      <table class="r-sum-table"><thead><tr><th>TEAM STATS</th><th class="center">${away.code}</th><th class="center">${home.code}</th></tr></thead>
+        <tbody><tr><td>FG%</td><td>${pct(at.fgm,at.fga)}</td><td>${pct(ht.fgm,ht.fga)}</td></tr><tr><td>3PT%</td><td>${pct(at.tpm,at.tpa)}</td><td>${pct(ht.tpm,ht.tpa)}</td></tr><tr><td>FT%</td><td>${pct(at.ftm,at.fta)}</td><td>${pct(ht.ftm,ht.fta)}</td></tr><tr><td>Rebounds</td><td>${(at.oreb||0)+(at.dreb||0)}</td><td>${(ht.oreb||0)+(ht.dreb||0)}</td></tr><tr><td>Assists</td><td>${at.ast}</td><td>${ht.ast}</td></tr><tr><td>Turnovers</td><td>${at.to}</td><td>${ht.to}</td></tr><tr><td>Steals</td><td>${at.stl}</td><td>${ht.stl}</td></tr><tr><td>Blocks</td><td>${at.blk}</td><td>${ht.blk}</td></tr></tbody>
+      </table>
+    </div>
+    <div class="r-footer">Nova Sports Media Team — thensmt.com — ${G.event||''} ${fmt(G.date,G.time)}</div>`;
+}
+
+function exportGame(){
+  if(!G) return;
+  const blob=new Blob([JSON.stringify(G,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`NSMT_${G.event||'Game'}_${G.date||'nodate'}_${G.away.code||'AWAY'}_vs_${G.home.code||'HOME'}.nsmtgame`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===el) el.classList.add('hidden'); });
+});
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+let _toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ═══════════════════════════════════════════
+// SOP
+// ═══════════════════════════════════════════
+function showSopTab(tab, btn){
+  document.querySelectorAll('.sop-tab').forEach(t=>t.classList.add('hidden'));
+  document.querySelectorAll('.sop-tab-btn').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('sop-'+tab);
+  if(el) el.classList.remove('hidden');
+  if(btn) btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.getElementById('gsDate').value = new Date().toISOString().split('T')[0];
+renderHome();
+</script>
+</body>
+</html>

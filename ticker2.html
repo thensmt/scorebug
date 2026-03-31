@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NSMT FNL • Scorebug + Flag + Players</title>
+<style>
+  :root{
+    --safe-margin:40px;
+    --bar-h:96px;
+    --subbar-h:44px;
+    --bug-bg:#0e1117; --bug-grad-a:#0f131a; --bug-grad-b:#171c24;
+    --text:#e9eef6; --muted:#9fb0c3; --accent:#39a1ff;
+    --flag:#ffd100; --flag-text:#101214;
+    --good:#00d67a;
+    /* NSMT brand */
+    --nsmt-a:#111827; --nsmt-b:#1f2937; --nsmt-pop:#00e0ff;
+  }
+  html,body{height:100%;margin:0;background:transparent;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .stage{position:relative;width:100%;height:100%}
+
+  /* Players subbar */
+  .players{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom:calc(var(--bar-h) + var(--safe-margin) + 8px);
+    height:var(--subbar-h); min-width:980px; max-width:1440px; width:80vw;
+    display:flex; align-items:center; gap:14px; padding:0 16px;
+    border-radius:12px; background:linear-gradient(180deg,var(--bug-grad-a),var(--bug-grad-b));
+    box-shadow:0 10px 24px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    color:var(--text); font-weight:600; letter-spacing:.2px; overflow:hidden;
+  }
+  .players .label{font-weight:800;text-transform:uppercase;font-size:14px;opacity:.9;color:var(--muted);padding-right:8px;border-right:1px solid rgba(255,255,255,.08)}
+  .ticker{display:flex;gap:18px;padding-left:4px;white-space:nowrap;animation:ticker 22s linear infinite}
+  .ticker span{opacity:.95}
+  @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* Penalty ribbon */
+  .penalty{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom:calc(var(--bar-h) + var(--safe-margin) + var(--subbar-h) + 18px);
+    min-width:900px; max-width:1440px; width:76vw; height:48px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#ffe36c,#ffd100);
+    color:#1a1200; font-weight:1000; font-size:20px; letter-spacing:.5px; text-transform:uppercase;
+    border-radius:10px; box-shadow:0 10px 24px rgba(0,0,0,.45);
+    transform:translateY(20px); opacity:0; transition:.35s ease;
+  }
+  .penalty.show{transform:translateY(0); opacity:1}
+
+  /* Main bug */
+  .bug{
+    position:absolute; left:50%; transform:translateX(-50%);
+    bottom:var(--safe-margin); height:var(--bar-h);
+    min-width:1240px; max-width:1680px; width:90vw;
+    display:grid; grid-template-columns: 182px 1fr auto 1fr auto 92px 86px;
+    align-items:stretch; gap:8px; padding:8px;
+    border-radius:14px; background:linear-gradient(180deg,var(--bug-grad-a),var(--bug-grad-b));
+    box-shadow:0 16px 32px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+
+  /* NSMT FNL brand tile */
+  .brand{
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,var(--nsmt-a),var(--nsmt-b));
+    border-radius:10px; color:#fff; text-transform:uppercase;
+    font-weight:1000; letter-spacing:.8px; position:relative; overflow:hidden;
+  }
+  .brand::after{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(120% 120% at 0% 0%, rgba(0,224,255,.18), transparent 60%);
+    pointer-events:none;
+  }
+  .brand span{font-size:22px}
+  .brand b{color:var(--nsmt-pop)}
+
+  /* Teams */
+  .team{
+    display:grid; grid-template-columns:84px 1fr 88px; align-items:center;
+    gap:10px; padding:6px 10px; border-radius:10px; position:relative; overflow:hidden;
+    background:rgba(255,255,255,.04);
+  }
+  .team .logo{height:56px;width:56px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}
+  .meta{display:flex;flex-direction:column;line-height:1.1}
+  .abbr{font-size:22px;font-weight:900;letter-spacing:.3px}
+  .record{font-size:12px;font-weight:700;color:var(--muted)}
+  .score{font-size:44px;font-weight:1000;text-align:right;padding-right:8px}
+  .possession{position:absolute;left:8px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px rgba(0,0,0,.35)}
+
+  /* Center info */
+  .center{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.04);min-width:320px}
+  .clock{font-size:28px;font-weight:900}
+  .quarter,.down{font-size:14px;font-weight:800;color:var(--muted);padding:0 10px;border-left:1px solid rgba(255,255,255,.08)}
+  .playclk{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;background:rgba(255,255,255,.08);border-radius:10px;padding:0 8px}
+
+  /* Flag pill */
+  .flag{display:flex;align-items:center;justify-content:center;background:var(--flag);color:var(--flag-text);font-weight:1000;font-size:18px;border-radius:10px;padding:0 14px;letter-spacing:.6px;text-transform:uppercase;filter:drop-shadow(0 6px 14px rgba(0,0,0,.35));transform:translateY(140%);opacity:0;transition:.35s ease}
+  .flag.show{transform:translateY(0);opacity:1}
+
+  /* Control panel */
+  .cp{position:fixed;right:16px;top:16px;background:#0f1216;color:#eaf1f8;padding:12px;border-radius:12px;width:320px;font-size:14px;box-shadow:0 12px 28px rgba(0,0,0,.5);display:none}
+  .cp.show{display:block}
+  .cp input,.cp textarea,.cp select{width:100%;background:#161b22;color:#eaf1f8;border:1px solid #2a323d;border-radius:8px;padding:8px;margin:6px 0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cp button{width:100%;padding:10px;border:0;border-radius:10px;font-weight:800;cursor:pointer;background:#1e90ff;color:#fff;margin-top:6px}
+  .ghost{background:#2a323d}
+  .note{color:#9fb0c3;font-size:12px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <!-- Penalty banner -->
+  <div id="penalty" class="penalty">NEUTRAL ZONE INFRACTION — BILLS</div>
+
+  <!-- Players / personnel strip -->
+  <div class="players" id="players">
+    <div class="label">On Field</div>
+    <div class="ticker" id="ticker">
+      <span>QB #17 J. Allen</span><span>RB #14 J. Cook</span><span>WR #13 G. Davis</span><span>WR #11 K. Shakir</span><span>TE #88 D. Kincaid</span><span>LT #73 D. Dawkins</span>
+      <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+      <span>QB #17 J. Allen</span><span>RB #14 J. Cook</span><span>WR #13 G. Davis</span><span>WR #11 K. Shakir</span><span>TE #88 D. Kincaid</span><span>LT #73 D. Dawkins</span>
+    </div>
+  </div>
+
+  <!-- Main bug -->
+  <div class="bug">
+    <div class="brand"><span>NSMT <b>FNL</b></span></div>
+
+    <div class="team" id="teamL">
+      <div class="possession" id="posL"></div>
+      <img class="logo" id="logoL" src="https://upload.wikimedia.org/wikipedia/en/7/77/Tennessee_Titans_logo.svg" alt="">
+      <div class="meta"><div class="abbr" id="abbrL">TEN</div><div class="record" id="recL">0–1</div></div>
+      <div class="score" id="scoreL">7</div>
+    </div>
+
+    <div class="center">
+      <div class="clock" id="clock">7:32</div>
+      <div class="quarter" id="qtr">3RD</div>
+      <div class="down" id="down">3rd & 6 • BUF 29</div>
+    </div>
+
+    <div class="team" id="teamR">
+      <div class="possession" id="posR" style="display:none"></div>
+      <img class="logo" id="logoR" src="https://upload.wikimedia.org/wikipedia/en/7/77/Buffalo_Bills_logo.svg" alt="">
+      <div class="meta"><div class="abbr" id="abbrR">BUF</div><div class="record" id="recR">1–0</div></div>
+      <div class="score" id="scoreR">27</div>
+    </div>
+
+    <div class="playclk" id="pclk">25</div>
+    <div class="flag" id="flag">FLAG</div>
+  </div>
+</div>
+
+<!-- Control panel (open with ?control=1) -->
+<div class="cp" id="cp">
+  <div class="row">
+    <div>
+      <label>Left Team</label>
+      <input id="iAbbrL" placeholder="TEN"/><input id="iRecL" placeholder="0–1"/><input id="iScoreL" placeholder="7"/><input id="iLogoL" placeholder="Logo URL (left)"/>
+    </div>
+    <div>
+      <label>Right Team</label>
+      <input id="iAbbrR" placeholder="BUF"/><input id="iRecR" placeholder="1–0"/><input id="iScoreR" placeholder="27"/><input id="iLogoR" placeholder="Logo URL (right)"/>
+    </div>
+  </div>
+  <div class="row"><input id="iClock" placeholder="7:32"/><input id="iQtr" placeholder="3RD"/></div>
+  <input id="iDown" placeholder="3rd & 6 • BUF 29"/>
+  <div class="row"><input id="iPclk" placeholder="25"/><select id="iPoss"><option value="L">Possession: Left</option><option value="R">Possession: Right</option></select></div>
+  <textarea id="iPlayers" rows="3" placeholder="Comma-separated players: QB #10, RB #22, WR #11 ..."></textarea>
+  <input id="iPenalty" placeholder="NEUTRAL ZONE INFRACTION — BILLS"/>
+  <div class="row"><button id="apply">Apply</button><button class="ghost" id="toggleFlag">Toggle FLAG</button></div>
+  <div class="row"><button class="ghost" id="togglePenalty">Toggle Penalty Ribbon</button><button class="ghost" id="swapTeams">Swap Sides</button></div>
+  <div class="note">Hotkeys: F = Toggle FLAG • R = Toggle Penalty • P = Swap Possession</div>
+</div>
+
+<script>
+  const qs=new URLSearchParams(location.search);
+  if(qs.get('control')==='1') document.getElementById('cp').classList.add('show');
+  const $=id=>document.getElementById(id);
+  const flag=$('flag'),penalty=$('penalty');
+  function setPlayers(list){
+    const wrap=$('ticker'); if(!list||!list.length) return;
+    const items=list.map(s=>`<span>${s.trim()}</span>`).join("");
+    wrap.innerHTML=items+`<span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>`+items;
+  }
+  function apply(){
+    $('abbrL').textContent=$('iAbbrL').value||$('abbrL').textContent;
+    $('recL').textContent=$('iRecL').value||$('recL').textContent;
+    $('scoreL').textContent=$('iScoreL').value||$('scoreL').textContent;
+    if($('iLogoL').value) $('logoL').src=$('iLogoL').value;
+
+    $('abbrR').textContent=$('iAbbrR').value||$('abbrR').textContent;
+    $('recR').textContent=$('iRecR').value||$('recR').textContent;
+    $('scoreR').textContent=$('iScoreR').value||$('scoreR').textContent;
+    if($('iLogoR').value) $('logoR').src=$('iLogoR').value;
+
+    $('clock').textContent=$('iClock').value||$('clock').textContent;
+    $('qtr').textContent=$('iQtr').value||$('qtr').textContent;
+    $('down').textContent=$('iDown').value||$('down').textContent;
+    $('pclk').textContent=$('iPclk').value||$('pclk').textContent;
+
+    const poss=$('iPoss').value;
+    $('posL').style.display=(poss==='L')?'block':'none';
+    $('posR').style.display=(poss==='R')?'block':'none';
+
+    if($('iPenalty').value) penalty.textContent=$('iPenalty').value;
+    const players=$('iPlayers').value; if(players) setPlayers(players.split(','));
+  }
+  $('apply')?.addEventListener('click',apply);
+  $('toggleFlag')?.addEventListener('click',()=>flag.classList.toggle('show'));
+  $('togglePenalty')?.addEventListener('click',()=>penalty.classList.toggle('show'));
+  $('swapTeams')?.addEventListener('click',()=>{
+    const l={abbr:$('abbrL').textContent,rec:$('recL').textContent,score:$('scoreL').textContent,logo:$('logoL').src,poss:$('posL').style.display!=='none'};
+    const r={abbr:$('abbrR').textContent,rec:$('recR').textContent,score:$('scoreR').textContent,logo:$('logoR').src,poss:$('posR').style.display!=='none'};
+    $('abbrL').textContent=r.abbr; $('recL').textContent=r.rec; $('scoreL').textContent=r.score; $('logoL').src=r.logo; $('posL').style.display=r.poss?'block':'none';
+    $('abbrR').textContent=l.abbr; $('recR').textContent=l.rec; $('scoreR').textContent=l.score; $('logoR').src=l.logo; $('posR').style.display=l.poss?'block':'none';
+  });
+  window.addEventListener('keydown',(e)=>{
+    if(e.key.toLowerCase()==='f') flag.classList.toggle('show');
+    if(e.key.toLowerCase()==='r') penalty.classList.toggle('show');
+    if(e.key.toLowerCase()==='p'){
+      const leftShown=$('posL').style.display!=='none';
+      $('posL').style.display=leftShown?'none':'block';
+      $('posR').style.display=leftShown?'block':'none';
+    }
+  });
+</script>
+</body>
+</html>

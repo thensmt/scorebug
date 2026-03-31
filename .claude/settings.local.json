@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod +x \"/Users/david/Downloads/Claude/NSMT/start.sh\")",
+      "Bash(chmod +x \"/Users/david/Downloads/Claude/NSMT/start.command\")",
+      "Read(//usr/local/**)",
+      "Read(//opt/homebrew/**)",
+      "Bash(ls /Users/david/Desktop/Livestream/scorebugfinal/*.command)",
+      "Bash(ls /Users/david/Desktop/Livestream/scorebugfinal/*.sh)",
+      "Bash(python3 -c \"import websockets; print\\(''websockets ok'', websockets.__version__\\)\")",
+      "Bash(pkill -f scoreboard_server.py)",
+      "Bash(python3 /Users/david/Desktop/Livestream/scorebugfinal/scoreboard_server.py)",
+      "Bash(curl -s http://localhost:8000/index.html)",
+      "Bash(curl -s http://localhost:8765)",
+      "Bash(curl -s -X POST http://localhost:8000/upload -H \"Content-Type: image/png\" --data-binary @-)",
+      "Bash(curl -s -X POST http://localhost:8000/upload -H \"Content-Type: image/png\" --data-binary \"fakedata\")",
+      "Bash(ls /Users/david/Desktop/Livestream/scorebugfinal/*.html)",
+      "Bash(mv nsmt-producer-v2.html nsmt-producer.html)",
+      "Bash(mv nsmt_fox_overlay_ws.html nsmt-overlay.html)",
+      "Bash(mv stats_v3.html nsmt-stats.html)",
+      "Bash(mv scoreboard_server.py nsmt-server.py)",
+      "Bash(mv websocket-server.js nsmt-server-node.js)",
+      "Bash(mv ws-client.js nsmt-ws-client.js)",
+      "WebFetch(domain:drive.google.com)"
+    ]
+  }
+}
