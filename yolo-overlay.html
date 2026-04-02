@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920,height=1080">
+<title>NSMT Scorebug — YoloBox Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --scale: 1;
+    --safe-bottom: 42px;
+    --bug-width: 960px;
+    --bug-height: 116px;
+    --panel: rgba(5, 7, 10, 0.98);
+    --panel-soft: rgba(14, 18, 24, 0.98);
+    --line: rgba(255, 255, 255, 0.09);
+    --text: #ffffff;
+    --muted: rgba(255, 255, 255, 0.68);
+    --gold: #f3c51d;
+    --brand: #0e80fc;
+    --shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* ─── MAIN WRAPPER ─── */
+  .scorebug-wrap {
+    position: absolute;
+    bottom: var(--safe-bottom);
+    left: 50%;
+    width: var(--bug-width);
+    height: var(--bug-height);
+    transform: translateX(-50%) scale(var(--scale));
+    transform-origin: bottom center;
+    filter: drop-shadow(var(--shadow));
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+  .scorebug-wrap.hidden { opacity: 0; pointer-events: none; }
+
+  /* ─── 5-COLUMN GRID ─── */
+  .scorebug {
+    position: relative;
+    width: 100%; height: 100%;
+    display: grid;
+    grid-template-columns: 128px 260px 128px 260px 128px;
+    background: linear-gradient(180deg, rgba(11, 13, 16, 0.99), rgba(3, 5, 8, 0.99));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    overflow: visible;
+  }
+
+  /* Subtle scan-line texture */
+  .scorebug::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08), transparent 28%, transparent 72%, rgba(255,255,255,0.03)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 106px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .panel {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    border-left: 1px solid var(--line);
+  }
+  .panel:first-of-type { border-left: 0; }
+
+  /* ─── LOGO PANELS ─── */
+  .logo-panel {
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    overflow: visible;
+  }
+
+  .logo-frame {
+    width: 96px;
+    height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 3px solid #000000;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .logo-frame img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  }
+
+  .logo-frame.is-empty {
+    border-color: transparent;
+  }
+  .logo-frame.is-empty::after {
+    content: attr(data-fallback);
+    font-size: 38px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.15);
+    letter-spacing: 1px;
+  }
+
+  /* ─── TEAM PANELS ─── */
+  .team-panel {
+    display: grid;
+    grid-template-columns: 1fr 74px;
+    align-items: center;
+    padding: 38px 16px 10px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.035), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,0.025), rgba(0,0,0,0.18));
+  }
+
+  .team-panel.home-panel {
+    grid-template-columns: 74px 1fr;
+  }
+
+  .team-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .team-info.home-info { text-align: right; }
+
+  .team-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    min-width: 0;
+  }
+  .team-row.home-row { justify-content: flex-end; }
+
+  .team-code {
+    font-size: 40px;
+    line-height: 0.95;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .team-record {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 18px;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 3px;
+    white-space: nowrap;
+  }
+
+  /* ─── TIMEOUT / BONUS DOTS ─── */
+  .bonus {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .bonus.home-bonus { justify-content: flex-end; }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 1px;
+    background: rgba(255,255,255,0.22);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  }
+  .dot.active {
+    background: var(--gold);
+    box-shadow: 0 0 8px rgba(243,197,29,0.28);
+  }
+
+  /* ─── SCORES ─── */
+  .score {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 64px;
+    line-height: 0.9;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  @keyframes scoreFlash {
+    0% { color: var(--gold); text-shadow: 0 0 20px rgba(243,197,29,0.5); }
+    100% { color: var(--text); text-shadow: none; }
+  }
+  .score-flash { animation: scoreFlash 0.8s ease-out; }
+
+  /* ─── CENTER PANEL ─── */
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 22px 10px 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04), transparent 26%),
+      linear-gradient(180deg, var(--panel-soft), var(--panel));
+    text-align: center;
+  }
+
+  .game-clock {
+    font-family: "Rajdhani", sans-serif;
+    font-size: 58px;
+    line-height: 0.9;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  .period {
+    font-size: 26px;
+    line-height: 1;
+    font-weight: 700;
+    color: rgba(255,255,255,0.9);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .brand {
+    margin-top: 4px;
+    font-size: 25px;
+    line-height: 1;
+    font-style: italic;
+    font-weight: 800;
+    color: var(--brand);
+    letter-spacing: 0.6px;
+  }
+
+  .status {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 1.2px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.72);
+    text-transform: uppercase;
+    z-index: 3;
+  }
+  .status.running { color: #93f6b2; }
+
+  /* ─── EVENT RIBBON ─── */
+  .top-ribbon {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: 2.8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.92);
+    z-index: 3;
+    white-space: nowrap;
+  }
+  .top-ribbon:empty { display: none; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="scorebug-wrap" id="bugWrap">
+    <div class="scorebug">
+      <div class="top-ribbon" id="eventBar"></div>
+      <div class="status" id="statusBadge">Paused</div>
+
+      <!-- Away Logo -->
+      <div class="panel logo-panel">
+        <div class="logo-frame is-empty" id="awayLogoFrame" data-fallback="A">
+          <img id="awayLogo" alt="Away logo" hidden>
+        </div>
+      </div>
+
+      <!-- Away Team -->
+      <div class="panel team-panel away-panel">
+        <div class="team-info">
+          <div class="team-row">
+            <div class="team-code" id="awayName">AWAY</div>
+            <div class="team-record" id="awayRecord"></div>
+          </div>
+          <div class="bonus" id="awayBonus">
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+          </div>
+        </div>
+        <div class="score" id="awayScore">0</div>
+      </div>
+
+      <!-- Center Clock -->
+      <div class="panel center-panel">
+        <div class="game-clock" id="gameClock">8:00</div>
+        <div class="period" id="periodLabel">1ST</div>
+        <div class="brand">NSMT</div>
+      </div>
+
+      <!-- Home Team -->
+      <div class="panel team-panel home-panel">
+        <div class="score" id="homeScore">0</div>
+        <div class="team-info home-info">
+          <div class="team-row home-row">
+            <div class="team-code" id="homeName">HOME</div>
+            <div class="team-record" id="homeRecord"></div>
+          </div>
+          <div class="bonus home-bonus" id="homeBonus">
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+            <span class="dot active"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Home Logo -->
+      <div class="panel logo-panel">
+        <div class="logo-frame is-empty" id="homeLogoFrame" data-fallback="H">
+          <img id="homeLogo" alt="Home logo" hidden>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-client.js"></script>
+
+<script>
+(function () {
+  function updateScale() {
+    const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    document.documentElement.style.setProperty('--scale', String(scale || 1));
+  }
+
+  function abbreviate(name, fallback) {
+    const text = String(name || fallback || '').trim();
+    if (!text) return fallback || '?';
+    const parts = text.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase();
+    return parts.slice(0, 3).map(p => p.charAt(0)).join('').toUpperCase();
+  }
+
+  function flashScore(id, newVal) {
+    const el = document.getElementById(id);
+    const oldVal = parseInt(el.textContent);
+    if (newVal !== undefined && newVal !== oldVal) {
+      el.classList.remove('score-flash');
+      void el.offsetWidth;
+      el.classList.add('score-flash');
+    }
+  }
+
+  function renderDots(containerId, count) {
+    const container = document.getElementById(containerId);
+    const dots = container.querySelectorAll('.dot');
+    const active = Math.max(0, Math.min(5, count));
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('active', i < active);
+    });
+  }
+
+  function applyLogo(imgEl, frameEl, url, fallbackText) {
+    frameEl.dataset.fallback = fallbackText;
+    frameEl.classList.add('is-empty');
+    imgEl.hidden = true;
+    imgEl.removeAttribute('src');
+
+    if (!url) return;
+
+    // Handle relative URLs
+    let resolved = url;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/')) {
+      resolved = location.origin + '/' + url;
+    }
+
+    imgEl.onload = function () {
+      frameEl.classList.remove('is-empty');
+      imgEl.hidden = false;
+    };
+    imgEl.onerror = function () {
+      frameEl.classList.add('is-empty');
+      imgEl.hidden = true;
+    };
+    imgEl.src = resolved;
+  }
+
+  function apply(state) {
+    const bug = state.bug || {};
+
+    // Event ribbon
+    document.getElementById('eventBar').textContent = bug.eventTitle || '';
+
+    // Away
+    document.getElementById('awayName').textContent = abbreviate(bug.awayName, 'AWAY');
+    document.getElementById('awayRecord').textContent = bug.awayRecord || '';
+    flashScore('awayScore', bug.awayScore);
+    document.getElementById('awayScore').textContent = String(bug.awayScore ?? 0);
+    renderDots('awayBonus', bug.awayTOs ?? 5);
+
+    // Home
+    document.getElementById('homeName').textContent = abbreviate(bug.homeName, 'HOME');
+    document.getElementById('homeRecord').textContent = bug.homeRecord || '';
+    flashScore('homeScore', bug.homeScore);
+    document.getElementById('homeScore').textContent = String(bug.homeScore ?? 0);
+    renderDots('homeBonus', bug.homeTOs ?? 5);
+
+    // Clock
+    document.getElementById('gameClock').textContent = bug.clock || '8:00';
+    document.getElementById('periodLabel').textContent = bug.quarter || '1ST';
+
+    const running = !!bug.clockRunning;
+    const badge = document.getElementById('statusBadge');
+    badge.textContent = running ? 'Running' : 'Paused';
+    badge.classList.toggle('running', running);
+
+    // Logos
+    applyLogo(
+      document.getElementById('awayLogo'),
+      document.getElementById('awayLogoFrame'),
+      bug.awayLogo,
+      abbreviate(bug.awayName, 'A')
+    );
+    applyLogo(
+      document.getElementById('homeLogo'),
+      document.getElementById('homeLogoFrame'),
+      bug.homeLogo,
+      abbreviate(bug.homeName, 'H')
+    );
+
+    // Visibility
+    document.getElementById('bugWrap').classList.toggle('hidden', bug.visible === false);
+  }
+
+  // Clock countdown (local for smooth display)
+  let clockInterval = null;
+  let clockRunning = false;
+
+  NSMTClient.onMessage((msg) => {
+    if (msg.type === 'state' && msg.data) {
+      apply(msg.data);
+
+      const bug = msg.data.bug || {};
+      const parts = (bug.clock || '0:00').split(':');
+      const clockMs = (parseInt(parts[0]) || 0) * 60000 + (parseFloat(parts[1]) || 0) * 1000;
+
+      if (bug.clockRunning && !clockRunning) {
+        clockRunning = true;
+        const startedAt = performance.now();
+        const startMs = clockMs;
+        clearInterval(clockInterval);
+        clockInterval = setInterval(() => {
+          const elapsed = performance.now() - startedAt;
+          const remaining = Math.max(0, startMs - elapsed);
+          const min = Math.floor(remaining / 60000);
+          const sec = Math.floor((remaining % 60000) / 1000);
+          document.getElementById('gameClock').textContent =
+            min + ':' + String(sec).padStart(2, '0');
+          if (remaining <= 0) {
+            clearInterval(clockInterval);
+            clockRunning = false;
+          }
+        }, 100);
+      } else if (!bug.clockRunning) {
+        clearInterval(clockInterval);
+        clockRunning = false;
+      }
+    }
+  });
+
+  NSMTClient.onConnect(() => console.log('[NSMT] Connected to Firebase'));
+  NSMTClient.onDisconnect(() => console.log('[NSMT] Disconnected'));
+
+  window.addEventListener('resize', updateScale);
+  updateScale();
+  NSMTClient.connect();
+})();
+</script>
+</body>
+</html>
