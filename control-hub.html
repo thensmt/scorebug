@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NSMT Scorebug — Producer</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;700;800&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000; --surf: #0a0a0e; --surf2: #111116;
+    --border: #1e1e2a; --text: #fff; --muted: #6a6a7a;
+    --accent: #0E80FC; --accent-dim: rgba(14,128,252,.15);
+    --red: #ef4444; --green: #22c55e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Rubik', system-ui, sans-serif; font-size: 14px;
+    min-height: 100vh;
+  }
+  .topbar {
+    background: var(--surf); border-bottom: 2px solid var(--accent);
+    padding: 0 20px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar h1 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px;
+    letter-spacing: 3px; color: var(--accent);
+  }
+  .status {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--red); transition: background .3s;
+  }
+  .dot.on { background: var(--green); }
+  .container { max-width: 900px; margin: 20px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 16px; }
+  .card {
+    background: var(--surf2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px;
+  }
+  .card h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+  }
+  .row { display: flex; gap: 16px; }
+  .col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .5px; }
+  input[type="text"], input[type="number"] {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; color: var(--text); font-size: 14px; width: 100%;
+  }
+  input[type="text"]:focus, input[type="number"]:focus {
+    outline: none; border-color: var(--accent);
+  }
+  input[type="color"] {
+    width: 48px; height: 36px; border: 1px solid var(--border);
+    border-radius: 6px; cursor: pointer; background: none; padding: 2px;
+  }
+  select {
+    background: var(--surf); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; color: var(--text); font-size: 14px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 8px 16px; border: none; border-radius: 6px;
+    font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .2s;
+  }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: #3a9dff; }
+  .btn-dark { background: var(--surf); border: 1px solid var(--border); color: var(--text); }
+  .btn-dark:hover { background: var(--border); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { background: #dc2626; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { background: #16a34a; }
+  .btn-sm { padding: 6px 10px; font-size: 13px; }
+  .score-display {
+    font-family: 'Bebas Neue', sans-serif; font-size: 72px;
+    text-align: center; line-height: 1; color: var(--text);
+  }
+  .score-btns { display: flex; gap: 6px; justify-content: center; }
+  .clock-display {
+    font-family: 'Bebas Neue', sans-serif; font-size: 56px;
+    text-align: center; line-height: 1; color: var(--accent);
+  }
+  .team-side { text-align: center; }
+  .team-side h3 {
+    font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  }
+  .logo-preview {
+    width: 72px; height: 72px; border-radius: 10px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px; overflow: hidden;
+  }
+  .logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+  .color-row { display: flex; align-items: center; gap: 8px; justify-content: center; }
+  .divider { width: 1px; background: var(--border); align-self: stretch; }
+  .period-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .period-btns .btn { min-width: 48px; }
+  .period-btns .btn.active { background: var(--accent); color: #fff; }
+  .clock-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .logo-gallery {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; max-height: 120px; overflow-y: auto;
+  }
+  .logo-thumb {
+    width: 48px; height: 48px; border-radius: 6px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid var(--border);
+    padding: 4px; transition: border-color .2s;
+  }
+  .logo-thumb:hover { border-color: var(--accent); }
+  .logo-thumb img { width: 100%; height: 100%; object-fit: contain; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>NSMT SCOREBUG</h1>
+  <div class="status"><div class="dot" id="statusDot"></div><span id="statusText">Disconnected</span></div>
+</div>
+
+<div class="container">
+  <!-- TEAM SETUP -->
+  <div class="card">
+    <h2>Team Setup</h2>
+    <div class="row">
+      <div class="col team-side">
+        <h3>Away</h3>
+        <div class="logo-preview" id="awayLogoPreview"><img id="awayLogoImg" src="" alt=""></div>
+        <input type="text" id="awayTeam" placeholder="Team name">
+        <div class="color-row">
+          <label>Color</label>
+          <input type="color" id="awayColor" value="#000000">
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-dark btn-sm" style="flex:1" onclick="uploadLogo('away')">Upload Logo</button>
+          <button class="btn btn-dark btn-sm" style="flex:1" onclick="toggleGallery('away')">Browse</button>
+        </div>
+        <input type="file" id="awayFileInput" accept="image/*" style="display:none">
+        <div class="logo-gallery" id="awayGallery" style="display:none"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="col team-side">
+        <h3>Home</h3>
+        <div class="logo-preview" id="homeLogoPreview"><img id="homeLogoImg" src="" alt=""></div>
+        <input type="text" id="homeTeam" placeholder="Team name">
+        <div class="color-row">
+          <label>Color</label>
+          <input type="color" id="homeColor" value="#000000">
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-dark btn-sm" style="flex:1" onclick="uploadLogo('home')">Upload Logo</button>
+          <button class="btn btn-dark btn-sm" style="flex:1" onclick="toggleGallery('home')">Browse</button>
+        </div>
+        <input type="file" id="homeFileInput" accept="image/*" style="display:none">
+        <div class="logo-gallery" id="homeGallery" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCOREBOARD -->
+  <div class="card">
+    <h2>Scoreboard</h2>
+    <div class="row" style="align-items:center">
+      <div class="col team-side">
+        <label id="awayScoreLabel">AWAY</label>
+        <div class="score-display" id="awayScoreDisplay">0</div>
+        <div class="score-btns">
+          <button class="btn btn-dark btn-sm" onclick="adjustScore('away',-1)">-1</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('away',1)">+1</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('away',2)">+2</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('away',3)">+3</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="col team-side">
+        <label id="homeScoreLabel">HOME</label>
+        <div class="score-display" id="homeScoreDisplay">0</div>
+        <div class="score-btns">
+          <button class="btn btn-dark btn-sm" onclick="adjustScore('home',-1)">-1</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('home',1)">+1</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('home',2)">+2</button>
+          <button class="btn btn-accent btn-sm" onclick="adjustScore('home',3)">+3</button>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn btn-red btn-sm" onclick="resetScores()">Reset Scores</button>
+    </div>
+  </div>
+
+  <!-- GAME CLOCK -->
+  <div class="card">
+    <h2>Game Clock</h2>
+    <div class="clock-display" id="clockDisplay">8:00</div>
+    <div class="clock-row" style="margin-top:12px">
+      <input type="text" id="clockInput" value="8:00" style="width:80px;text-align:center">
+      <button class="btn btn-accent btn-sm" onclick="setClock()">Set</button>
+      <button class="btn btn-green btn-sm" id="clockToggle" onclick="toggleClock()">Start</button>
+    </div>
+    <div style="margin-top:14px">
+      <label style="display:block;text-align:center;margin-bottom:8px">Period</label>
+      <div class="period-btns" id="periodBtns">
+        <button class="btn btn-dark btn-sm active" onclick="setPeriod('1ST')">1ST</button>
+        <button class="btn btn-dark btn-sm" onclick="setPeriod('2ND')">2ND</button>
+        <button class="btn btn-dark btn-sm" onclick="setPeriod('3RD')">3RD</button>
+        <button class="btn btn-dark btn-sm" onclick="setPeriod('4TH')">4TH</button>
+        <button class="btn btn-dark btn-sm" onclick="setPeriod('OT')">OT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EVENT TITLE -->
+  <div class="card">
+    <h2>Event Title</h2>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="eventTitle" placeholder="e.g. MADE HOOPS INVITATIONAL" style="flex:1">
+      <button class="btn btn-accent btn-sm" onclick="setEventTitle()">Set</button>
+      <button class="btn btn-dark btn-sm" onclick="clearEventTitle()">Clear</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  const WS_URL = location.hostname === 'localhost'
+    ? 'ws://localhost:8765'
+    : 'ws://' + location.hostname + ':8765';
+
+  let ws, connected = false;
+  let state = {};
+  let clockMs = 0, clockRunning = false;
+  let localTimer = null, startPerf = 0, startMs = 0;
+
+  // ── WebSocket ──
+  function connect() {
+    ws = new WebSocket(WS_URL);
+    ws.onopen = () => {
+      connected = true;
+      document.getElementById('statusDot').classList.add('on');
+      document.getElementById('statusText').textContent = 'Connected';
+      ws.send(JSON.stringify({ type: 'get_state' }));
+    };
+    ws.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'snapshot' || msg.type === 'state') {
+        state = msg.data;
+        applyState(state);
+      }
+    };
+    ws.onclose = () => {
+      connected = false;
+      document.getElementById('statusDot').classList.remove('on');
+      document.getElementById('statusText').textContent = 'Disconnected';
+      setTimeout(connect, 2000);
+    };
+  }
+
+  function send(patch) {
+    if (ws && connected) {
+      ws.send(JSON.stringify(Object.assign({ type: 'patch' }, patch)));
+    }
+  }
+
+  // ── Apply state from server ──
+  function applyState(s) {
+    // Team names
+    const awayInput = document.getElementById('awayTeam');
+    const homeInput = document.getElementById('homeTeam');
+    if (document.activeElement !== awayInput) awayInput.value = s.awayTeam || '';
+    if (document.activeElement !== homeInput) homeInput.value = s.homeTeam || '';
+
+    // Scores
+    document.getElementById('awayScoreDisplay').textContent = s.awayScore || 0;
+    document.getElementById('homeScoreDisplay').textContent = s.homeScore || 0;
+    document.getElementById('awayScoreLabel').textContent = s.awayTeam || 'AWAY';
+    document.getElementById('homeScoreLabel').textContent = s.homeTeam || 'HOME';
+
+    // Colors
+    const awayColorInput = document.getElementById('awayColor');
+    const homeColorInput = document.getElementById('homeColor');
+    if (document.activeElement !== awayColorInput && s.awayPrimary) awayColorInput.value = s.awayPrimary;
+    if (document.activeElement !== homeColorInput && s.homePrimary) homeColorInput.value = s.homePrimary;
+
+    // Logos
+    if (s.awayLogo) document.getElementById('awayLogoImg').src = s.awayLogo;
+    if (s.homeLogo) document.getElementById('homeLogoImg').src = s.homeLogo;
+
+    // Clock
+    clockMs = parseClock(s.clock);
+    clockRunning = !!s.clockRunning;
+    updateClockDisplay();
+    updateClockButton();
+    startLocalTimer();
+
+    // Period
+    const period = s.period || '1ST';
+    document.querySelectorAll('#periodBtns .btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent === period);
+    });
+
+    // Event title
+    const titleInput = document.getElementById('eventTitle');
+    if (document.activeElement !== titleInput) titleInput.value = s.eventTitle || '';
+  }
+
+  // ── Clock helpers ──
+  function parseClock(str) {
+    const [m, s] = String(str || '0:00').split(':').map(x => parseInt(x, 10) || 0);
+    return (m * 60 + s) * 1000;
+  }
+
+  function fmtClock(ms) {
+    ms = Math.max(0, ms | 0);
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function updateClockDisplay() {
+    document.getElementById('clockDisplay').textContent = fmtClock(clockMs);
+  }
+
+  function updateClockButton() {
+    const btn = document.getElementById('clockToggle');
+    btn.textContent = clockRunning ? 'Pause' : 'Start';
+    btn.className = clockRunning ? 'btn btn-red btn-sm' : 'btn btn-green btn-sm';
+  }
+
+  function startLocalTimer() {
+    if (localTimer) { clearInterval(localTimer); localTimer = null; }
+    if (clockRunning) {
+      startPerf = performance.now();
+      startMs = clockMs;
+      localTimer = setInterval(() => {
+        clockMs = Math.max(0, startMs - (performance.now() - startPerf));
+        updateClockDisplay();
+        if (clockMs <= 0) {
+          clockRunning = false;
+          updateClockButton();
+          clearInterval(localTimer);
+          localTimer = null;
+          send({ clockRunning: false, clock: '0:00' });
+        }
+      }, 100);
+    }
+  }
+
+  // ── Actions ──
+  window.adjustScore = function(side, delta) {
+    if (ws && connected) {
+      ws.send(JSON.stringify({ type: 'increment', key: side + 'Score', delta: delta }));
+    }
+  };
+
+  window.resetScores = function() {
+    send({ homeScore: 0, awayScore: 0 });
+  };
+
+  window.toggleClock = function() {
+    clockRunning = !clockRunning;
+    send({ clockRunning: clockRunning, clock: fmtClock(clockMs) });
+    updateClockButton();
+    startLocalTimer();
+  };
+
+  window.setClock = function() {
+    const val = document.getElementById('clockInput').value;
+    clockMs = parseClock(val);
+    clockRunning = false;
+    send({ clock: fmtClock(clockMs), clockRunning: false });
+    updateClockDisplay();
+    updateClockButton();
+    if (localTimer) { clearInterval(localTimer); localTimer = null; }
+  };
+
+  window.setPeriod = function(p) {
+    send({ period: p });
+    document.querySelectorAll('#periodBtns .btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent === p);
+    });
+  };
+
+  window.setEventTitle = function() {
+    send({ eventTitle: document.getElementById('eventTitle').value });
+  };
+
+  window.clearEventTitle = function() {
+    document.getElementById('eventTitle').value = '';
+    send({ eventTitle: '' });
+  };
+
+  // ── Logo upload ──
+  window.uploadLogo = function(side) {
+    document.getElementById(side + 'FileInput').click();
+  };
+
+  document.getElementById('awayFileInput').addEventListener('change', (e) => handleUpload(e, 'away'));
+  document.getElementById('homeFileInput').addEventListener('change', (e) => handleUpload(e, 'home'));
+
+  function handleUpload(e, side) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      fetch('/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: reader.result
+      })
+      .then(r => r.json())
+      .then(data => {
+        send({ [side + 'Logo']: data.url });
+        document.getElementById(side + 'LogoImg').src = data.url;
+      });
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  }
+
+  // ── Logo gallery ──
+  let logos = null;
+
+  window.toggleGallery = function(side) {
+    const gallery = document.getElementById(side + 'Gallery');
+    if (gallery.style.display !== 'none') {
+      gallery.style.display = 'none';
+      return;
+    }
+    if (logos) {
+      renderGallery(side, logos);
+      return;
+    }
+    fetch('/list-logos')
+      .then(r => r.json())
+      .then(data => {
+        logos = data.logos || [];
+        renderGallery(side, logos);
+      });
+  };
+
+  function renderGallery(side, items) {
+    const gallery = document.getElementById(side + 'Gallery');
+    gallery.replaceChildren();
+    items.forEach(l => {
+      const thumb = document.createElement('div');
+      thumb.className = 'logo-thumb';
+      thumb.onclick = () => window.selectLogo(side, l.url);
+      const img = document.createElement('img');
+      img.src = l.url;
+      img.alt = l.name;
+      thumb.appendChild(img);
+      gallery.appendChild(thumb);
+    });
+    gallery.style.display = 'flex';
+  }
+
+  window.selectLogo = function(side, url) {
+    send({ [side + 'Logo']: url });
+    document.getElementById(side + 'LogoImg').src = url;
+    document.getElementById(side + 'Gallery').style.display = 'none';
+  };
+
+  // ── Team name + color change listeners ──
+  let nameTimer = null;
+  document.getElementById('awayTeam').addEventListener('input', () => {
+    clearTimeout(nameTimer);
+    nameTimer = setTimeout(() => send({ awayTeam: document.getElementById('awayTeam').value }), 300);
+  });
+  document.getElementById('homeTeam').addEventListener('input', () => {
+    clearTimeout(nameTimer);
+    nameTimer = setTimeout(() => send({ homeTeam: document.getElementById('homeTeam').value }), 300);
+  });
+  document.getElementById('awayColor').addEventListener('input', (e) => {
+    send({ awayPrimary: e.target.value });
+  });
+  document.getElementById('homeColor').addEventListener('input', (e) => {
+    send({ homePrimary: e.target.value });
+  });
+
+  // ── Init ──
+  connect();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>OBS Basketball Control</title>
+<style>
+  :root{
+    --bg:#07111f;
+    --bg2:#0c1a2d;
+    --panel:#0f1d31;
+    --card:#12243b;
+    --card2:#0d1a2c;
+    --line:#28425f;
+    --text:#f2f6fb;
+    --muted:#90a6c3;
+    --blue:#44a7ff;
+    --blue2:#1f6ed6;
+    --green:#35d07f;
+    --amber:#ffcc57;
+    --red:#ff5f76;
+    --shadow:0 18px 45px rgba(0,0,0,.35);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; min-height:100%; }
+  body{
+    font:14px/1.45 Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(circle at top left, rgba(68,167,255,.14), transparent 30%),
+      radial-gradient(circle at top right, rgba(53,208,127,.10), transparent 28%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+  }
+  .shell{
+    max-width:1320px;
+    margin:0 auto;
+    padding:24px;
+  }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    padding:18px 22px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:20px;
+    background:linear-gradient(180deg, rgba(18,36,59,.95), rgba(9,19,33,.92));
+    box-shadow:var(--shadow);
+    margin-bottom:20px;
+  }
+  .titlewrap h1{
+    margin:0;
+    font-size:26px;
+    letter-spacing:.02em;
+  }
+  .titlewrap p{
+    margin:6px 0 0;
+    color:var(--muted);
+  }
+  .statusrow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:flex-end;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:10px 14px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(4,12,23,.55);
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+  .dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:#6b7f99;
+    box-shadow:0 0 0 5px rgba(107,127,153,.18);
+    transition:.2s ease;
+  }
+  .dot.live{
+    background:var(--green);
+    box-shadow:0 0 0 5px rgba(53,208,127,.18);
+  }
+  .dot.pause{
+    background:var(--amber);
+    box-shadow:0 0 0 5px rgba(255,204,87,.18);
+  }
+  .dot.off{
+    background:var(--red);
+    box-shadow:0 0 0 5px rgba(255,95,118,.18);
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:1.15fr .85fr;
+    gap:20px;
+  }
+  .stack{
+    display:grid;
+    gap:20px;
+  }
+  .card{
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:20px;
+    background:linear-gradient(180deg, rgba(18,36,59,.96), rgba(10,22,38,.96));
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .cardhead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
+    padding:16px 18px;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+  }
+  .cardhead h2{
+    margin:0;
+    font-size:15px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .cardhead span{
+    color:var(--muted);
+    font-size:12px;
+  }
+  .cardbody{
+    padding:18px;
+  }
+  .teams{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+  .teampanel{
+    background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.01));
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:18px;
+    padding:16px;
+  }
+  .teamheader{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+  }
+  .teamheader h3{
+    margin:0;
+    font-size:14px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .teamtag{
+    padding:5px 10px;
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);
+    color:var(--muted);
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .field{
+    display:grid;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  label{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+  }
+  input, select, button{
+    width:100%;
+    border-radius:13px;
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, #0b1627, #0a1423);
+    color:var(--text);
+    padding:12px 13px;
+    font:inherit;
+    outline:none;
+  }
+  input:focus, select:focus{
+    border-color:var(--blue);
+    box-shadow:0 0 0 3px rgba(68,167,255,.14);
+  }
+  input[type="color"]{
+    padding:5px;
+    min-height:44px;
+    background:#0b1627;
+  }
+  input[type="file"]{
+    padding:10px;
+  }
+  .scoregrid{
+    display:grid;
+    grid-template-columns:92px 1fr;
+    gap:12px;
+    align-items:end;
+  }
+  .scorecontrols{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .btn{
+    cursor:pointer;
+    font-weight:800;
+    letter-spacing:.02em;
+    transition:transform .12s ease, border-color .12s ease, opacity .12s ease;
+  }
+  .btn:hover{ transform:translateY(-1px); }
+  .btn.primary{
+    background:linear-gradient(180deg, var(--blue), var(--blue2));
+    border-color:#4ba4ff;
+    color:#fff;
+  }
+  .btn.secondary{
+    background:linear-gradient(180deg, #192f4d, #11233b);
+  }
+  .btn.success{
+    background:linear-gradient(180deg, #3ddb88, #1ca85d);
+    border-color:#51d993;
+    color:#041109;
+  }
+  .btn.warn{
+    background:linear-gradient(180deg, #ffd46c, #dca72f);
+    border-color:#ffd46c;
+    color:#261901;
+  }
+  .btn.danger{
+    background:linear-gradient(180deg, #ff7487, #d9435f);
+    border-color:#ff8b9a;
+    color:#fff;
+  }
+  .btn.ghost{
+    background:transparent;
+  }
+  .clockgrid{
+    display:grid;
+    grid-template-columns:1fr 150px;
+    gap:14px;
+  }
+  .clockbuttons{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+    margin-top:14px;
+  }
+  .meta{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+  }
+  .uploadmeta{
+    display:grid;
+    grid-template-columns:76px 1fr;
+    gap:12px;
+    align-items:center;
+    margin-top:10px;
+    padding:12px;
+    border-radius:16px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+  }
+  .logoPreview{
+    width:76px;
+    height:76px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .logoPreview img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    padding:8px;
+  }
+  .uploadinfo{
+    min-width:0;
+  }
+  .uploadinfo .path{
+    color:var(--muted);
+    font-size:12px;
+    word-break:break-all;
+    margin-top:6px;
+  }
+  .uploadrow{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:10px;
+    margin-top:10px;
+  }
+  .quickactions{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:12px;
+  }
+  .previewbug{
+    padding:20px;
+    border-radius:18px;
+    background:
+      radial-gradient(circle at center, rgba(68,167,255,.08), transparent 45%),
+      linear-gradient(180deg, rgba(6,11,19,.92), rgba(7,13,23,.98));
+    border:1px solid rgba(255,255,255,.08);
+  }
+  .bugbar{
+    width:min(100%, 760px);
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:1.2fr 120px 1fr 120px 1.2fr;
+    gap:0;
+    align-items:stretch;
+    overflow:hidden;
+    border-radius:20px;
+    box-shadow:0 18px 40px rgba(0,0,0,.4);
+  }
+  .wing{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 18px;
+    min-width:0;
+  }
+  .wing.away{ justify-content:flex-end; }
+  .wing.home{ justify-content:flex-start; }
+  .winglogo{
+    width:52px;
+    height:52px;
+    border-radius:14px;
+    background:rgba(255,255,255,.14);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    flex:0 0 auto;
+  }
+  .winglogo img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    padding:6px;
+  }
+  .wingname{
+    font-size:18px;
+    font-weight:900;
+    letter-spacing:.04em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .scorebox, .centerbox{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(180deg, #06111d, #0b192b);
+    border-left:1px solid rgba(255,255,255,.08);
+    border-right:1px solid rgba(255,255,255,.08);
+  }
+  .scorebox strong{
+    font-size:42px;
+    line-height:1;
+  }
+  .scorebox span{
+    font-size:10px;
+    color:var(--muted);
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    margin-top:6px;
+  }
+  .centerbox{
+    padding:10px 8px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.05), transparent 25%),
+      linear-gradient(180deg, #152537, #0a1727);
+  }
+  .centerbox .period{
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:.18em;
+    color:#c6d7ea;
+    text-transform:uppercase;
+  }
+  .centerbox .clock{
+    font-size:28px;
+    font-weight:900;
+    line-height:1.1;
+    margin-top:4px;
+    letter-spacing:.05em;
+  }
+  .centerbox .runstate{
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:.15em;
+    text-transform:uppercase;
+    margin-top:4px;
+  }
+  .json{
+    width:100%;
+    min-height:300px;
+    resize:vertical;
+    border-radius:16px;
+    border:1px solid var(--line);
+    background:#081220;
+    color:#bcd1ea;
+    padding:16px;
+    font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .hint{
+    margin-top:10px;
+    color:var(--muted);
+    font-size:12px;
+  }
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+  }
+  @media (max-width:820px){
+    .teams, .meta, .quickactions, .clockbuttons, .clockgrid{ grid-template-columns:1fr; }
+    .bugbar{ grid-template-columns:1fr; }
+    .scorebox, .centerbox{ min-height:88px; }
+    .wing.away, .wing.home{ justify-content:flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="titlewrap">
+      <h1>OBS Basketball Scorebug Control</h1>
+      <p>Simplified live control for names, scores, period, clock, colors, and team logo uploads.</p>
+    </div>
+    <div class="statusrow">
+      <div class="pill"><span id="wsDot" class="dot off"></span><span id="wsText">Disconnected</span></div>
+      <div class="pill"><span id="clockDot" class="dot pause"></span><span id="clockText">Clock Paused</span></div>
+      <div class="pill">WS <span id="wsUrl"></span></div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="stack">
+      <section class="card">
+        <div class="cardhead">
+          <h2>Teams</h2>
+          <span>Patch updates send only changed bug fields</span>
+        </div>
+        <div class="cardbody">
+          <div class="teams">
+            <div class="teampanel">
+              <div class="teamheader">
+                <h3>Away Team</h3>
+                <span class="teamtag">Visitor</span>
+              </div>
+
+              <div class="field">
+                <label for="awayName">Away Name</label>
+                <input id="awayName" placeholder="Away Team" />
+              </div>
+
+              <div class="field">
+                <label for="awayPrimary">Away Primary</label>
+                <input id="awayPrimary" type="color" value="#ef4444" />
+              </div>
+
+              <div class="field">
+                <label for="awayScore">Away Score</label>
+                <div class="scoregrid">
+                  <input id="awayScore" type="number" min="0" step="1" value="0" />
+                  <div class="scorecontrols">
+                    <button id="awayMinus" class="btn secondary" type="button">-1</button>
+                    <button id="awayPlus" class="btn primary" type="button">+1</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="awayLogoFile">Away Logo Upload</label>
+                <input id="awayLogoFile" type="file" accept="image/*" />
+              </div>
+
+              <div class="uploadrow">
+                <button id="awayUploadBtn" class="btn secondary" type="button">Upload Away Logo</button>
+                <button id="awayClearLogo" class="btn ghost" type="button">Clear</button>
+              </div>
+
+              <div class="uploadmeta">
+                <div class="logoPreview"><img id="awayLogoPreview" alt="Away logo preview" /></div>
+                <div class="uploadinfo">
+                  <strong id="awayLogoLabel">No away logo</strong>
+                  <div class="path" id="awayLogoPath">Awaiting upload</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="teampanel">
+              <div class="teamheader">
+                <h3>Home Team</h3>
+                <span class="teamtag">Home</span>
+              </div>
+
+              <div class="field">
+                <label for="homeName">Home Name</label>
+                <input id="homeName" placeholder="Home Team" />
+              </div>
+
+              <div class="field">
+                <label for="homePrimary">Home Primary</label>
+                <input id="homePrimary" type="color" value="#1d4ed8" />
+              </div>
+
+              <div class="field">
+                <label for="homeScore">Home Score</label>
+                <div class="scoregrid">
+                  <input id="homeScore" type="number" min="0" step="1" value="0" />
+                  <div class="scorecontrols">
+                    <button id="homeMinus" class="btn secondary" type="button">-1</button>
+                    <button id="homePlus" class="btn primary" type="button">+1</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="homeLogoFile">Home Logo Upload</label>
+                <input id="homeLogoFile" type="file" accept="image/*" />
+              </div>
+
+              <div class="uploadrow">
+                <button id="homeUploadBtn" class="btn secondary" type="button">Upload Home Logo</button>
+                <button id="homeClearLogo" class="btn ghost" type="button">Clear</button>
+              </div>
+
+              <div class="uploadmeta">
+                <div class="logoPreview"><img id="homeLogoPreview" alt="Home logo preview" /></div>
+                <div class="uploadinfo">
+                  <strong id="homeLogoLabel">No home logo</strong>
+                  <div class="path" id="homeLogoPath">Awaiting upload</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hint">Logo uploads POST raw file bytes to <strong>/upload</strong>, then patch the returned <strong>{url}</strong> into <strong>bug.awayLogo</strong> or <strong>bug.homeLogo</strong>.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardhead">
+          <h2>Game Clock</h2>
+          <span>Uses shared bug fields: quarter, clock, clockRunning</span>
+        </div>
+        <div class="cardbody">
+          <div class="meta">
+            <div class="field">
+              <label for="quarter">Period</label>
+              <select id="quarter">
+                <option value="1st">1st</option>
+                <option value="2nd">2nd</option>
+                <option value="3rd">3rd</option>
+                <option value="4th">4th</option>
+                <option value="OT">OT</option>
+                <option value="2OT">2OT</option>
+                <option value="3OT">3OT</option>
+                <option value="4OT">4OT</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="clock">Game Clock</label>
+              <input id="clock" value="12:00" inputmode="numeric" />
+            </div>
+            <div class="field">
+              <label for="resetClockValue">Reset Clock To</label>
+              <input id="resetClockValue" value="12:00" inputmode="numeric" />
+            </div>
+          </div>
+
+          <div class="clockbuttons">
+            <button id="startClock" class="btn success" type="button">Start</button>
+            <button id="pauseClock" class="btn warn" type="button">Pause</button>
+            <button id="resetClock" class="btn danger" type="button">Reset</button>
+          </div>
+
+          <div class="quickactions" style="margin-top:14px;">
+            <button id="syncFields" class="btn primary" type="button">Sync All Fields</button>
+            <button id="resetScores" class="btn secondary" type="button">Reset Scores</button>
+            <button id="swapTeams" class="btn ghost" type="button">Swap Team Sides</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="card">
+        <div class="cardhead">
+          <h2>Scorebug Preview</h2>
+          <span>Local preview of current WebSocket state</span>
+        </div>
+        <div class="cardbody">
+          <div class="previewbug">
+            <div class="bugbar">
+              <div id="previewAwayWing" class="wing away">
+                <div class="wingname" id="previewAwayName">AWAY</div>
+                <div class="winglogo"><img id="previewAwayLogo" alt="Away logo" /></div>
+              </div>
+              <div class="scorebox">
+                <strong id="previewAwayScore">0</strong>
+                <span>Away</span>
+              </div>
+              <div class="centerbox">
+                <div class="period" id="previewQuarter">1st</div>
+                <div class="clock" id="previewClock">12:00</div>
+                <div class="runstate" id="previewRunstate">Paused</div>
+              </div>
+              <div class="scorebox">
+                <strong id="previewHomeScore">0</strong>
+                <span>Home</span>
+              </div>
+              <div id="previewHomeWing" class="wing home">
+                <div class="winglogo"><img id="previewHomeLogo" alt="Home logo" /></div>
+                <div class="wingname" id="previewHomeName">HOME</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardhead">
+          <h2>Live Bug JSON</h2>
+          <span>Current merged control state</span>
+        </div>
+        <div class="cardbody">
+          <textarea id="jsonOut" class="json" readonly></textarea>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const isFile = location.protocol === 'file:';
+  const WS_URL = (isFile || location.hostname === 'localhost')
+    ? 'ws://localhost:8765'
+    : 'ws://' + location.host.replace(/:\d+$/,'') + ':8765';
+
+  const state = {
+    bug: {
+      homeName: '',
+      awayName: '',
+      homeScore: 0,
+      awayScore: 0,
+      clock: '12:00',
+      clockRunning: false,
+      quarter: '1st',
+      homeLogo: '',
+      awayLogo: '',
+      homePrimary: '#1d4ed8',
+      awayPrimary: '#ef4444'
+    }
+  };
+
+  let ws = null;
+  let reconnectTimer = null;
+  let clockTimer = null;
+  let clockMs = 0;
+  let clockRunning = false;
+  let clockStartPerf = 0;
+  let clockStartMs = 0;
+  let lastClockText = null;
+
+  const el = {
+    wsDot: document.getElementById('wsDot'),
+    wsText: document.getElementById('wsText'),
+    wsUrl: document.getElementById('wsUrl'),
+    clockDot: document.getElementById('clockDot'),
+    clockText: document.getElementById('clockText'),
+    awayName: document.getElementById('awayName'),
+    homeName: document.getElementById('homeName'),
+    awayPrimary: document.getElementById('awayPrimary'),
+    homePrimary: document.getElementById('homePrimary'),
+    awayScore: document.getElementById('awayScore'),
+    homeScore: document.getElementById('homeScore'),
+    quarter: document.getElementById('quarter'),
+    clock: document.getElementById('clock'),
+    resetClockValue: document.getElementById('resetClockValue'),
+    awayLogoFile: document.getElementById('awayLogoFile'),
+    homeLogoFile: document.getElementById('homeLogoFile'),
+    awayUploadBtn: document.getElementById('awayUploadBtn'),
+    homeUploadBtn: document.getElementById('homeUploadBtn'),
+    awayClearLogo: document.getElementById('awayClearLogo'),
+    homeClearLogo: document.getElementById('homeClearLogo'),
+    awayMinus: document.getElementById('awayMinus'),
+    awayPlus: document.getElementById('awayPlus'),
+    homeMinus: document.getElementById('homeMinus'),
+    homePlus: document.getElementById('homePlus'),
+    startClock: document.getElementById('startClock'),
+    pauseClock: document.getElementById('pauseClock'),
+    resetClock: document.getElementById('resetClock'),
+    syncFields: document.getElementById('syncFields'),
+    resetScores: document.getElementById('resetScores'),
+    swapTeams: document.getElementById('swapTeams'),
+    awayLogoPreview: document.getElementById('awayLogoPreview'),
+    homeLogoPreview: document.getElementById('homeLogoPreview'),
+    awayLogoLabel: document.getElementById('awayLogoLabel'),
+    homeLogoLabel: document.getElementById('homeLogoLabel'),
+    awayLogoPath: document.getElementById('awayLogoPath'),
+    homeLogoPath: document.getElementById('homeLogoPath'),
+    previewAwayWing: document.getElementById('previewAwayWing'),
+    previewHomeWing: document.getElementById('previewHomeWing'),
+    previewAwayName: document.getElementById('previewAwayName'),
+    previewHomeName: document.getElementById('previewHomeName'),
+    previewAwayScore: document.getElementById('previewAwayScore'),
+    previewHomeScore: document.getElementById('previewHomeScore'),
+    previewQuarter: document.getElementById('previewQuarter'),
+    previewClock: document.getElementById('previewClock'),
+    previewRunstate: document.getElementById('previewRunstate'),
+    previewAwayLogo: document.getElementById('previewAwayLogo'),
+    previewHomeLogo: document.getElementById('previewHomeLogo'),
+    jsonOut: document.getElementById('jsonOut')
+  };
+
+  const nowMs = () => (window.performance && performance.now) ? performance.now() : Date.now();
+
+  el.wsUrl.textContent = WS_URL;
+
+  function connect(){
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = function(){
+      setWsStatus(true);
+      ws.send(JSON.stringify({ type: 'get_state' }));
+    };
+
+    ws.onclose = function(){
+      setWsStatus(false);
+      if(reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, 1000);
+    };
+
+    ws.onmessage = function(evt){
+      try{
+        const msg = JSON.parse(evt.data);
+        if(msg.type === 'snapshot' || msg.type === 'state'){
+          const source = msg.state || msg.data || {};
+          if(source.bug){
+            Object.assign(state.bug, source.bug);
+            fillFormFromState();
+            render();
+            syncClockFromState(state.bug);
+          }
+        }
+      }catch(err){
+        console.warn('Unable to parse WebSocket message', err);
+      }
+    };
+  }
+
+  function setWsStatus(isConnected){
+    el.wsDot.className = 'dot ' + (isConnected ? 'live' : 'off');
+    el.wsText.textContent = isConnected ? 'Connected' : 'Disconnected';
+  }
+
+  function patchBug(patch){
+    Object.assign(state.bug, patch);
+    render();
+    if(ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({ type: 'patch', bug: patch }));
+    }
+  }
+
+  function normalizeColor(value, fallback){
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(value || '').trim()) ? String(value).trim() : fallback;
+  }
+
+  function parseClock(text){
+    const match = String(text || '').trim().match(/^(\d+):([0-5]\d)$/);
+    if(!match) return null;
+    return (parseInt(match[1], 10) * 60 + parseInt(match[2], 10)) * 1000;
+  }
+
+  function formatClock(ms){
+    const safe = Math.max(0, Math.floor(ms / 1000));
+    const m = Math.floor(safe / 60);
+    const s = safe % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  function setClockRunning(run){
+    if(run === clockRunning) return;
+
+    if(clockRunning){
+      const elapsed = nowMs() - clockStartPerf;
+      clockMs = Math.max(0, clockStartMs - elapsed);
+    }
+
+    clockRunning = run;
+
+    if(clockTimer){
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
+
+    if(clockRunning){
+      clockStartPerf = nowMs();
+      clockStartMs = clockMs;
+      clockTimer = setInterval(function(){
+        const elapsed = nowMs() - clockStartPerf;
+        clockMs = Math.max(0, clockStartMs - elapsed);
+        const text = formatClock(clockMs);
+        if(document.activeElement !== el.clock){
+          el.clock.value = text;
+        }
+        state.bug.clock = text;
+        state.bug.clockRunning = true;
+        render();
+        if(clockMs <= 0){
+          patchBug({ clock: '00:00', clockRunning: false });
+          setClockRunning(false);
+        }
+      }, 100);
+    }
+
+    updateClockStatusUI();
+  }
+
+  function syncClockFromState(bug){
+    const text = bug && bug.clock != null ? String(bug.clock) : '12:00';
+    const running = !!(bug && bug.clockRunning);
+    const clockChanged = text !== lastClockText;
+    lastClockText = text;
+    if(!running || clockChanged){
+      const parsed = parseClock(text);
+      if(parsed !== null){
+        clockMs = parsed;
+      }
+    }
+    setClockRunning(running);
+    updateClockStatusUI();
+  }
+
+  function updateClockStatusUI(){
+    if(clockRunning){
+      el.clockDot.className = 'dot live';
+      el.clockText.textContent = 'Clock Running';
+    }else{
+      el.clockDot.className = 'dot pause';
+      el.clockText.textContent = 'Clock Paused';
+    }
+  }
+
+  function fillFormFromState(){
+    if(document.activeElement !== el.awayName) el.awayName.value = state.bug.awayName || '';
+    if(document.activeElement !== el.homeName) el.homeName.value = state.bug.homeName || '';
+    if(document.activeElement !== el.awayScore) el.awayScore.value = Number(state.bug.awayScore || 0);
+    if(document.activeElement !== el.homeScore) el.homeScore.value = Number(state.bug.homeScore || 0);
+    if(document.activeElement !== el.clock) el.clock.value = state.bug.clock || '12:00';
+    if(document.activeElement !== el.resetClockValue && !el.resetClockValue.value) el.resetClockValue.value = state.bug.clock || '12:00';
+
+    const awayPrimary = normalizeColor(state.bug.awayPrimary, '#ef4444');
+    const homePrimary = normalizeColor(state.bug.homePrimary, '#1d4ed8');
+    if(document.activeElement !== el.awayPrimary) el.awayPrimary.value = awayPrimary;
+    if(document.activeElement !== el.homePrimary) el.homePrimary.value = homePrimary;
+
+    setSelectValue(el.quarter, state.bug.quarter || '1st');
+  }
+
+  function setSelectValue(select, value){
+    const str = String(value || '');
+    const has = Array.from(select.options).some(function(option){ return option.value === str; });
+    if(!has && str){
+      const option = document.createElement('option');
+      option.value = str;
+      option.textContent = str;
+      select.appendChild(option);
+    }
+    if(document.activeElement !== select){
+      select.value = str || '1st';
+    }
+  }
+
+  function render(){
+    const awayName = state.bug.awayName || 'AWAY';
+    const homeName = state.bug.homeName || 'HOME';
+    const awayScore = Math.max(0, parseInt(state.bug.awayScore || 0, 10) || 0);
+    const homeScore = Math.max(0, parseInt(state.bug.homeScore || 0, 10) || 0);
+    const awayPrimary = normalizeColor(state.bug.awayPrimary, '#ef4444');
+    const homePrimary = normalizeColor(state.bug.homePrimary, '#1d4ed8');
+    const awayLogo = state.bug.awayLogo || '';
+    const homeLogo = state.bug.homeLogo || '';
+    const clock = state.bug.clock || '12:00';
+    const quarter = state.bug.quarter || '1st';
+    const running = !!state.bug.clockRunning;
+
+    el.previewAwayName.textContent = awayName;
+    el.previewHomeName.textContent = homeName;
+    el.previewAwayScore.textContent = awayScore;
+    el.previewHomeScore.textContent = homeScore;
+    el.previewClock.textContent = clock;
+    el.previewQuarter.textContent = quarter;
+    el.previewRunstate.textContent = running ? 'Running' : 'Paused';
+
+    el.previewAwayWing.style.background = 'linear-gradient(90deg, ' + awayPrimary + ', ' + shadeColor(awayPrimary, -28) + ')';
+    el.previewHomeWing.style.background = 'linear-gradient(90deg, ' + shadeColor(homePrimary, -28) + ', ' + homePrimary + ')';
+
+    applyImage(el.previewAwayLogo, awayLogo);
+    applyImage(el.previewHomeLogo, homeLogo);
+    applyImage(el.awayLogoPreview, awayLogo);
+    applyImage(el.homeLogoPreview, homeLogo);
+
+    el.awayLogoLabel.textContent = awayLogo ? 'Away logo ready' : 'No away logo';
+    el.homeLogoLabel.textContent = homeLogo ? 'Home logo ready' : 'No home logo';
+    el.awayLogoPath.textContent = awayLogo || 'Awaiting upload';
+    el.homeLogoPath.textContent = homeLogo || 'Awaiting upload';
+
+    el.jsonOut.value = JSON.stringify(state.bug, null, 2);
+    updateClockStatusUI();
+  }
+
+  function applyImage(img, src){
+    if(src){
+      img.src = src;
+      img.style.opacity = '1';
+    }else{
+      img.removeAttribute('src');
+      img.style.opacity = '.12';
+    }
+  }
+
+  function shadeColor(hex, percent){
+    const clean = String(hex || '').replace('#', '');
+    if(!/^[0-9a-f]{6}$/i.test(clean)) return '#12243b';
+    const num = parseInt(clean, 16);
+    const amt = Math.round(2.55 * percent);
+    const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+    return '#' + (0x1000000 + (r * 0x10000) + (g * 0x100) + b).toString(16).slice(1);
+  }
+
+  function collectAllFields(){
+    return {
+      awayName: el.awayName.value.trim(),
+      homeName: el.homeName.value.trim(),
+      awayScore: Math.max(0, parseInt(el.awayScore.value || '0', 10) || 0),
+      homeScore: Math.max(0, parseInt(el.homeScore.value || '0', 10) || 0),
+      quarter: el.quarter.value.trim() || '1st',
+      clock: el.clock.value.trim() || '12:00',
+      homePrimary: normalizeColor(el.homePrimary.value, '#1d4ed8'),
+      awayPrimary: normalizeColor(el.awayPrimary.value, '#ef4444')
+    };
+  }
+
+  async function uploadLogo(file, key, button){
+    if(!file) return;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Uploading...';
+
+    try{
+      const response = await fetch('/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-Filename': encodeURIComponent(file.name || 'logo')
+        },
+        body: file
+      });
+
+      if(!response.ok){
+        throw new Error('Upload failed with status ' + response.status);
+      }
+
+      const data = await response.json();
+      if(!data || !data.url){
+        throw new Error('Upload response missing url');
+      }
+
+      patchBug({ [key]: data.url });
+    }catch(err){
+      console.error(err);
+      alert('Logo upload failed. Please verify the local HTTP server and /upload endpoint are running.');
+    }finally{
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+
+  function bindTextInput(element, key){
+    element.addEventListener('change', function(){
+      patchBug({ [key]: element.value.trim() });
+    });
+  }
+
+  function bindNumberInput(element, key){
+    element.addEventListener('change', function(){
+      const value = Math.max(0, parseInt(element.value || '0', 10) || 0);
+      element.value = value;
+      patchBug({ [key]: value });
+    });
+  }
+
+  bindTextInput(el.awayName, 'awayName');
+  bindTextInput(el.homeName, 'homeName');
+  bindNumberInput(el.awayScore, 'awayScore');
+  bindNumberInput(el.homeScore, 'homeScore');
+
+  el.awayPrimary.addEventListener('input', function(){
+    patchBug({ awayPrimary: normalizeColor(el.awayPrimary.value, '#ef4444') });
+  });
+
+  el.homePrimary.addEventListener('input', function(){
+    patchBug({ homePrimary: normalizeColor(el.homePrimary.value, '#1d4ed8') });
+  });
+
+  el.quarter.addEventListener('change', function(){
+    patchBug({ quarter: el.quarter.value.trim() || '1st' });
+  });
+
+  el.clock.addEventListener('change', function(){
+    const text = el.clock.value.trim() || '12:00';
+    patchBug({ clock: text });
+  });
+
+  el.awayPlus.addEventListener('click', function(){
+    const next = Math.max(0, parseInt(state.bug.awayScore || 0, 10) + 1);
+    el.awayScore.value = next;
+    patchBug({ awayScore: next });
+  });
+
+  el.awayMinus.addEventListener('click', function(){
+    const next = Math.max(0, parseInt(state.bug.awayScore || 0, 10) - 1);
+    el.awayScore.value = next;
+    patchBug({ awayScore: next });
+  });
+
+  el.homePlus.addEventListener('click', function(){
+    const next = Math.max(0, parseInt(state.bug.homeScore || 0, 10) + 1);
+    el.homeScore.value = next;
+    patchBug({ homeScore: next });
+  });
+
+  el.homeMinus.addEventListener('click', function(){
+    const next = Math.max(0, parseInt(state.bug.homeScore || 0, 10) - 1);
+    el.homeScore.value = next;
+    patchBug({ homeScore: next });
+  });
+
+  el.startClock.addEventListener('click', function(){
+    const text = el.clock.value.trim() || state.bug.clock || '12:00';
+    const parsed = parseClock(text);
+    if(parsed === null){
+      alert('Clock must be in MM:SS format.');
+      return;
+    }
+    clockMs = parsed;
+    patchBug({ clock: formatClock(clockMs), clockRunning: true });
+    syncClockFromState(state.bug);
+  });
+
+  el.pauseClock.addEventListener('click', function(){
+    const text = el.clock.value.trim() || state.bug.clock || '12:00';
+    const parsed = parseClock(text);
+    if(parsed !== null){
+      clockMs = parsed;
+    }
+    patchBug({ clock: formatClock(clockMs), clockRunning: false });
+    syncClockFromState(state.bug);
+  });
+
+  el.resetClock.addEventListener('click', function(){
+    const text = el.resetClockValue.value.trim() || '12:00';
+    const parsed = parseClock(text);
+    if(parsed === null){
+      alert('Reset clock must be in MM:SS format.');
+      return;
+    }
+    clockMs = parsed;
+    el.clock.value = formatClock(clockMs);
+    patchBug({ clock: formatClock(clockMs), clockRunning: false });
+    syncClockFromState(state.bug);
+  });
+
+  el.syncFields.addEventListener('click', function(){
+    patchBug(collectAllFields());
+  });
+
+  el.resetScores.addEventListener('click', function(){
+    el.awayScore.value = 0;
+    el.homeScore.value = 0;
+    patchBug({ awayScore: 0, homeScore: 0 });
+  });
+
+  el.swapTeams.addEventListener('click', function(){
+    const patch = {
+      awayName: state.bug.homeName || '',
+      homeName: state.bug.awayName || '',
+      awayScore: Math.max(0, parseInt(state.bug.homeScore || 0, 10) || 0),
+      homeScore: Math.max(0, parseInt(state.bug.awayScore || 0, 10) || 0),
+      awayLogo: state.bug.homeLogo || '',
+      homeLogo: state.bug.awayLogo || '',
+      awayPrimary: normalizeColor(state.bug.homePrimary, '#ef4444'),
+      homePrimary: normalizeColor(state.bug.awayPrimary, '#1d4ed8')
+    };
+    patchBug(patch);
+    fillFormFromState();
+  });
+
+  el.awayUploadBtn.addEventListener('click', function(){
+    uploadLogo(el.awayLogoFile.files && el.awayLogoFile.files[0], 'awayLogo', el.awayUploadBtn);
+  });
+
+  el.homeUploadBtn.addEventListener('click', function(){
+    uploadLogo(el.homeLogoFile.files && el.homeLogoFile.files[0], 'homeLogo', el.homeUploadBtn);
+  });
+
+  el.awayClearLogo.addEventListener('click', function(){
+    el.awayLogoFile.value = '';
+    patchBug({ awayLogo: '' });
+  });
+
+  el.homeClearLogo.addEventListener('click', function(){
+    el.homeLogoFile.value = '';
+    patchBug({ homeLogo: '' });
+  });
+
+  fillFormFromState();
+  render();
+  syncClockFromState(state.bug);
+  connect();
+})();
+</script>
+</body>
+</html>

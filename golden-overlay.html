@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NSMT Fastbreak — Golden Overlay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --scale: 1;
+      --safe-bottom: 42px;
+      --bug-width: 960px;
+      --bug-height: 116px;
+      --away: #0b51c5;
+      --home: #0e8f47;
+      --panel: rgba(5, 7, 10, 0.98);
+      --panel-soft: rgba(14, 18, 24, 0.98);
+      --line: rgba(255, 255, 255, 0.09);
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.68);
+      --gold: #f3c51d;
+      --brand: #0e80fc;
+      --shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%; margin: 0; overflow: hidden;
+      background: transparent;
+      font-family: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+      color: var(--text);
+    }
+
+    .stage { position: relative; width: 100%; height: 100%; pointer-events: none; }
+
+    .scorebug-wrap {
+      position: absolute; bottom: var(--safe-bottom); left: 50%;
+      width: var(--bug-width); height: var(--bug-height);
+      transform: translateX(-50%) scale(var(--scale));
+      transform-origin: bottom center;
+      filter: drop-shadow(var(--shadow));
+    }
+
+    .scorebug {
+      position: relative; width: 100%; height: 100%;
+      display: grid;
+      grid-template-columns: 184px 238px 128px 238px 184px;
+      background: linear-gradient(180deg, rgba(11, 13, 16, 0.99), rgba(3, 5, 8, 0.99));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .scorebug::before {
+      content: ""; position: absolute; inset: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.03)),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 106px);
+      pointer-events: none;
+    }
+
+    .top-ribbon {
+      position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+      font-size: 18px; line-height: 1; letter-spacing: 2.8px; font-weight: 700;
+      text-transform: uppercase; color: rgba(255, 255, 255, 0.92); z-index: 2; white-space: nowrap;
+    }
+
+    .panel {
+      position: relative; z-index: 1; min-width: 0;
+      border-left: 1px solid var(--line);
+    }
+    .panel:first-of-type { border-left: 0; }
+
+    .logo-panel {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%, rgba(255, 255, 255, 0.02)),
+        linear-gradient(180deg, #fefefe, #d9d9d9);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding: 20px 12px 8px;
+    }
+
+    .logo-frame {
+      width: 100%; height: 70px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.06));
+      border: 1px solid rgba(0, 0, 0, 0.22); overflow: hidden;
+    }
+    .logo-frame img {
+      width: 100%; height: 100%; object-fit: contain; display: block;
+      filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.24));
+    }
+    .logo-frame.is-empty::after {
+      content: attr(data-fallback);
+      font-size: 46px; font-weight: 800; color: rgba(16, 18, 20, 0.46); letter-spacing: 1px;
+    }
+
+    .team-panel {
+      display: grid; grid-template-columns: 1fr 74px;
+      align-items: center; padding: 38px 16px 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(0, 0, 0, 0.18));
+    }
+    .team-panel.home-panel { grid-template-columns: 74px 1fr; }
+
+    .team-info { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+    .team-info.home-info { text-align: right; }
+
+    .team-row { display: flex; align-items: flex-end; gap: 10px; min-width: 0; }
+    .team-row.home-row { justify-content: flex-end; }
+
+    .team-code {
+      font-size: 40px; line-height: 0.95; font-weight: 800;
+      letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap;
+    }
+    .team-record {
+      font-family: "Rajdhani", sans-serif;
+      font-size: 18px; line-height: 1; font-weight: 700;
+      color: var(--muted); margin-bottom: 3px; white-space: nowrap;
+    }
+
+    .bonus { display: flex; align-items: center; gap: 4px; margin-top: 10px; }
+    .bonus.home-bonus { justify-content: flex-end; }
+
+    .dot {
+      width: 8px; height: 8px; border-radius: 1px;
+      background: rgba(255, 255, 255, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+    }
+    .dot.active { background: var(--gold); box-shadow: 0 0 8px rgba(243, 197, 29, 0.28); }
+
+    .score {
+      font-family: "Rajdhani", sans-serif;
+      font-size: 64px; line-height: 0.9; font-weight: 700; text-align: center;
+    }
+
+    .center-panel {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 22px 10px 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 26%),
+        linear-gradient(180deg, var(--panel-soft), var(--panel));
+      text-align: center;
+    }
+
+    .game-clock {
+      font-family: "Rajdhani", sans-serif;
+      font-size: 58px; line-height: 0.9; font-weight: 700;
+      letter-spacing: 0.5px; margin-top: 4px;
+    }
+    .period {
+      font-size: 26px; line-height: 1; font-weight: 700;
+      color: rgba(255, 255, 255, 0.9); text-transform: uppercase; margin-top: 2px;
+    }
+    .brand {
+      margin-top: 4px; font-size: 25px; line-height: 1;
+      font-style: italic; font-weight: 800; color: var(--brand); letter-spacing: 0.6px;
+    }
+
+    .status {
+      position: absolute; top: 10px; right: 14px;
+      font-size: 11px; line-height: 1; letter-spacing: 1.2px; font-weight: 700;
+      color: rgba(255, 255, 255, 0.72); text-transform: uppercase;
+    }
+    .status.running { color: #93f6b2; }
+
+    /* ── Graphic overlay card ── */
+    .go-wrap {
+      position: absolute; left: 36px; bottom: 200px;
+      min-width: 280px; max-width: 420px;
+      background: linear-gradient(135deg, rgba(8,8,8,0.97), rgba(20,20,20,0.97));
+      border-left: 4px solid var(--gold);
+      padding: 14px 24px 14px 18px;
+      display: flex; flex-direction: column; gap: 3px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.8);
+      border-radius: 0 6px 6px 0;
+      opacity: 1; transition: opacity 0.4s;
+      z-index: 200; white-space: nowrap;
+      font-family: "Barlow Condensed", sans-serif;
+    }
+    .go-wrap.hidden { display: none; }
+    .go-wrap.fade-out { opacity: 0; }
+    @keyframes goSlideIn { from { transform: translateX(-20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .go-wrap.show { animation: goSlideIn 0.25s ease-out; }
+    .go-type { font-size: 11px; font-weight: 700; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; }
+    .go-title { font-size: 24px; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1; }
+    .go-detail { font-size: 14px; color: #aaa; letter-spacing: 0.3px; }
+    .go-meta { font-size: 12px; color: #666; margin-top: 1px; }
+    .go-warn { font-size: 13px; color: #ef4444; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="go-wrap hidden" id="graphicOverlay"></div>
+
+    <div class="scorebug-wrap">
+      <div class="scorebug">
+        <div class="top-ribbon" id="eventLabel">Made Hoops Invitational</div>
+
+        <div class="panel logo-panel">
+          <div class="logo-frame is-empty" id="awayLogoFrame" data-fallback="A">
+            <img id="awayLogo" alt="Away team logo" hidden />
+          </div>
+        </div>
+
+        <div class="panel team-panel away-panel">
+          <div class="team-info">
+            <div class="team-row">
+              <div class="team-code" id="awayName">AWAY</div>
+              <div class="team-record" id="awayRecord">0-0</div>
+            </div>
+            <div class="bonus" id="awayBonus"></div>
+          </div>
+          <div class="score" id="awayScore">0</div>
+        </div>
+
+        <div class="panel center-panel">
+          <div class="status" id="statusBadge">Paused</div>
+          <div class="game-clock" id="gameClock">8:00</div>
+          <div class="period" id="periodLabel">1st</div>
+          <div class="brand">NSMT</div>
+        </div>
+
+        <div class="panel team-panel home-panel">
+          <div class="score" id="homeScore">0</div>
+          <div class="team-info home-info">
+            <div class="team-row home-row">
+              <div class="team-code" id="homeName">HOME</div>
+              <div class="team-record" id="homeRecord">0-0</div>
+            </div>
+            <div class="bonus home-bonus" id="homeBonus"></div>
+          </div>
+        </div>
+
+        <div class="panel logo-panel">
+          <div class="logo-frame is-empty" id="homeLogoFrame" data-fallback="H">
+            <img id="homeLogo" alt="Home team logo" hidden />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var isFile = location.protocol === "file:";
+    var WS_URL = isFile || location.hostname === "localhost"
+      ? "ws://localhost:8765"
+      : "ws://" + location.host.replace(/:\d+$/, "") + ":8765";
+    var ASSET_BASE = isFile ? "http://localhost:8000/" : location.origin + "/";
+
+    var state = { bug: {} };
+    var ws = null;
+
+    var els = {
+      awayName: document.getElementById("awayName"),
+      homeName: document.getElementById("homeName"),
+      awayScore: document.getElementById("awayScore"),
+      homeScore: document.getElementById("homeScore"),
+      awayRecord: document.getElementById("awayRecord"),
+      homeRecord: document.getElementById("homeRecord"),
+      gameClock: document.getElementById("gameClock"),
+      periodLabel: document.getElementById("periodLabel"),
+      statusBadge: document.getElementById("statusBadge"),
+      eventLabel: document.getElementById("eventLabel"),
+      awayLogo: document.getElementById("awayLogo"),
+      homeLogo: document.getElementById("homeLogo"),
+      awayLogoFrame: document.getElementById("awayLogoFrame"),
+      homeLogoFrame: document.getElementById("homeLogoFrame"),
+      awayBonus: document.getElementById("awayBonus"),
+      homeBonus: document.getElementById("homeBonus")
+    };
+
+    function updateScale() {
+      var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      document.documentElement.style.setProperty("--scale", String(s || 1));
+    }
+
+    function sanitizeColor(value, fallback) {
+      if (typeof value !== "string") return fallback;
+      var c = value.trim();
+      if (!c) return fallback;
+      var p = new Option().style;
+      p.color = ""; p.color = c;
+      return p.color ? c : fallback;
+    }
+
+    function abbreviate(name, fallback) {
+      var text = String(name || fallback || "").trim();
+      if (!text) return fallback || "?";
+      var parts = text.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase();
+      return parts.slice(0, 3).map(function (p) { return p.charAt(0); }).join("").toUpperCase();
+    }
+
+    function resolveAsset(url) {
+      var value = String(url || "").trim();
+      if (!value) return "";
+      if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
+      if (value.startsWith("/")) return (location.protocol === "file:" ? "http://localhost:8000" : "") + value;
+      return ASSET_BASE + value;
+    }
+
+    function applyLogo(imgEl, frameEl, url, fallbackText) {
+      var resolved = resolveAsset(url);
+      frameEl.dataset.fallback = fallbackText;
+      frameEl.classList.add("is-empty");
+      imgEl.hidden = true;
+      imgEl.removeAttribute("src");
+      if (!resolved) return;
+      imgEl.onload = function () { frameEl.classList.remove("is-empty"); imgEl.hidden = false; };
+      imgEl.onerror = function () { frameEl.classList.add("is-empty"); imgEl.hidden = true; imgEl.removeAttribute("src"); };
+      imgEl.src = resolved;
+    }
+
+    function renderDots(container, count) {
+      // Safe DOM construction — no innerHTML with untrusted content
+      while (container.firstChild) container.removeChild(container.firstChild);
+      for (var i = 1; i <= 5; i++) {
+        var dot = document.createElement("span");
+        dot.className = "dot" + (i <= count ? " active" : "");
+        container.appendChild(dot);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+      });
+    }
+
+    /* ── Graphic overlay ── */
+    var _graphicTimer = null;
+    function showGraphic(g, durations) {
+      var el = document.getElementById("graphicOverlay");
+      if (!el || !g || !g.type) return;
+      clearTimeout(_graphicTimer);
+      var dur = (durations && durations.graphic) || 5000;
+      var typeLabel = "", title = "", detail = "", meta = "", warn = "";
+      switch (g.type) {
+        case "TIMEOUT":
+          typeLabel = "TIMEOUT";
+          title = g.teamName || g.teamCode || "";
+          detail = (g.timeoutType || "") + (g.timeoutsLeft != null ? " \u00b7 " + g.timeoutsLeft + " remaining" : "");
+          meta = (g.period || "") + (g.clockAt ? " \u00b7 " + g.clockAt : "");
+          break;
+        case "SUBSTITUTION":
+          typeLabel = "SUBSTITUTION";
+          title = g.teamName || g.teamCode || "";
+          if (g.playerIn && g.playerOut)
+            detail = "\u2B06 #" + (g.playerIn.num || "") + " " + (g.playerIn.name || "") + " \u00b7 \u2B07 #" + (g.playerOut.num || "") + " " + (g.playerOut.name || "");
+          meta = g.period || "";
+          break;
+        case "FOUL":
+          typeLabel = "PERSONAL FOUL";
+          if (g.player) title = "#" + (g.player.num || "") + " " + (g.player.name || "");
+          if (g.player) detail = g.player.fouls + " personal foul" + (g.player.fouls !== 1 ? "s" : "");
+          if (g.inTrouble) warn = "FOUL TROUBLE";
+          meta = (g.period || "") + (g.clockAt ? " \u00b7 " + g.clockAt : "");
+          break;
+        case "HALFTIME":
+          typeLabel = "HALFTIME";
+          title = (g.awayCode || g.awayName || "AWAY") + " " + (g.awayScore || 0) + "  \u2013  " + (g.homeScore || 0) + " " + (g.homeCode || g.homeName || "HOME");
+          break;
+        case "END OF GAME":
+          typeLabel = "FINAL";
+          title = (g.awayCode || g.awayName || "AWAY") + " " + (g.awayScore || 0) + "  \u2013  " + (g.homeScore || 0) + " " + (g.homeCode || g.homeName || "HOME");
+          break;
+        case "MEDIA TIMEOUT":
+          typeLabel = "MEDIA TIMEOUT";
+          title = "TV / Media Timeout";
+          break;
+        case "OFFICIALS TIMEOUT":
+          typeLabel = "OFFICIALS TIMEOUT";
+          title = "Officials Timeout";
+          break;
+        default:
+          typeLabel = g.type;
+      }
+
+      // Build graphic card using safe DOM methods
+      while (el.firstChild) el.removeChild(el.firstChild);
+
+      var typeEl = document.createElement("div");
+      typeEl.className = "go-type";
+      typeEl.textContent = typeLabel;
+      el.appendChild(typeEl);
+
+      if (title) {
+        var titleEl = document.createElement("div");
+        titleEl.className = "go-title";
+        titleEl.textContent = title;
+        el.appendChild(titleEl);
+      }
+      if (detail) {
+        var detailEl = document.createElement("div");
+        detailEl.className = "go-detail";
+        detailEl.textContent = detail;
+        el.appendChild(detailEl);
+      }
+      if (warn) {
+        var warnEl = document.createElement("div");
+        warnEl.className = "go-warn";
+        warnEl.textContent = warn;
+        el.appendChild(warnEl);
+      }
+      if (meta) {
+        var metaEl = document.createElement("div");
+        metaEl.className = "go-meta";
+        metaEl.textContent = meta;
+        el.appendChild(metaEl);
+      }
+
+      el.classList.remove("hidden", "fade-out", "show");
+      void el.offsetWidth;
+      el.classList.add("show");
+      _graphicTimer = setTimeout(function () {
+        el.classList.add("fade-out");
+        setTimeout(function () { el.classList.add("hidden"); el.classList.remove("fade-out", "show"); }, 450);
+      }, dur);
+    }
+
+    /* ── Render ── */
+    function render() {
+      var b = state.bug || {};
+
+      document.documentElement.style.setProperty("--away", sanitizeColor(b.awayPrimary, "#0b51c5"));
+      document.documentElement.style.setProperty("--home", sanitizeColor(b.homePrimary, "#0e8f47"));
+
+      els.awayName.textContent = abbreviate(b.awayName, "AWY");
+      els.homeName.textContent = abbreviate(b.homeName, "HOM");
+      els.awayRecord.textContent = String(b.awayRecord || "");
+      els.homeRecord.textContent = String(b.homeRecord || "");
+      els.awayScore.textContent = String(b.awayScore != null ? b.awayScore : 0);
+      els.homeScore.textContent = String(b.homeScore != null ? b.homeScore : 0);
+      els.gameClock.textContent = String(b.clock || "8:00");
+      els.periodLabel.textContent = String(b.quarter || "1st");
+
+      if (b.sponsorLabel) els.eventLabel.textContent = b.sponsorLabel;
+
+      var running = !!b.clockRunning;
+      els.statusBadge.textContent = running ? "Running" : "Paused";
+      els.statusBadge.classList.toggle("running", running);
+
+      applyLogo(els.awayLogo, els.awayLogoFrame, b.awayLogo, abbreviate(b.awayName, "A"));
+      applyLogo(els.homeLogo, els.homeLogoFrame, b.homeLogo, abbreviate(b.homeName, "H"));
+
+      renderDots(els.awayBonus, b.awayTOs != null ? b.awayTOs : 5);
+      renderDots(els.homeBonus, b.homeTOs != null ? b.homeTOs : 5);
+
+      if (b.graphic) {
+        showGraphic(b.graphic, b.durations);
+      }
+    }
+
+    /* ── WebSocket ── */
+    function connect() {
+      ws = new WebSocket(WS_URL);
+      ws.onopen = function () { ws.send(JSON.stringify({ type: "get_state" })); };
+      ws.onmessage = function (event) {
+        try {
+          var msg = JSON.parse(event.data);
+          if (msg.type === "snapshot" || msg.type === "state") {
+            state = msg.data || state;
+            render();
+          }
+        } catch (e) {
+          console.warn("Invalid WebSocket payload:", e);
+        }
+      };
+      ws.onclose = function () { setTimeout(connect, 1000); };
+      ws.onerror = function () { ws.close(); };
+    }
+
+    window.addEventListener("resize", updateScale);
+    document.addEventListener("DOMContentLoaded", function () {
+      updateScale();
+      render();
+      connect();
+    });
+  })();
+  </script>
+</body>
+</html>

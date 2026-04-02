@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golden Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#010203;
+    --panel:#03070d;
+    --panel-2:#050b14;
+    --line:#0b73f3;
+    --line-strong:#2d8fff;
+    --line-soft:rgba(45,143,255,.35);
+    --text:#f8fbff;
+    --text-soft:#dfe9f9;
+    --text-dim:#94a9cb;
+    --text-muted:#7184a3;
+    --success:#37db65;
+    --danger:#f15656;
+  }
+
+  *{box-sizing:border-box}
+
+  html,body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(11,115,243,.18), transparent 38%),
+      radial-gradient(circle at 0% 100%, rgba(11,115,243,.08), transparent 32%),
+      var(--bg);
+    color:var(--text);
+  }
+
+  body{
+    padding:8px;
+    font-family:"Rajdhani", system-ui, sans-serif;
+  }
+
+  button,
+  input{
+    font:inherit;
+    color:inherit;
+  }
+
+  button{
+    cursor:pointer;
+  }
+
+  input{
+    background:transparent;
+    border:0;
+    outline:none;
+    padding:0;
+    min-width:0;
+  }
+
+  input::placeholder{
+    color:rgba(255,255,255,.3);
+  }
+
+  input[type="number"]{
+    -moz-appearance:textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+
+  .shell{
+    max-width:1328px;
+    margin:0 auto;
+    display:grid;
+    gap:10px;
+  }
+
+  .panel{
+    position:relative;
+    background:linear-gradient(180deg, rgba(3,7,13,.98), rgba(0,0,0,.98));
+    border:2px solid var(--line);
+    border-radius:14px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.04),
+      0 0 0 1px rgba(11,115,243,.14),
+      0 0 22px rgba(11,115,243,.12);
+  }
+
+  .panel::after{
+    content:"";
+    position:absolute;
+    inset:6px;
+    border:1px solid rgba(255,255,255,.03);
+    border-radius:9px;
+    pointer-events:none;
+  }
+
+  .topbar{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items:center;
+    gap:20px;
+    padding:14px 18px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+  }
+
+  .brand img{
+    width:min(200px, 28vw);
+    height:auto;
+    display:block;
+    filter:drop-shadow(0 0 10px rgba(45,143,255,.2));
+  }
+
+  .title{
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(32px, 3vw, 50px);
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    line-height:1;
+  }
+
+  .status{
+    text-align:right;
+    font-family:"Barlow Condensed", sans-serif;
+    text-transform:uppercase;
+    line-height:1;
+  }
+
+  .status-line{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:8px;
+    color:var(--success);
+    font-size:clamp(24px, 1.8vw, 34px);
+    font-weight:700;
+    letter-spacing:.03em;
+  }
+
+  .status-dot{
+    width:13px;
+    height:13px;
+    border-radius:50%;
+    background:var(--danger);
+    box-shadow:0 0 12px rgba(241,86,86,.4);
+  }
+
+  .status-dot.live{
+    background:var(--success);
+    box-shadow:0 0 12px rgba(55,219,101,.45);
+  }
+
+  .variant{
+    margin-top:5px;
+    color:var(--text-soft);
+    font-size:clamp(16px, 1.1vw, 22px);
+    font-weight:600;
+    letter-spacing:.02em;
+    text-transform:none;
+  }
+
+  .clockbar{
+    display:grid;
+    grid-template-columns:minmax(250px, 360px) minmax(350px, 1fr) auto;
+    gap:18px;
+    align-items:center;
+    padding:14px 18px;
+  }
+
+  .clockcluster{
+    display:flex;
+    align-items:flex-end;
+    gap:18px;
+  }
+
+  .clockfield{
+    width:5.2ch;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(84px, 9vw, 130px);
+    font-weight:700;
+    letter-spacing:-.05em;
+    line-height:.85;
+    text-transform:uppercase;
+  }
+
+  .periodreadout{
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(48px, 4.8vw, 76px);
+    font-weight:700;
+    line-height:.92;
+    text-transform:uppercase;
+    padding-bottom:10px;
+  }
+
+  .transport{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:14px;
+  }
+
+  .action-btn{
+    min-height:78px;
+    padding:12px 16px;
+    border:2px solid var(--line);
+    border-radius:8px;
+    background:rgba(4,10,18,.95);
+    color:var(--text-dim);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(28px, 2vw, 40px);
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    transition:border-color .14s ease, color .14s ease, background .14s ease;
+  }
+
+  .action-btn:hover,
+  .action-btn:focus-visible{
+    color:var(--text);
+    border-color:var(--line-strong);
+  }
+
+  .action-btn.active{
+    color:var(--text);
+    background:rgba(11,115,243,.16);
+  }
+
+  .periodswitch{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  .period-btn{
+    width:74px;
+    min-height:78px;
+    border:2px solid rgba(151,169,201,.28);
+    border-radius:8px;
+    background:rgba(4,8,14,.95);
+    color:rgba(255,255,255,.48);
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(26px, 1.8vw, 34px);
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    transition:border-color .14s ease, color .14s ease, background .14s ease;
+  }
+
+  .period-btn.active{
+    color:var(--text);
+    background:rgba(11,115,243,.3);
+    border-color:var(--line-strong);
+  }
+
+  .matchup{
+    display:grid;
+    grid-template-columns:minmax(260px, 1fr) 220px 220px minmax(260px, 1fr);
+    gap:16px;
+    padding:14px 18px;
+  }
+
+  .team-card,
+  .score-card{
+    min-height:194px;
+    background:linear-gradient(180deg, rgba(0,0,0,.98), rgba(2,7,15,.98));
+    border:2px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    position:relative;
+  }
+
+  .team-card{
+    display:grid;
+    grid-template-rows:1fr auto;
+  }
+
+  .team-main{
+    position:relative;
+    display:grid;
+    align-items:center;
+    padding:18px 18px 12px;
+  }
+
+  .team-home .team-main{
+    justify-items:end;
+    text-align:right;
+  }
+
+  .team-copy{
+    display:grid;
+    gap:4px;
+    min-width:0;
+    width:100%;
+  }
+
+  .team-code{
+    width:100%;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(64px, 6vw, 88px);
+    font-weight:700;
+    letter-spacing:-.05em;
+    line-height:.82;
+    text-transform:uppercase;
+  }
+
+  .team-name{
+    width:100%;
+    font-size:clamp(28px, 2.2vw, 42px);
+    font-weight:600;
+    letter-spacing:.03em;
+    line-height:.95;
+    text-transform:uppercase;
+    color:var(--text-soft);
+  }
+
+  .possession{
+    position:absolute;
+    top:18px;
+    display:grid;
+    gap:4px;
+    z-index:1;
+  }
+
+  .team-away .possession{
+    right:18px;
+    justify-items:end;
+  }
+
+  .team-home .possession{
+    left:18px;
+    justify-items:start;
+  }
+
+  .possession-label{
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(18px, 1.2vw, 24px);
+    font-weight:600;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+  }
+
+  .possession-btn{
+    border:0;
+    background:transparent;
+    padding:0;
+    width:36px;
+    height:36px;
+    display:grid;
+    place-items:center;
+    color:#fff;
+    font-size:42px;
+    line-height:1;
+  }
+
+  .team-footer{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    border-top:2px solid var(--line);
+  }
+
+  .metric{
+    padding:10px 12px;
+    display:grid;
+    gap:2px;
+    background:rgba(0,5,11,.9);
+  }
+
+  .metric + .metric{
+    border-left:2px solid var(--line);
+  }
+
+  .metric-label{
+    text-align:center;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(18px, 1.2vw, 24px);
+    font-weight:600;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    line-height:1;
+  }
+
+  .metric-value{
+    width:100%;
+    text-align:center;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(42px, 3.4vw, 58px);
+    font-weight:700;
+    line-height:.9;
+  }
+
+  .score-card{
+    display:grid;
+    grid-template-rows:1fr auto;
+  }
+
+  .score-main{
+    display:grid;
+    place-items:center;
+    padding:16px 12px 6px;
+  }
+
+  .score-value{
+    width:100%;
+    text-align:center;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(108px, 10vw, 146px);
+    font-weight:700;
+    letter-spacing:-.06em;
+    line-height:.84;
+  }
+
+  .bonus-btn{
+    min-height:34px;
+    border:0;
+    border-top:2px solid var(--line);
+    background:rgba(11,115,243,.08);
+    color:rgba(255,255,255,.34);
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(22px, 1.4vw, 28px);
+    font-weight:700;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    transition:background .14s ease, color .14s ease;
+  }
+
+  .bonus-btn.active{
+    background:linear-gradient(180deg, rgba(11,115,243,.34), rgba(11,115,243,.14));
+    color:var(--text);
+  }
+
+  .stats{
+    overflow:hidden;
+  }
+
+  .stats-banner{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+    background:linear-gradient(180deg, rgba(11,115,243,.3), rgba(11,115,243,.18));
+    border-bottom:2px solid var(--line);
+  }
+
+  .stats-banner-item{
+    padding:7px 12px;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(22px, 1.4vw, 28px);
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    color:#a9d0ff;
+    line-height:1;
+  }
+
+  .stats-banner-item:last-child{
+    text-align:right;
+  }
+
+  .stats-columns{
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0, 1fr));
+  }
+
+  .stats-table-wrap{
+    border-right:2px solid var(--line);
+  }
+
+  .stats-table-wrap:nth-child(4n){
+    border-right:0;
+  }
+
+  .stats-table{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+  }
+
+  .stats-table thead th{
+    padding:7px 8px 6px;
+    border-bottom:2px solid rgba(11,115,243,.35);
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(16px, 1vw, 20px);
+    font-weight:600;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    line-height:1;
+  }
+
+  .stats-table thead th:first-child,
+  .stats-table tbody td:first-child{
+    width:46%;
+    text-align:left;
+    padding-left:14px;
+  }
+
+  .stats-table thead th:not(:first-child),
+  .stats-table tbody td:not(:first-child){
+    width:10.8%;
+    text-align:center;
+  }
+
+  .stats-table tbody td{
+    padding:6px 8px;
+    font-size:clamp(18px, 1.15vw, 24px);
+    font-weight:600;
+    line-height:1;
+    color:var(--text-soft);
+    border-bottom:1px solid rgba(11,115,243,.14);
+  }
+
+  .stats-table tbody tr:last-child td{
+    border-bottom:0;
+  }
+
+  .stats-table tbody tr.blank td{
+    color:rgba(255,255,255,.12);
+  }
+
+  .footer{
+    display:grid;
+    grid-template-columns:1fr auto;
+    gap:16px;
+    align-items:end;
+    padding:14px 16px 12px;
+    border-top:2px solid var(--line);
+  }
+
+  .log{
+    display:grid;
+    gap:8px;
+    min-height:92px;
+    align-content:start;
+  }
+
+  .log-entry{
+    font-size:clamp(22px, 1.45vw, 28px);
+    font-weight:500;
+    line-height:1.05;
+    color:var(--text-soft);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .footer-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+
+  .footer-link{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:48px;
+    padding:10px 16px;
+    border:2px solid var(--line);
+    border-radius:8px;
+    background:rgba(3,8,16,.96);
+    color:var(--text);
+    text-decoration:none;
+    font-family:"Barlow Condensed", sans-serif;
+    font-size:clamp(22px, 1.4vw, 28px);
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+  }
+
+  .footer-link:hover,
+  .footer-link:focus-visible{
+    border-color:var(--line-strong);
+  }
+
+  .field-focus:focus-visible{
+    box-shadow:0 0 0 2px rgba(45,143,255,.48);
+    border-radius:4px;
+  }
+
+  @media (max-width: 1180px){
+    .topbar,
+    .clockbar{
+      grid-template-columns:1fr;
+    }
+
+    .status,
+    .periodswitch{
+      justify-self:start;
+      text-align:left;
+    }
+
+    .status-line{
+      justify-content:flex-start;
+    }
+
+    .matchup{
+      grid-template-columns:1fr 1fr;
+    }
+
+    .team-away{
+      order:1;
+    }
+
+    .away-score{
+      order:2;
+    }
+
+    .home-score{
+      order:3;
+    }
+
+    .team-home{
+      order:4;
+    }
+
+    .stats-banner,
+    .stats-columns{
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+    }
+
+    .stats-table-wrap:nth-child(2n){
+      border-right:0;
+    }
+  }
+
+  @media (max-width: 760px){
+    body{
+      padding:6px;
+    }
+
+    .topbar,
+    .clockbar,
+    .matchup,
+    .footer{
+      padding-left:12px;
+      padding-right:12px;
+    }
+
+    .matchup{
+      grid-template-columns:1fr;
+    }
+
+    .stats-banner,
+    .stats-columns{
+      grid-template-columns:1fr;
+    }
+
+    .stats-table-wrap{
+      border-right:0;
+      border-bottom:2px solid var(--line);
+    }
+
+    .stats-table-wrap:last-child{
+      border-bottom:0;
+    }
+
+    .footer{
+      grid-template-columns:1fr;
+    }
+
+    .footer-actions{
+      justify-content:flex-start;
+    }
+
+    .footer-link{
+      flex:1 1 180px;
+    }
+
+    .period-btn{
+      flex:1 1 60px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="panel topbar">
+      <div class="brand">
+        <img src="/NSMTWordmarkBlue.png" alt="NSMT">
+      </div>
+      <div class="title">Golden Hub: Linear Network</div>
+      <div class="status">
+        <div class="status-line">
+          <span id="statusText">Offline | Local Preview</span>
+          <span class="status-dot" id="statusDot"></span>
+        </div>
+        <div class="variant" id="variantText">Variant 1/10</div>
+      </div>
+    </header>
+
+    <section class="panel clockbar">
+      <div class="clockcluster">
+        <input id="clockField" class="clockfield field-focus" type="text" inputmode="numeric" aria-label="Game clock" value="11:45">
+        <div class="periodreadout" id="periodReadout">Q2</div>
+      </div>
+      <div class="transport">
+        <button class="action-btn" id="startClock">Start</button>
+        <button class="action-btn" id="stopClock">Stop</button>
+        <button class="action-btn" id="resetClock">Reset</button>
+      </div>
+      <div class="periodswitch" id="periodButtons">
+        <button class="period-btn" data-quarter="Q1">P1</button>
+        <button class="period-btn" data-quarter="Q2">P2</button>
+        <button class="period-btn" data-quarter="Q3">P3</button>
+        <button class="period-btn" data-quarter="Q4">P4</button>
+        <button class="period-btn" data-quarter="OT">OT</button>
+      </div>
+    </section>
+
+    <section class="panel matchup">
+      <div class="team-card team-away">
+        <div class="team-main">
+          <div class="team-copy">
+            <input id="awayCode" class="team-code field-focus" type="text" maxlength="4" spellcheck="false" value="GSW" aria-label="Away code">
+            <input id="awayName" class="team-name field-focus" type="text" maxlength="24" spellcheck="false" value="Warriors" aria-label="Away name">
+          </div>
+          <div class="possession">
+            <div class="possession-label">Possession</div>
+            <button class="possession-btn" id="awayPossession" aria-label="Toggle away possession">▶</button>
+          </div>
+        </div>
+        <div class="team-footer">
+          <div class="metric">
+            <div class="metric-label">Timeouts</div>
+            <input id="awayTOs" class="metric-value field-focus" type="number" min="0" max="9" value="3" aria-label="Away timeouts">
+          </div>
+          <div class="metric">
+            <div class="metric-label">Team Fouls</div>
+            <input id="awayFouls" class="metric-value field-focus" type="number" min="0" max="9" value="4" aria-label="Away fouls">
+          </div>
+        </div>
+      </div>
+
+      <div class="score-card away-score">
+        <div class="score-main">
+          <input id="awayScore" class="score-value field-focus" type="number" min="0" max="199" value="98" aria-label="Away score">
+        </div>
+        <button class="bonus-btn active" id="awayBonus">Bonus</button>
+      </div>
+
+      <div class="score-card home-score">
+        <div class="score-main">
+          <input id="homeScore" class="score-value field-focus" type="number" min="0" max="199" value="96" aria-label="Home score">
+        </div>
+        <button class="bonus-btn active" id="homeBonus">Bonus</button>
+      </div>
+
+      <div class="team-card team-home">
+        <div class="team-main">
+          <div class="team-copy">
+            <input id="homeCode" class="team-code field-focus" type="text" maxlength="4" spellcheck="false" value="LAL" aria-label="Home code">
+            <input id="homeName" class="team-name field-focus" type="text" maxlength="24" spellcheck="false" value="Lakers" aria-label="Home name">
+          </div>
+          <div class="possession">
+            <div class="possession-label">&nbsp;</div>
+            <button class="possession-btn" id="homePossession" aria-label="Toggle home possession"></button>
+          </div>
+        </div>
+        <div class="team-footer">
+          <div class="metric">
+            <div class="metric-label">Timeouts</div>
+            <input id="homeTOs" class="metric-value field-focus" type="number" min="0" max="9" value="4" aria-label="Home timeouts">
+          </div>
+          <div class="metric">
+            <div class="metric-label">Team Fouls</div>
+            <input id="homeFouls" class="metric-value field-focus" type="number" min="0" max="9" value="5" aria-label="Home fouls">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel stats">
+      <div class="stats-banner">
+        <div class="stats-banner-item" id="awayBannerOne">GSW</div>
+        <div class="stats-banner-item" id="awayBannerTwo">GSW</div>
+        <div class="stats-banner-item" id="homeBannerOne">LAL</div>
+        <div class="stats-banner-item" id="homeBannerTwo">LAL</div>
+      </div>
+      <div class="stats-columns">
+        <div class="stats-table-wrap" id="awayTableOne"></div>
+        <div class="stats-table-wrap" id="awayTableTwo"></div>
+        <div class="stats-table-wrap" id="homeTableOne"></div>
+        <div class="stats-table-wrap" id="homeTableTwo"></div>
+      </div>
+      <div class="footer">
+        <div class="log" id="playLog"></div>
+        <div class="footer-actions">
+          <a class="footer-link" href="/control-hub.html" target="_blank" rel="noreferrer">Broadcast Control</a>
+          <a class="footer-link" href="/overlay.html" target="_blank" rel="noreferrer">Graphics Overlay</a>
+          <a class="footer-link" href="/obs_basketball_control.html" target="_blank" rel="noreferrer">Audio Mixer</a>
+          <a class="footer-link" href="/index.html" target="_blank" rel="noreferrer">Settings</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function(){
+  const WS_URL = (location.protocol === 'file:' || location.hostname === 'localhost')
+    ? 'ws://localhost:8765'
+    : 'ws://' + location.hostname + ':8765';
+
+  const fallbackPlayers = {
+    away: [
+      { name: 'S. Curry', pts: 32, reb: 6, ast: 8, stl: 2, blk: 0 },
+      { name: 'S. Curry', pts: 16, reb: 6, ast: 8, stl: 2, blk: 0 },
+      { name: 'S. Curry', pts: 16, reb: 5, ast: 6, stl: 2, blk: 0 },
+      { name: 'A. Wiggins', pts: 10, reb: 4, ast: 2, stl: 0, blk: 0 },
+      { name: 'A. Wiggins', pts: 3, reb: 0, ast: 0, stl: 0, blk: 0 },
+      { name: 'R. Dlanson', pts: 29, reb: 6, ast: 8, stl: 2, blk: 0 },
+      { name: 'D. Erans', pts: 19, reb: 4, ast: 9, stl: 2, blk: 0 },
+      { name: 'D. Dlanson', pts: 12, reb: 3, ast: 6, stl: 2, blk: 0 },
+      { name: 'L. Lenns', pts: 8, reb: 0, ast: 2, stl: 0, blk: 0 },
+      { name: '', pts: '', reb: '', ast: '', stl: '', blk: '' }
+    ],
+    home: [
+      { name: 'L. James', pts: 28, reb: 10, ast: 12, stl: 1, blk: 1 },
+      { name: 'H. Brons', pts: 15, reb: 11, ast: 3, stl: 3, blk: 1 },
+      { name: 'H. Anditon', pts: 14, reb: 5, ast: 6, stl: 1, blk: 0 },
+      { name: 'R. Satsit', pts: 6, reb: 2, ast: 2, stl: 0, blk: 0 },
+      { name: 'R. Batizo', pts: 4, reb: 0, ast: 0, stl: 0, blk: 0 },
+      { name: 'L. Mowey', pts: 28, reb: 10, ast: 12, stl: 1, blk: 1 },
+      { name: 'R. Garns', pts: 10, reb: 6, ast: 4, stl: 2, blk: 0 },
+      { name: 'O. Wavey', pts: 16, reb: 2, ast: 5, stl: 0, blk: 0 },
+      { name: 'V. Bround', pts: 8, reb: 0, ast: 2, stl: 0, blk: 0 },
+      { name: '', pts: '', reb: '', ast: '', stl: '', blk: '' }
+    ]
+  };
+
+  const fallbackLog = [
+    '11:45    Q2: S. Curry (GSW) 3pt made (A. Wiggins assist).',
+    '11:32    Q2: L. James (LAL) driving lay-up.',
+    '11:45    Q2: L. James (LAL) period success.'
+  ];
+
+  const untouchedBug = {
+    awayName: 'Away',
+    homeName: 'Home',
+    awayScore: 0,
+    homeScore: 0,
+    awayTOs: 5,
+    homeTOs: 5,
+    awayFouls: 0,
+    homeFouls: 0,
+    clock: '8:00',
+    quarter: 'Q1'
+  };
+
+  const state = {
+    bug: {
+      awayCode: 'GSW',
+      awayName: 'Warriors',
+      awayScore: 98,
+      awayTOs: 3,
+      awayFouls: 4,
+      awayBonus: true,
+      homeCode: 'LAL',
+      homeName: 'Lakers',
+      homeScore: 96,
+      homeTOs: 4,
+      homeFouls: 5,
+      homeBonus: true,
+      possession: 'away',
+      clock: '11:45',
+      clockRunning: false,
+      quarter: 'Q2',
+      variantLabel: 'Variant 1/10',
+      resetClock: '12:00'
+    },
+    stats: {
+      meta: {},
+      away: { name: 'GSW', players: fallbackPlayers.away.slice() },
+      home: { name: 'LAL', players: fallbackPlayers.home.slice() }
+    }
+  };
+
+  let ws = null;
+  let connected = false;
+  let reconnectTimer = null;
+  let clockTimer = null;
+  let clockMs = 0;
+  let clockRunning = false;
+  let clockStartPerf = 0;
+  let clockStartMs = 0;
+  let lastClockText = null;
+
+  const el = {
+    statusDot: document.getElementById('statusDot'),
+    statusText: document.getElementById('statusText'),
+    variantText: document.getElementById('variantText'),
+    clockField: document.getElementById('clockField'),
+    periodReadout: document.getElementById('periodReadout'),
+    startClock: document.getElementById('startClock'),
+    stopClock: document.getElementById('stopClock'),
+    resetClock: document.getElementById('resetClock'),
+    awayCode: document.getElementById('awayCode'),
+    awayName: document.getElementById('awayName'),
+    homeCode: document.getElementById('homeCode'),
+    homeName: document.getElementById('homeName'),
+    awayScore: document.getElementById('awayScore'),
+    homeScore: document.getElementById('homeScore'),
+    awayTOs: document.getElementById('awayTOs'),
+    homeTOs: document.getElementById('homeTOs'),
+    awayFouls: document.getElementById('awayFouls'),
+    homeFouls: document.getElementById('homeFouls'),
+    awayBonus: document.getElementById('awayBonus'),
+    homeBonus: document.getElementById('homeBonus'),
+    awayPossession: document.getElementById('awayPossession'),
+    homePossession: document.getElementById('homePossession'),
+    periodButtons: Array.from(document.querySelectorAll('#periodButtons .period-btn')),
+    awayBannerOne: document.getElementById('awayBannerOne'),
+    awayBannerTwo: document.getElementById('awayBannerTwo'),
+    homeBannerOne: document.getElementById('homeBannerOne'),
+    homeBannerTwo: document.getElementById('homeBannerTwo'),
+    awayTableOne: document.getElementById('awayTableOne'),
+    awayTableTwo: document.getElementById('awayTableTwo'),
+    homeTableOne: document.getElementById('homeTableOne'),
+    homeTableTwo: document.getElementById('homeTableTwo'),
+    playLog: document.getElementById('playLog')
+  };
+
+  function nowMs(){
+    return (window.performance && performance.now) ? performance.now() : Date.now();
+  }
+
+  function parseClock(text){
+    const match = String(text || '').trim().match(/^(\d{1,2}):([0-5]\d)$/);
+    if(!match) return null;
+    return (parseInt(match[1], 10) * 60 + parseInt(match[2], 10)) * 1000;
+  }
+
+  function formatClock(ms){
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+  }
+
+  function normalizeQuarter(value){
+    const raw = String(value || '').trim().toUpperCase();
+    if(raw === '1ST' || raw === 'Q1' || raw === 'P1') return 'Q1';
+    if(raw === '2ND' || raw === 'Q2' || raw === 'P2') return 'Q2';
+    if(raw === '3RD' || raw === 'Q3' || raw === 'P3') return 'Q3';
+    if(raw === '4TH' || raw === 'Q4' || raw === 'P4') return 'Q4';
+    if(raw === 'OT' || raw === 'Q5' || raw === 'P5') return 'OT';
+    return 'Q1';
+  }
+
+  function periodButtonValue(quarter){
+    return quarter === 'OT' ? 'OT' : 'P' + quarter.replace(/\D+/g, '');
+  }
+
+  function clampInt(value, min, max, fallback){
+    const parsed = parseInt(String(value || ''), 10);
+    if(Number.isNaN(parsed)) return fallback;
+    return Math.min(max, Math.max(min, parsed));
+  }
+
+  function safeSetValue(node, value){
+    if(document.activeElement !== node){
+      node.value = value;
+    }
+  }
+
+  function abbreviate(name, fallback){
+    const cleaned = String(name || '').replace(/[^A-Za-z0-9 ]+/g, ' ').trim();
+    if(!cleaned) return fallback;
+    const parts = cleaned.split(/\s+/).filter(Boolean);
+    if(parts.length >= 2){
+      return parts.slice(0, 4).map(part => part.charAt(0)).join('').toUpperCase();
+    }
+    return parts[0].slice(0, 4).toUpperCase();
+  }
+
+  function normalizeCode(value, fallback){
+    const cleaned = String(value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4);
+    return cleaned || fallback;
+  }
+
+  function displayCode(side){
+    const fallback = side === 'away' ? 'AWAY' : 'HOME';
+    const explicit = normalizeCode(state.bug[side + 'Code'], '');
+    if(explicit) return explicit;
+    return abbreviate(state.bug[side + 'Name'], fallback);
+  }
+
+  function normalizeClockInput(text){
+    const match = String(text || '').trim().match(/^(\d{1,2}):(\d{1,2})$/);
+    if(!match) return null;
+    const minutes = parseInt(match[1], 10);
+    const seconds = parseInt(match[2], 10);
+    if(seconds > 59) return null;
+    return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+  }
+
+  function defaultResetClock(){
+    return normalizeQuarter(state.bug.quarter) === 'OT' ? '05:00' : '12:00';
+  }
+
+  function bugStateLooksUntouched(bug){
+    if(!bug) return true;
+    const quarter = normalizeQuarter(bug.quarter);
+    return String(bug.awayName || '').trim() === untouchedBug.awayName
+      && String(bug.homeName || '').trim() === untouchedBug.homeName
+      && clampInt(bug.awayScore, 0, 999, 0) === untouchedBug.awayScore
+      && clampInt(bug.homeScore, 0, 999, 0) === untouchedBug.homeScore
+      && clampInt(bug.awayTOs, 0, 9, untouchedBug.awayTOs) === untouchedBug.awayTOs
+      && clampInt(bug.homeTOs, 0, 9, untouchedBug.homeTOs) === untouchedBug.homeTOs
+      && clampInt(bug.awayFouls, 0, 99, 0) === untouchedBug.awayFouls
+      && clampInt(bug.homeFouls, 0, 99, 0) === untouchedBug.homeFouls
+      && String(bug.clock || '').trim() === untouchedBug.clock
+      && quarter === untouchedBug.quarter
+      && !bug.awayCode
+      && !bug.homeCode
+      && !bug.possession;
+  }
+
+  function statsStateLooksEmpty(stats){
+    if(!stats) return true;
+    const awayPlayers = stats.away && Array.isArray(stats.away.players) ? stats.away.players : [];
+    const homePlayers = stats.home && Array.isArray(stats.home.players) ? stats.home.players : [];
+    return !awayPlayers.some(player => player && (player.name || player.pts || player.fgm || player.t3m || player.ftm))
+      && !homePlayers.some(player => player && (player.name || player.pts || player.fgm || player.t3m || player.ftm));
+  }
+
+  function mergeIncoming(data){
+    const nextBug = data && data.bug ? data.bug : null;
+    const nextStats = data && data.stats ? data.stats : null;
+
+    if(nextBug && !bugStateLooksUntouched(nextBug)){
+      Object.assign(state.bug, nextBug);
+    }
+
+    if(nextStats && !statsStateLooksEmpty(nextStats)){
+      if(nextStats.meta && typeof nextStats.meta === 'object'){
+        Object.assign(state.stats.meta, nextStats.meta);
+      }
+      if(nextStats.away && typeof nextStats.away === 'object'){
+        state.stats.away = {
+          ...state.stats.away,
+          ...nextStats.away,
+          players: Array.isArray(nextStats.away.players) ? nextStats.away.players.slice() : state.stats.away.players
+        };
+      }
+      if(nextStats.home && typeof nextStats.home === 'object'){
+        state.stats.home = {
+          ...state.stats.home,
+          ...nextStats.home,
+          players: Array.isArray(nextStats.home.players) ? nextStats.home.players.slice() : state.stats.home.players
+        };
+      }
+    }
+
+    if(nextBug && nextBug.variantLabel){
+      state.bug.variantLabel = nextBug.variantLabel;
+    }
+
+    if(nextBug && nextBug.resetClock){
+      state.bug.resetClock = nextBug.resetClock;
+    }
+
+    syncClockFromState(state.bug);
+    render();
+  }
+
+  function renderStatus(){
+    el.statusDot.classList.toggle('live', connected);
+    el.statusText.textContent = connected ? 'Connected | Live Stream' : 'Offline | Local Preview';
+    el.variantText.textContent = state.bug.variantLabel || 'Variant 1/10';
+  }
+
+  function renderControls(){
+    const quarter = normalizeQuarter(state.bug.quarter);
+    const displayClock = state.bug.clock || defaultResetClock();
+
+    safeSetValue(el.clockField, displayClock);
+    el.periodReadout.textContent = quarter;
+
+    el.startClock.classList.toggle('active', !!state.bug.clockRunning);
+    el.stopClock.classList.toggle('active', !state.bug.clockRunning);
+
+    el.periodButtons.forEach(button => {
+      button.classList.toggle('active', button.textContent === periodButtonValue(quarter));
+    });
+  }
+
+  function renderMatchup(){
+    safeSetValue(el.awayCode, displayCode('away'));
+    safeSetValue(el.homeCode, displayCode('home'));
+    safeSetValue(el.awayName, state.bug.awayName || 'Warriors');
+    safeSetValue(el.homeName, state.bug.homeName || 'Lakers');
+    safeSetValue(el.awayScore, String(clampInt(state.bug.awayScore, 0, 199, 0)));
+    safeSetValue(el.homeScore, String(clampInt(state.bug.homeScore, 0, 199, 0)));
+    safeSetValue(el.awayTOs, String(clampInt(state.bug.awayTOs, 0, 9, 0)));
+    safeSetValue(el.homeTOs, String(clampInt(state.bug.homeTOs, 0, 9, 0)));
+    safeSetValue(el.awayFouls, String(clampInt(state.bug.awayFouls, 0, 9, 0)));
+    safeSetValue(el.homeFouls, String(clampInt(state.bug.homeFouls, 0, 9, 0)));
+
+    el.awayBonus.classList.toggle('active', !!state.bug.awayBonus);
+    el.homeBonus.classList.toggle('active', !!state.bug.homeBonus);
+    el.awayPossession.textContent = state.bug.possession === 'away' ? '▶' : '';
+    el.homePossession.textContent = state.bug.possession === 'home' ? '◀' : '';
+  }
+
+  function playerValue(player, key){
+    const raw = player && player[key];
+    return typeof raw === 'number' ? raw : parseInt(raw || 0, 10) || 0;
+  }
+
+  function playerPoints(player){
+    const explicit = player && player.pts;
+    if(explicit !== undefined && explicit !== null && explicit !== ''){
+      return parseInt(explicit, 10) || 0;
+    }
+    const fgm = playerValue(player, 'fgm');
+    const t3m = playerValue(player, 't3m') || playerValue(player, 'tpm');
+    const ftm = playerValue(player, 'ftm');
+    return (fgm - t3m) * 2 + t3m * 3 + ftm;
+  }
+
+  function playerRebounds(player){
+    if(player && player.reb !== undefined && player.reb !== null && player.reb !== ''){
+      return parseInt(player.reb, 10) || 0;
+    }
+    return playerValue(player, 'off') + playerValue(player, 'def');
+  }
+
+  function normalizePlayer(player){
+    return {
+      name: String(player && player.name || ''),
+      pts: playerPoints(player),
+      reb: playerRebounds(player),
+      ast: playerValue(player, 'ast'),
+      stl: playerValue(player, 'stl'),
+      blk: playerValue(player, 'blk')
+    };
+  }
+
+  function rowsForTeam(side){
+    const team = state.stats[side] || {};
+    const players = Array.isArray(team.players) ? team.players.map(normalizePlayer) : [];
+    const hasNamedPlayers = players.some(player => player.name);
+    const source = hasNamedPlayers ? players : fallbackPlayers[side].map(normalizePlayer);
+    const rows = source.slice(0, 10);
+    while(rows.length < 10){
+      rows.push({ name: '', pts: '', reb: '', ast: '', stl: '', blk: '' });
+    }
+    return rows;
+  }
+
+  function statsTableMarkup(rows){
+    return '<table class="stats-table"><thead><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr></thead><tbody>'
+      + rows.map(row => {
+        const blank = !row.name;
+        return '<tr' + (blank ? ' class="blank"' : '') + '>'
+          + '<td>' + (row.name || '&nbsp;') + '</td>'
+          + '<td>' + (blank ? '&nbsp;' : row.pts) + '</td>'
+          + '<td>' + (blank ? '&nbsp;' : row.reb) + '</td>'
+          + '<td>' + (blank ? '&nbsp;' : row.ast) + '</td>'
+          + '<td>' + (blank ? '&nbsp;' : row.stl) + '</td>'
+          + '<td>' + (blank ? '&nbsp;' : row.blk) + '</td>'
+          + '</tr>';
+      }).join('')
+      + '</tbody></table>';
+  }
+
+  function renderStats(){
+    const awayRows = rowsForTeam('away');
+    const homeRows = rowsForTeam('home');
+    const awayCode = displayCode('away');
+    const homeCode = displayCode('home');
+
+    el.awayBannerOne.textContent = awayCode;
+    el.awayBannerTwo.textContent = awayCode;
+    el.homeBannerOne.textContent = homeCode;
+    el.homeBannerTwo.textContent = homeCode;
+
+    el.awayTableOne.innerHTML = statsTableMarkup(awayRows.slice(0, 5));
+    el.awayTableTwo.innerHTML = statsTableMarkup(awayRows.slice(5, 10));
+    el.homeTableOne.innerHTML = statsTableMarkup(homeRows.slice(0, 5));
+    el.homeTableTwo.innerHTML = statsTableMarkup(homeRows.slice(5, 10));
+  }
+
+  function renderLog(){
+    const quarter = normalizeQuarter(state.bug.quarter);
+    const clock = state.bug.clock || '11:45';
+    const awayCode = displayCode('away');
+    const homeCode = displayCode('home');
+    const entries = fallbackLog.map(entry => entry
+      .replaceAll('Q2', quarter)
+      .replaceAll('11:45', clock)
+      .replaceAll('GSW', awayCode)
+      .replaceAll('LAL', homeCode)
+    );
+    el.playLog.innerHTML = entries.map(entry => '<div class="log-entry">' + entry + '</div>').join('');
+  }
+
+  function render(){
+    renderStatus();
+    renderControls();
+    renderMatchup();
+    renderStats();
+    renderLog();
+  }
+
+  function sendBugPatch(patch){
+    Object.assign(state.bug, patch);
+    render();
+    if(ws && ws.readyState === WebSocket.OPEN){
+      ws.send(JSON.stringify({ type:'patch', bug: patch }));
+    }
+  }
+
+  function syncClockFromState(bug){
+    const nextClock = normalizeClockInput(bug.clock || defaultResetClock()) || defaultResetClock();
+    const running = !!bug.clockRunning;
+    const changed = nextClock !== lastClockText;
+    lastClockText = nextClock;
+
+    if(changed || !running){
+      const parsed = parseClock(nextClock);
+      if(parsed !== null){
+        clockMs = parsed;
+      }
+      state.bug.clock = nextClock;
+    }
+
+    if(running && clockRunning && changed){
+      if(clockTimer){
+        clearInterval(clockTimer);
+        clockTimer = null;
+      }
+      clockRunning = false;
+    }
+
+    setClockRunning(running);
+  }
+
+  function setClockRunning(run){
+    if(run === clockRunning) return;
+
+    if(clockRunning){
+      const elapsed = nowMs() - clockStartPerf;
+      clockMs = Math.max(0, clockStartMs - elapsed);
+    }
+
+    clockRunning = run;
+
+    if(clockTimer){
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
+
+    if(clockRunning){
+      clockStartPerf = nowMs();
+      clockStartMs = clockMs;
+      clockTimer = setInterval(function(){
+        const elapsed = nowMs() - clockStartPerf;
+        clockMs = Math.max(0, clockStartMs - elapsed);
+        const nextClock = formatClock(clockMs);
+        state.bug.clock = nextClock;
+        state.bug.clockRunning = true;
+        if(document.activeElement !== el.clockField){
+          el.clockField.value = nextClock;
+        }
+        el.startClock.classList.add('active');
+        el.stopClock.classList.remove('active');
+        if(clockMs <= 0){
+          clearInterval(clockTimer);
+          clockTimer = null;
+          clockRunning = false;
+          sendBugPatch({ clock:'00:00', clockRunning:false });
+          return;
+        }
+      }, 100);
+    }
+  }
+
+  function connect(){
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = function(){
+      connected = true;
+      renderStatus();
+      ws.send(JSON.stringify({ type:'get_state' }));
+    };
+
+    ws.onmessage = function(event){
+      try{
+        const message = JSON.parse(event.data);
+        if(message.type === 'snapshot' || message.type === 'state'){
+          mergeIncoming(message.data || message.state || {});
+        }
+      }catch(err){
+        console.warn('Unable to parse WebSocket message', err);
+      }
+    };
+
+    ws.onclose = function(){
+      connected = false;
+      renderStatus();
+      if(reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, 1500);
+    };
+
+    ws.onerror = function(){
+      connected = false;
+      renderStatus();
+    };
+  }
+
+  function bindTextField(node, key, transform){
+    let timer = null;
+
+    function commit(){
+      clearTimeout(timer);
+      const fallback = key === 'awayCode' ? displayCode('away') : key === 'homeCode' ? displayCode('home') : '';
+      const nextValue = transform(node.value, fallback);
+      if(document.activeElement === node){
+        node.value = nextValue;
+      }
+      sendBugPatch({ [key]: nextValue });
+    }
+
+    node.addEventListener('input', function(){
+      clearTimeout(timer);
+      timer = setTimeout(commit, 160);
+    });
+
+    node.addEventListener('blur', commit);
+  }
+
+  function bindNumberField(node, key, min, max){
+    function commit(){
+      const fallback = min;
+      const nextValue = clampInt(node.value, min, max, fallback);
+      node.value = nextValue;
+      sendBugPatch({ [key]: nextValue });
+    }
+
+    node.addEventListener('change', commit);
+    node.addEventListener('blur', commit);
+  }
+
+  bindTextField(el.awayCode, 'awayCode', normalizeCode);
+  bindTextField(el.homeCode, 'homeCode', normalizeCode);
+  bindTextField(el.awayName, 'awayName', function(value){ return String(value || '').trim() || 'Warriors'; });
+  bindTextField(el.homeName, 'homeName', function(value){ return String(value || '').trim() || 'Lakers'; });
+  bindNumberField(el.awayScore, 'awayScore', 0, 199);
+  bindNumberField(el.homeScore, 'homeScore', 0, 199);
+  bindNumberField(el.awayTOs, 'awayTOs', 0, 9);
+  bindNumberField(el.homeTOs, 'homeTOs', 0, 9);
+  bindNumberField(el.awayFouls, 'awayFouls', 0, 9);
+  bindNumberField(el.homeFouls, 'homeFouls', 0, 9);
+
+  el.clockField.addEventListener('change', function(){
+    const nextClock = normalizeClockInput(el.clockField.value) || state.bug.clock || defaultResetClock();
+    sendBugPatch({ clock: nextClock, clockRunning: false });
+    syncClockFromState(state.bug);
+  });
+
+  el.startClock.addEventListener('click', function(){
+    const nextClock = normalizeClockInput(el.clockField.value) || state.bug.clock || defaultResetClock();
+    const parsed = parseClock(nextClock);
+    if(parsed === null) return;
+    clockMs = parsed;
+    sendBugPatch({ clock: nextClock, clockRunning: true });
+    syncClockFromState(state.bug);
+  });
+
+  el.stopClock.addEventListener('click', function(){
+    const nextClock = normalizeClockInput(el.clockField.value) || state.bug.clock || defaultResetClock();
+    sendBugPatch({ clock: nextClock, clockRunning: false });
+    syncClockFromState(state.bug);
+  });
+
+  el.resetClock.addEventListener('click', function(){
+    const nextClock = normalizeClockInput(state.bug.resetClock) || defaultResetClock();
+    sendBugPatch({ clock: nextClock, clockRunning: false, resetClock: nextClock });
+    syncClockFromState(state.bug);
+  });
+
+  el.periodButtons.forEach(button => {
+    button.addEventListener('click', function(){
+      const nextQuarter = button.dataset.quarter || 'Q1';
+      sendBugPatch({ quarter: nextQuarter });
+    });
+  });
+
+  el.awayBonus.addEventListener('click', function(){
+    sendBugPatch({ awayBonus: !state.bug.awayBonus });
+  });
+
+  el.homeBonus.addEventListener('click', function(){
+    sendBugPatch({ homeBonus: !state.bug.homeBonus });
+  });
+
+  el.awayPossession.addEventListener('click', function(){
+    sendBugPatch({ possession: state.bug.possession === 'away' ? '' : 'away' });
+  });
+
+  el.homePossession.addEventListener('click', function(){
+    sendBugPatch({ possession: state.bug.possession === 'home' ? '' : 'home' });
+  });
+
+  syncClockFromState(state.bug);
+  render();
+  connect();
+})();
+</script>
+</body>
+</html>
