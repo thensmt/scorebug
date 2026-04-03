@@ -112,9 +112,86 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
 .spn-clr { padding: 2px 6px !important; font-size: 0.65rem !important; }
 .spn .logo-prev { width: 32px; height: 32px; }
 .spn .sl { margin-top: 4px; }
+
+/* ── PIN Screen ── */
+#pin-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+}
+#pin-screen.hidden { display: none; }
+.pin-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.pin-sub { font-size: 0.75rem; color: var(--dim); }
+.pin-dots {
+  display: flex; gap: 12px; margin: 8px 0;
+}
+.pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-dot.error { background: var(--red); border-color: var(--red); }
+.pin-pad {
+  display: grid; grid-template-columns: repeat(3, 72px);
+  gap: 8px; margin-top: 8px;
+}
+.pin-pad button {
+  height: 56px; border-radius: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem; font-weight: 600;
+  background: var(--input); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none;
+}
+.pin-pad button:active { background: var(--accent); border-color: var(--accent); }
+.pin-pad button.pin-del { font-size: 0.8rem; color: var(--dim); }
+.pin-pad button.pin-empty { visibility: hidden; }
+.pin-error-msg { font-size: 0.75rem; color: var(--red); min-height: 18px; }
+.pin-reset-link {
+  font-size: 0.65rem; color: var(--dim); margin-top: 12px;
+  text-decoration: underline; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 </style>
 </head>
 <body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div class="pin-title" id="pinTitle">Enter PIN</div>
+  <div class="pin-sub" id="pinSub">4-digit access code</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-error-msg" id="pinError"></div>
+  <div class="pin-pad">
+    <button onclick="pinKey('1')">1</button>
+    <button onclick="pinKey('2')">2</button>
+    <button onclick="pinKey('3')">3</button>
+    <button onclick="pinKey('4')">4</button>
+    <button onclick="pinKey('5')">5</button>
+    <button onclick="pinKey('6')">6</button>
+    <button onclick="pinKey('7')">7</button>
+    <button onclick="pinKey('8')">8</button>
+    <button onclick="pinKey('9')">9</button>
+    <button class="pin-empty"></button>
+    <button onclick="pinKey('0')">0</button>
+    <button class="pin-del" onclick="pinDel()">DELETE</button>
+  </div>
+  <div class="pin-reset-link" id="pinResetLink" style="display:none" onclick="pinStartReset()">Forgot PIN?</div>
+</div>
 
 <!-- HEADER -->
 <div class="hdr">
@@ -275,8 +352,103 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
   });
   var db=firebase.database(), stateRef=db.ref('state'), bugRef=stateRef.child('bug'), state={};
+  var pinRef=db.ref('pin');
   function $(id){return document.getElementById(id)}
   function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
+
+  // ── PIN Gate ──
+  var pinEntry='', pinStored=null, pinMode='verify', pinConfirm='';
+  var MASTER_KEY='9110'; // master reset code — change this to your own secret
+
+  pinRef.once('value',function(snap){
+    pinStored=snap.val();
+    if(!pinStored){
+      // No PIN set yet — prompt to create one
+      pinMode='create';
+      $('pinTitle').textContent='Create PIN';
+      $('pinSub').textContent='Set a 4-digit access code';
+      $('pinResetLink').style.display='none';
+    } else {
+      pinMode='verify';
+      $('pinTitle').textContent='Enter PIN';
+      $('pinSub').textContent='4-digit access code';
+      $('pinResetLink').style.display='block';
+    }
+  });
+
+  function pinUpdateDots(){
+    for(var i=0;i<4;i++){
+      var d=$('pd'+i);
+      d.classList.toggle('filled',i<pinEntry.length);
+      d.classList.remove('error');
+    }
+    $('pinError').textContent='';
+  }
+
+  function pinShakeError(msg){
+    for(var i=0;i<4;i++) $('pd'+i).classList.add('error');
+    $('pinError').textContent=msg;
+    pinEntry='';
+    setTimeout(pinUpdateDots,800);
+  }
+
+  function pinUnlock(){
+    $('pin-screen').classList.add('hidden');
+  }
+
+  function pinHandleFull(){
+    if(pinMode==='verify'){
+      if(pinEntry===pinStored||pinEntry===MASTER_KEY){
+        if(pinEntry===MASTER_KEY){
+          // Master key used — let them set a new PIN
+          pinEntry='';pinMode='create';
+          $('pinTitle').textContent='Set New PIN';
+          $('pinSub').textContent='Master key accepted. Create a new 4-digit PIN';
+          $('pinResetLink').style.display='none';
+          pinUpdateDots();
+          return;
+        }
+        pinUnlock();
+      } else {
+        pinShakeError('Wrong PIN');
+      }
+    } else if(pinMode==='create'){
+      pinConfirm=pinEntry;pinEntry='';pinMode='confirm';
+      $('pinTitle').textContent='Confirm PIN';
+      $('pinSub').textContent='Re-enter the same 4 digits';
+      pinUpdateDots();
+    } else if(pinMode==='confirm'){
+      if(pinEntry===pinConfirm){
+        pinRef.set(pinEntry);
+        pinStored=pinEntry;
+        pinUnlock();
+      } else {
+        pinEntry='';pinMode='create';pinConfirm='';
+        $('pinTitle').textContent='Create PIN';
+        $('pinSub').textContent='PINs didn\'t match. Try again';
+        pinUpdateDots();
+      }
+    }
+  }
+
+  window.pinKey=function(k){
+    if(pinEntry.length>=4)return;
+    pinEntry+=k;
+    pinUpdateDots();
+    if(pinEntry.length===4) setTimeout(pinHandleFull,200);
+  };
+
+  window.pinDel=function(){
+    if(pinEntry.length>0){pinEntry=pinEntry.slice(0,-1);pinUpdateDots();}
+  };
+
+  window.pinStartReset=function(){
+    pinEntry='';pinMode='verify';
+    $('pinTitle').textContent='Enter Master Key';
+    $('pinSub').textContent='Contact admin for the master reset code';
+    $('pinResetLink').style.display='none';
+    pinUpdateDots();
+  };
 
   db.ref('.info/connected').on('value',function(s){
     var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
