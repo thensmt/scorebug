@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NSMT Control Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0b0e; --card: #111318; --border: #1e2028; --input: #161820;
+  --text: #e4e4e8; --dim: #7a7d8a; --accent: #0E80FC;
+  --green: #34d058; --red: #f04040; --gold: #f0c030;
+}
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column;
+  padding: 8px; gap: 6px;
+}
+
+/* ── Utility ── */
+.g { display: flex; gap: 4px; }
+.g > * { flex: 1; min-width: 0; }
+.lbl { font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 1px; }
+input[type="text"] {
+  width: 100%; background: var(--input); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-size: 0.85rem; padding: 6px 7px;
+  font-family: inherit; outline: none;
+}
+input:focus { border-color: var(--accent); }
+input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5px; background: var(--input); border: 1px solid var(--border); cursor: pointer; }
+.f { margin-bottom: 4px; }
+
+/* ── Buttons ── */
+.b {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--input); border: 1px solid var(--border);
+  color: var(--text); font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem; font-weight: 600; border-radius: 6px;
+  padding: 8px 10px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none;
+}
+.b:active { background: var(--accent); border-color: var(--accent); }
+.ba { background: var(--accent); border-color: var(--accent); color: #fff; }
+.br { background: rgba(240,64,64,0.12); border-color: var(--red); color: var(--red); }
+.bg { background: rgba(52,208,88,0.12); border-color: var(--green); color: var(--green); }
+.bs { font-size: 0.75rem; padding: 5px 8px; }
+
+/* ── Header ── */
+.hdr { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.hdr h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.badge { font-size: 0.6rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(240,64,64,0.15); color: var(--red); }
+.badge.on { background: rgba(52,208,88,0.15); color: var(--green); }
+
+/* ── Top: Clock + Score ── */
+.top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex-shrink: 0; }
+.clock-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.clock-in {
+  width: 100%; background: var(--input); border: 1px solid var(--border);
+  font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700;
+  text-align: center; padding: 6px 0; color: var(--text);
+  border-radius: 6px; outline: none;
+}
+.clock-in:focus { border-color: var(--accent); }
+.clock-in.running { color: var(--green); }
+.clock-row { display: flex; gap: 3px; width: 100%; }
+.clock-row .b { flex: 1; }
+
+.score-col { text-align: center; }
+.score-name { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.score-num { font-family: 'Space Grotesk', sans-serif; font-size: 2.8rem; font-weight: 700; line-height: 1; margin: 2px 0; }
+.score-btns { display: flex; gap: 3px; justify-content: center; }
+
+/* ── Period + Possession row ── */
+.mid { display: flex; gap: 4px; flex-shrink: 0; }
+.mid .b { flex: 1; font-size: 0.7rem; padding: 6px 4px; }
+.mid .b.on { background: rgba(14,128,252,0.12); border-color: var(--accent); color: var(--accent); }
+.mid .poss { border-color: var(--gold); color: var(--gold); background: rgba(240,192,48,0.08); }
+
+/* ── Teams (bottom section, scrollable if needed) ── */
+.bottom { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.tcard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+.tcard .card-t { font-family: 'Space Grotesk', sans-serif; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 4px; }
+.logo-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.logo-prev { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); background: var(--input); }
+.logo-prev.empty { display: none; }
+.logo-row .b { flex: 1; font-size: 0.7rem; padding: 5px 6px; }
+.cr { display: flex; gap: 4px; }
+.cr .f { flex: 1; }
+
+/* ── Overlay controls ── */
+.ov { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; grid-column: span 2; }
+.ov .card-t { font-family: 'Space Grotesk', sans-serif; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 4px; }
+.sl { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.sl .lbl { margin-bottom: 0; flex-shrink: 0; width: 60px; }
+.sl input[type="range"] { flex: 1; accent-color: var(--accent); }
+.sl-v { font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 600; min-width: 36px; text-align: right; }
+.ov-btns { display: flex; gap: 4px; }
+.ov-btns .b { flex: 1; }
+.ov-ev { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <img src="NSMTWordmarkBlue.png" alt="NSMT" style="height:22px;width:auto;">
+  <span class="badge" id="badge">Offline</span>
+</div>
+
+<!-- TOP: Clock + Scores -->
+<div class="top">
+  <div class="score-col">
+    <div class="score-name" id="awayLbl">AWAY</div>
+    <div class="score-num" id="awayScoreNum">0</div>
+    <div class="score-btns">
+      <button class="b bs" onclick="adj('away',-1)">-1</button>
+      <button class="b bs ba" onclick="adj('away',1)">+1</button>
+      <button class="b bs ba" onclick="adj('away',2)">+2</button>
+      <button class="b bs ba" onclick="adj('away',3)">+3</button>
+    </div>
+  </div>
+  <div class="clock-col">
+    <input type="text" class="clock-in" id="clockDisplay" value="8:00" inputmode="numeric">
+    <div class="clock-row">
+      <button class="b bg" id="clockToggleBtn" onclick="toggleClock()" style="flex:2">Start</button>
+      <button class="b bs" onclick="resetClock()">RST</button>
+    </div>
+    <div class="clock-row">
+      <button class="b bs" onclick="setClockTo('8:00')">8:00</button>
+      <button class="b bs" onclick="setClockTo('5:00')">5:00</button>
+      <button class="b bs" onclick="setClockTo('4:00')">4:00</button>
+    </div>
+  </div>
+  <div class="score-col">
+    <div class="score-name" id="homeLbl">HOME</div>
+    <div class="score-num" id="homeScoreNum">0</div>
+    <div class="score-btns">
+      <button class="b bs" onclick="adj('home',-1)">-1</button>
+      <button class="b bs ba" onclick="adj('home',1)">+1</button>
+      <button class="b bs ba" onclick="adj('home',2)">+2</button>
+      <button class="b bs ba" onclick="adj('home',3)">+3</button>
+    </div>
+  </div>
+</div>
+
+<!-- PERIOD + POSSESSION -->
+<div class="mid" id="periodBtns">
+  <button class="b on" data-p="1ST">1ST</button>
+  <button class="b" data-p="2ND">2ND</button>
+  <button class="b" data-p="3RD">3RD</button>
+  <button class="b" data-p="4TH">4TH</button>
+  <button class="b" data-p="OT">OT</button>
+  <button class="b" data-p="HALF">HLF</button>
+  <button class="b" data-p="FINAL">FIN</button>
+  <button class="b poss" id="possBtn" onclick="cyclePoss()">POSS</button>
+</div>
+
+<!-- TEAMS + OVERLAY -->
+<div class="bottom">
+  <!-- Away -->
+  <div class="tcard">
+    <div class="card-t">Away</div>
+    <div class="logo-row">
+      <img class="logo-prev empty" id="awayLogoPreview">
+      <button class="b" onclick="pickLogo('away')">Logo</button>
+      <input type="file" id="awayFileInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f"><div class="lbl">Name</div><input type="text" id="awayName" placeholder="Team Name"></div>
+    <div class="g">
+      <div class="f"><div class="lbl">Code</div><input type="text" id="awayCode" placeholder="ABC" maxlength="4"></div>
+      <div class="f"><div class="lbl">Record</div><input type="text" id="awayRecord" placeholder="12-3"></div>
+    </div>
+    <div class="cr">
+      <div class="f"><div class="lbl">Color</div><input type="color" id="awayPrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Text</div><input type="color" id="awayText" value="#ffffff"></div>
+    </div>
+  </div>
+  <!-- Home -->
+  <div class="tcard">
+    <div class="card-t">Home</div>
+    <div class="logo-row">
+      <img class="logo-prev empty" id="homeLogoPreview">
+      <button class="b" onclick="pickLogo('home')">Logo</button>
+      <input type="file" id="homeFileInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f"><div class="lbl">Name</div><input type="text" id="homeName" placeholder="Team Name"></div>
+    <div class="g">
+      <div class="f"><div class="lbl">Code</div><input type="text" id="homeCode" placeholder="XYZ" maxlength="4"></div>
+      <div class="f"><div class="lbl">Record</div><input type="text" id="homeRecord" placeholder="11-4"></div>
+    </div>
+    <div class="cr">
+      <div class="f"><div class="lbl">Color</div><input type="color" id="homePrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Text</div><input type="color" id="homeText" value="#ffffff"></div>
+    </div>
+  </div>
+  <!-- Overlay -->
+  <div class="ov">
+    <div class="card-t">Overlay</div>
+    <div class="ov-ev f"><div class="lbl">Event Title</div><input type="text" id="eventTitle" placeholder="CHIPOTLE NATIONALS - QUARTERFINAL"></div>
+    <div class="sl"><div class="lbl">Scale</div><input type="range" id="scaleSlider" min="0.5" max="2" step="0.05" value="1.25"><span class="sl-v" id="scaleVal">1.25</span></div>
+    <div class="sl"><div class="lbl">Logo</div><input type="range" id="logoSizeSlider" min="48" max="200" step="4" value="160"><span class="sl-v" id="logoSizeVal">160px</span></div>
+    <div class="ov-btns">
+      <button class="b bg" onclick="patch({visible:true})">Show</button>
+      <button class="b br" onclick="patch({visible:false})">Hide</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="colorCanvas" style="display:none"></canvas>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+(function(){
+  firebase.initializeApp({
+    apiKey:"AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",authDomain:"sincere-nirvana-436014-v9.firebaseapp.com",
+    databaseURL:"https://nsmt-scorebug.firebaseio.com",projectId:"sincere-nirvana-436014-v9",
+    storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
+  });
+  var db=firebase.database(), stateRef=db.ref('state'), bugRef=stateRef.child('bug'), state={};
+  function $(id){return document.getElementById(id)}
+  function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
+
+  db.ref('.info/connected').on('value',function(s){
+    var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
+  });
+
+  window.patch=function(fields){var u={};for(var k in fields)u['bug/'+k]=fields[k];stateRef.update(u);};
+
+  stateRef.on('value',function(snap){state=snap.val()||{};syncUI();});
+
+  function syncUI(){
+    var b=state.bug||{};
+    setB('eventTitle',b.eventTitle);setB('awayName',b.awayName);setB('homeName',b.homeName);
+    setB('awayCode',b.awayCode);setB('homeCode',b.homeCode);
+    setB('awayRecord',b.awayRecord);setB('homeRecord',b.homeRecord);
+    setB('awayPrimary',b.awayPrimary||'#333333');setB('homePrimary',b.homePrimary||'#333333');
+    setB('awayText',b.awayText||'#ffffff');setB('homeText',b.homeText||'#ffffff');
+    showLogo('away',b.awayLogo);showLogo('home',b.homeLogo);
+    $('awayScoreNum').textContent=b.awayScore??0;
+    $('homeScoreNum').textContent=b.homeScore??0;
+    $('awayLbl').textContent=b.awayCode||b.awayName||'AWAY';
+    $('homeLbl').textContent=b.homeCode||b.homeName||'HOME';
+
+    // Clock
+    if(b.clockRunning&&!lcRun){lcMs=parseC(b.clock||'8:00');startLC();}
+    else if(!b.clockRunning&&lcRun){stopLC();lcMs=parseC(b.clock||'8:00');$('clockDisplay').value=b.clock||'8:00';}
+    else if(!b.clockRunning&&!lcRun){lcMs=parseC(b.clock||'8:00');if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=b.clock||'8:00';}
+    updToggle();
+
+    // Period
+    document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){btn.classList.toggle('on',btn.dataset.p===(b.quarter||'1ST'));});
+
+    // Possession button label
+    var p=b.possession;
+    var pb=$('possBtn');
+    pb.textContent=p==='away'?(b.awayCode||'AWY')+' \u25C0':p==='home'?'\u25B6 '+(b.homeCode||'HOM'):'POSS';
+    pb.classList.toggle('poss',!!p);
+
+    setB('scaleSlider',b.bugScale||1.25);$('scaleVal').textContent=b.bugScale||1.25;
+    setB('logoSizeSlider',b.bugLogoSize||160);$('logoSizeVal').textContent=(b.bugLogoSize||160)+'px';
+  }
+
+  function showLogo(side,url){var img=$(side+'LogoPreview');if(url){img.src=url;img.classList.remove('empty');}else{img.classList.add('empty');img.removeAttribute('src');}}
+
+  // ── Score ──
+  window.adj=function(side,d){bugRef.child(side+'Score').transaction(function(v){return Math.max(0,(v||0)+d);});};
+
+  // ── Possession cycle ──
+  window.cyclePoss=function(){
+    var cur=(state.bug||{}).possession||'';
+    var next=cur===''?'away':cur==='away'?'home':'';
+    patch({possession:next});
+  };
+
+  // ── Clock ──
+  var lcInt=null,lcMs=0,lcRun=false,lcPerf=0,lcStart=0,lcSync=-1;
+  function parseC(t){var p=String(t||'0:00').trim().split(':');return((parseInt(p[0])||0)*60+(parseInt(p[1])||0))*1000;}
+  function fmtC(ms){if(ms<0)ms=0;var t=Math.floor(ms/1000);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
+
+  function startLC(){
+    if(lcRun)return;lcRun=true;lcPerf=performance.now();lcStart=lcMs;lcSync=-1;
+    $('clockDisplay').classList.add('running');
+    lcInt=setInterval(function(){
+      var e=performance.now()-lcPerf;lcMs=Math.max(0,lcStart-e);
+      var d=fmtC(lcMs);if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=d;
+      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;stateRef.update({'bug/clock':d});}
+      if(lcMs<=0){clearInterval(lcInt);lcRun=false;$('clockDisplay').classList.remove('running');patch({clock:'0:00',clockRunning:false});}
+    },100);
+  }
+  function stopLC(){if(!lcRun)return;clearInterval(lcInt);lcMs=Math.max(0,lcStart-(performance.now()-lcPerf));lcRun=false;$('clockDisplay').classList.remove('running');}
+  function updToggle(){var b=$('clockToggleBtn');if(lcRun){b.textContent='Pause';b.classList.remove('bg');b.classList.add('br');}else{b.textContent='Start';b.classList.remove('br');b.classList.add('bg');}}
+
+  window.toggleClock=function(){
+    if(lcRun){stopLC();updToggle();var d=fmtC(lcMs);$('clockDisplay').value=d;patch({clock:d,clockRunning:false});}
+    else{var d=$('clockDisplay').value;lcMs=parseC(d);if(lcMs<=0)return;startLC();updToggle();patch({clock:d,clockRunning:true});}
+  };
+  window.resetClock=function(){stopLC();var q=(state.bug||{}).quarter||'1ST';var d=q==='OT'?'5:00':'8:00';lcMs=parseC(d);$('clockDisplay').value=d;updToggle();patch({clock:d,clockRunning:false});};
+  window.setClockTo=function(v){stopLC();lcMs=parseC(v);$('clockDisplay').value=v;updToggle();patch({clock:v,clockRunning:false});};
+
+  $('clockDisplay').addEventListener('blur',function(){if(lcRun)return;var v=this.value.trim();if(v&&parseC(v)>=0)setClockTo(fmtC(parseC(v)));});
+  $('clockDisplay').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();this.blur();}});
+
+  // ── Period ──
+  document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){
+    btn.addEventListener('click',function(){patch({quarter:btn.dataset.p});});
+  });
+
+  // ── Text inputs ──
+  var T={};
+  function bT(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},250);});}
+  bT('eventTitle','eventTitle');bT('awayName','awayName');bT('homeName','homeName');
+  bT('awayCode','awayCode');bT('homeCode','homeCode');bT('awayRecord','awayRecord');bT('homeRecord','homeRecord');
+
+  function bC(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},100);});}
+  bC('awayPrimary','awayPrimary');bC('homePrimary','homePrimary');bC('awayText','awayText');bC('homeText','homeText');
+
+  $('scaleSlider').addEventListener('input',function(){$('scaleVal').textContent=this.value;clearTimeout(T.sc);var v=parseFloat(this.value);T.sc=setTimeout(function(){patch({bugScale:v});},100);});
+  $('logoSizeSlider').addEventListener('input',function(){$('logoSizeVal').textContent=this.value+'px';clearTimeout(T.ls);var v=parseInt(this.value);T.ls=setTimeout(function(){patch({bugLogoSize:v});},100);});
+
+  // ── Logo Upload + Auto Color ──
+  window.pickLogo=function(s){$(s+'FileInput').click();};
+  $('awayFileInput').addEventListener('change',function(){hLogo('away',this);});
+  $('homeFileInput').addEventListener('change',function(){hLogo('home',this);});
+
+  function hLogo(side,input){
+    var file=input.files[0];if(!file)return;
+    if(file.size>500000)alert('Large logo ('+Math.round(file.size/1024)+'KB). Use a smaller image for faster sync.');
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var url=e.target.result;patch({[side+'Logo']:url});
+      var img=new Image();img.onload=function(){
+        var c=exColors(img);if(c){patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});$(side+'Primary').value=c.primary;$(side+'Text').value=c.text;}
+      };img.src=url;
+    };reader.readAsDataURL(file);input.value='';
+  }
+
+  function exColors(img){
+    var cv=$('colorCanvas'),ctx=cv.getContext('2d'),sz=64;cv.width=sz;cv.height=sz;ctx.drawImage(img,0,0,sz,sz);
+    var data=ctx.getImageData(0,0,sz,sz).data,bk={};
+    for(var i=0;i<data.length;i+=4){
+      var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];if(a<128)continue;
+      var lum=(0.299*r+0.587*g+0.114*b)/255;if(lum>0.9||lum<0.08)continue;
+      var qr=Math.round(r/16)*16,qg=Math.round(g/16)*16,qb=Math.round(b/16)*16,key=qr+','+qg+','+qb;
+      var mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx===0?0:(mx-mn)/mx;
+      bk[key]=(bk[key]||0)+1+sat*3;
+    }
+    var best=null,bc=0;for(var k in bk)if(bk[k]>bc){bc=bk[k];best=k;}
+    if(!best)return null;
+    var p=best.split(','),pr=parseInt(p[0]),pg=parseInt(p[1]),pb=parseInt(p[2]);
+    var hex='#'+pr.toString(16).padStart(2,'0')+pg.toString(16).padStart(2,'0')+pb.toString(16).padStart(2,'0');
+    var lP=(0.299*pr+0.587*pg+0.114*pb)/255;
+    return{primary:hex,text:lP>0.55?'#111111':'#ffffff',accent:'#CCCCCC'};
+  }
+})();
+</script>
+</body>
+</html>
