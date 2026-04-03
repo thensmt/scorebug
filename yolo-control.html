@@ -334,28 +334,46 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     if(file.size>500000)alert('Large logo ('+Math.round(file.size/1024)+'KB). Use a smaller image for faster sync.');
     var reader=new FileReader();
     reader.onload=function(e){
-      var url=e.target.result;patch({[side+'Logo']:url});
+      var url=e.target.result;
+      patch({[side+'Logo']:url});
       var img=new Image();
-      img.crossOrigin='anonymous';
+      // Do NOT set crossOrigin on data URLs — it taints the canvas on iOS Safari
+      img.onerror=function(){console.warn('Logo image failed to load');};
       img.onload=function(){
-        try{
-          var c=exColors(img);
-          if(c){
-            patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});
-            $(side+'Primary').value=c.primary;$(side+'Text').value=c.text;
-          }
-        }catch(err){console.warn('Color extraction failed:',err);}
-      };img.src=url;
+        function doExtract(){
+          try{
+            var c=exColors(img);
+            if(c){
+              patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});
+              var cp=$(side+'Primary'),ct=$(side+'Text');
+              cp.value=c.primary;ct.value=c.text;
+              // Force iOS color pickers to visually update
+              cp.dispatchEvent(new Event('input',{bubbles:true}));
+              ct.dispatchEvent(new Event('input',{bubbles:true}));
+            }
+          }catch(err){console.warn('Color extraction failed:',err);}
+        }
+        // Use decode() if available — ensures pixels are ready before canvas draw
+        if(img.decode){img.decode().then(doExtract).catch(doExtract);}
+        else{doExtract();}
+      };
+      img.src=url;
     };reader.readAsDataURL(file);input.value='';
   }
 
   function exColors(img){
-    var cv=$('colorCanvas'),ctx=cv.getContext('2d',{willReadFrequently:true}),sz=64;
+    // Create a fresh canvas each time to avoid stale state
+    var cv=document.createElement('canvas'),sz=64;
     cv.width=sz;cv.height=sz;
-    ctx.clearRect(0,0,sz,sz);
+    var ctx=cv.getContext('2d',{willReadFrequently:true});
     ctx.drawImage(img,0,0,sz,sz);
     var data;
     try{data=ctx.getImageData(0,0,sz,sz).data;}catch(e){return null;}
+    // Check for all-zero data (iOS can silently return blank pixels)
+    var hasData=false;
+    for(var j=0;j<data.length;j+=4){if(data[j+3]>0){hasData=true;break;}}
+    if(!hasData)return null;
+    // Pass 1: filter extremes, weight by saturation
     var bk={},total=0;
     for(var i=0;i<data.length;i+=4){
       var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
@@ -363,22 +381,44 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       var lum=(0.299*r+0.587*g+0.114*b)/255;
       if(lum>0.95||lum<0.04)continue;
       var qr=Math.round(r/32)*32,qg=Math.round(g/32)*32,qb=Math.round(b/32)*32;
+      qr=Math.min(qr,224);qg=Math.min(qg,224);qb=Math.min(qb,224);
       var key=qr+','+qg+','+qb;
       var mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx===0?0:(mx-mn)/mx;
       bk[key]=(bk[key]||0)+1+sat*5;
       total++;
     }
-    // If first pass got nothing, retry with no luminance filter
+    // Pass 2: if nothing passed, retry with no luminance filter
     if(total===0){
       for(var i=0;i<data.length;i+=4){
         var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
         if(a<64)continue;
-        var qr=Math.round(r/32)*32,qg=Math.round(g/32)*32,qb=Math.round(b/32)*32;
+        var qr=Math.min(Math.round(r/32)*32,224),qg=Math.min(Math.round(g/32)*32,224),qb=Math.min(Math.round(b/32)*32,224);
         var key=qr+','+qg+','+qb;
         bk[key]=(bk[key]||0)+1;
+        total++;
       }
     }
-    var best=null,bc=0;for(var k in bk)if(bk[k]>bc){bc=bk[k];best=k;}
+    // Pass 3: absolute fallback — average all non-transparent pixels
+    if(total===0){
+      var sr=0,sg=0,sb=0,cnt=0;
+      for(var i=0;i<data.length;i+=4){
+        if(data[i+3]<32)continue;
+        sr+=data[i];sg+=data[i+1];sb+=data[i+2];cnt++;
+      }
+      if(cnt===0)return null;
+      var ar=Math.round(sr/cnt),ag=Math.round(sg/cnt),ab=Math.round(sb/cnt);
+      var hex='#'+ar.toString(16).padStart(2,'0')+ag.toString(16).padStart(2,'0')+ab.toString(16).padStart(2,'0');
+      var lP=(0.299*ar+0.587*ag+0.114*ab)/255;
+      return{primary:hex,text:lP>0.5?'#111111':'#ffffff',accent:'#CCCCCC'};
+    }
+    var best=null,bc=0;
+    for(var k in bk){if(bk[k]>bc){bc=bk[k];best=k;}}
+    if(!best)return null;
+    var p=best.split(','),pr=parseInt(p[0]),pg=parseInt(p[1]),pb=parseInt(p[2]);
+    var hex='#'+pr.toString(16).padStart(2,'0')+pg.toString(16).padStart(2,'0')+pb.toString(16).padStart(2,'0');
+    var lP=(0.299*pr+0.587*pg+0.114*pb)/255;
+    return{primary:hex,text:lP>0.5?'#111111':'#ffffff',accent:'#CCCCCC'};
+  }
     if(!best)return null;
     var p=best.split(','),pr=Math.min(255,parseInt(p[0])),pg=Math.min(255,parseInt(p[1])),pb=Math.min(255,parseInt(p[2]));
     var hex='#'+pr.toString(16).padStart(2,'0')+pg.toString(16).padStart(2,'0')+pb.toString(16).padStart(2,'0');
