@@ -296,13 +296,9 @@ html, body {
   color: #fff; letter-spacing: 0.15em;
   line-height: 1;
 }
-.bug-logo-text {
-  margin-top: 4px;
-  font-family: var(--fb-font-display);
-  font-size: 0.75rem; font-weight: 700;
-  font-style: italic; color: var(--fb-primary);
-  letter-spacing: 0.06em; line-height: 1;
-  opacity: 0.85;
+.bug-logo {
+  height: 16px; width: auto; object-fit: contain;
+  margin-top: 4px; opacity: 0.85;
 }
 
 /* ── Event Bar ──────────────────────────────────────────────────── */
@@ -558,10 +554,7 @@ html, body {
           <span class="bug-team-record" id="record-away"></span>
         </div>
         <span class="bug-team-score" id="score-away">0</span>
-        <div class="bug-indicators">
-          <div class="foul-dots" id="fouls-away" data-type="foul"></div>
-          <div class="timeout-dots" id="timeouts-away" data-type="timeout"></div>
-        </div>
+        <div class="bug-indicators"></div>
       </div>
     </div>
     <div class="bug-divider"></div>
@@ -570,7 +563,7 @@ html, body {
     <div class="bug-center" id="center-panel">
       <div class="clock-display" id="clock">8:00</div>
       <div class="period-display" id="period">1ST</div>
-      <div class="bug-logo-text">NSMT</div>
+      <img class="bug-logo" src="NSMTWordmarkBlue.png" alt="NSMT">
     </div>
     <div class="bug-divider"></div>
 
@@ -584,10 +577,7 @@ html, body {
           <span class="bug-team-record" id="record-home"></span>
         </div>
         <span class="bug-team-score" id="score-home">0</span>
-        <div class="bug-indicators">
-          <div class="foul-dots" id="fouls-home" data-type="foul"></div>
-          <div class="timeout-dots" id="timeouts-home" data-type="timeout"></div>
-        </div>
+        <div class="bug-indicators"></div>
       </div>
     </div>
   </div>

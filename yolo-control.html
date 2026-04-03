@@ -9,733 +9,354 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
 :root {
-  --bg: #0a0b0e;
-  --card: #111318;
-  --card-border: #1e2028;
-  --input-bg: #161820;
-  --text: #e4e4e8;
-  --dim: #7a7d8a;
-  --accent: #0E80FC;
-  --accent-dim: rgba(14,128,252,0.12);
-  --green: #34d058;
-  --red: #f04040;
-  --gold: #f0c030;
+  --bg: #0a0b0e; --card: #111318; --border: #1e2028; --input: #161820;
+  --text: #e4e4e8; --dim: #7a7d8a; --accent: #0E80FC;
+  --green: #34d058; --red: #f04040; --gold: #f0c030;
 }
-
-html { font-size: 16px; }
-
+html, body { height: 100%; overflow: hidden; }
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg); color: var(--text);
   font-family: 'Inter', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  padding: 12px;
-  padding-bottom: 80px;
-  min-height: 100dvh;
+  display: flex; flex-direction: column;
+  padding: 8px; gap: 6px;
 }
 
-/* ── Header ── */
-.hdr {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 12px; margin-bottom: 14px;
-  border-bottom: 1px solid var(--card-border);
-}
-.hdr h1 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.2rem; font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--accent);
-}
-.badge {
-  font-size: 0.7rem; font-weight: 600;
-  padding: 3px 10px; border-radius: 12px;
-  background: rgba(240,64,64,0.15); color: var(--red);
-}
-.badge.on { background: rgba(52,208,88,0.15); color: var(--green); }
-
-/* ── Cards ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
-}
-.card-title {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.7rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--dim); margin-bottom: 10px;
-}
-
-/* ── Inputs ── */
-label { display: block; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 3px; }
-input[type="text"], input[type="number"], select {
-  width: 100%; background: var(--input-bg); border: 1px solid var(--card-border);
-  border-radius: 6px; color: var(--text); font-size: 0.95rem; padding: 9px 10px;
+/* ── Utility ── */
+.g { display: flex; gap: 4px; }
+.g > * { flex: 1; min-width: 0; }
+.lbl { font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 1px; }
+input[type="text"] {
+  width: 100%; background: var(--input); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-size: 0.85rem; padding: 6px 7px;
   font-family: inherit; outline: none;
 }
-input:focus, select:focus { border-color: var(--accent); }
-input[type="color"] { height: 38px; padding: 2px; border-radius: 6px; background: var(--input-bg); border: 1px solid var(--card-border); cursor: pointer; }
-input[type="range"] { width: 100%; accent-color: var(--accent); }
-
-.row { display: flex; gap: 8px; }
-.row > * { flex: 1; min-width: 0; }
-.field { margin-bottom: 8px; }
+input:focus { border-color: var(--accent); }
+input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5px; background: var(--input); border: 1px solid var(--border); cursor: pointer; }
+.f { margin-bottom: 4px; }
 
 /* ── Buttons ── */
-.btn {
+.b {
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--input-bg); border: 1px solid var(--card-border);
+  background: var(--input); border: 1px solid var(--border);
   color: var(--text); font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.95rem; font-weight: 600; border-radius: 8px;
-  padding: 10px 14px; cursor: pointer;
+  font-size: 0.85rem; font-weight: 600; border-radius: 6px;
+  padding: 8px 10px; cursor: pointer;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none;
 }
-.btn:active { background: var(--accent); border-color: var(--accent); }
-.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-red { background: rgba(240,64,64,0.12); border-color: var(--red); color: var(--red); }
-.btn-green { background: rgba(52,208,88,0.12); border-color: var(--green); color: var(--green); }
-.btn-gold { background: rgba(240,192,48,0.12); border-color: var(--gold); color: var(--gold); }
-.btn-sm { font-size: 0.8rem; padding: 7px 10px; }
+.b:active { background: var(--accent); border-color: var(--accent); }
+.ba { background: var(--accent); border-color: var(--accent); color: #fff; }
+.br { background: rgba(240,64,64,0.12); border-color: var(--red); color: var(--red); }
+.bg { background: rgba(52,208,88,0.12); border-color: var(--green); color: var(--green); }
+.bs { font-size: 0.75rem; padding: 5px 8px; }
 
-/* ── Team Cards ── */
-.teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.team-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; padding: 12px; }
-.logo-preview { width: 64px; height: 64px; object-fit: contain; border-radius: 6px; border: 1px solid var(--card-border); background: var(--input-bg); display: block; margin-bottom: 6px; }
-.logo-preview.empty { display: none; }
-.file-btn { font-size: 0.75rem; padding: 6px 10px; margin-bottom: 8px; width: 100%; }
-.color-row { display: flex; gap: 6px; align-items: end; }
-.color-row .field { flex: 1; }
+/* ── Header ── */
+.hdr { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.hdr h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.badge { font-size: 0.6rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgba(240,64,64,0.15); color: var(--red); }
+.badge.on { background: rgba(52,208,88,0.15); color: var(--green); }
 
-/* ── Score ── */
-.score-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
-.score-side { text-align: center; }
-.score-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
-.score-num { font-family: 'Space Grotesk', sans-serif; font-size: 3.2rem; font-weight: 700; line-height: 1; margin: 6px 0; }
-.score-btns { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
-.vs { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--dim); padding-top: 20px; }
-
-/* ── Possession ── */
-.poss-row { display: flex; gap: 6px; margin-top: 10px; }
-.poss-btn { flex: 1; text-align: center; padding: 10px; border-radius: 8px; background: var(--input-bg); border: 1px solid var(--card-border); color: var(--dim); font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.poss-btn.on { border-color: var(--gold); color: var(--gold); background: rgba(240,192,48,0.08); }
-
-/* ── Clock ── */
-.clock-input {
-  display: block; width: 100%; border: 1px solid var(--card-border); background: var(--input-bg);
-  font-family: 'Space Grotesk', sans-serif; font-size: 3rem; font-weight: 700;
-  text-align: center; margin: 6px 0; padding: 8px 0; color: var(--text);
-  border-radius: 8px; outline: none; -webkit-tap-highlight-color: transparent;
+/* ── Top: Clock + Score ── */
+.top { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex-shrink: 0; }
+.clock-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.clock-in {
+  width: 100%; background: var(--input); border: 1px solid var(--border);
+  font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700;
+  text-align: center; padding: 6px 0; color: var(--text);
+  border-radius: 6px; outline: none;
 }
-.clock-input:focus { border-color: var(--accent); }
-.clock-input.running { color: var(--green); }
-.clock-btns { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-.period-btns { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-.period-btns .btn { flex: 1; min-width: 48px; }
-.period-btns .btn.on { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.clock-in:focus { border-color: var(--accent); }
+.clock-in.running { color: var(--green); }
+.clock-row { display: flex; gap: 3px; width: 100%; }
+.clock-row .b { flex: 1; }
 
-/* ── Fouls/Timeouts ── */
-.ft-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ft-item { text-align: center; }
-.ft-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 2px; }
-.ft-num { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700; margin: 4px 0; }
-.ft-btns { display: flex; gap: 4px; justify-content: center; }
+.score-col { text-align: center; }
+.score-name { font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); }
+.score-num { font-family: 'Space Grotesk', sans-serif; font-size: 2.8rem; font-weight: 700; line-height: 1; margin: 2px 0; }
+.score-btns { display: flex; gap: 3px; justify-content: center; }
 
-/* ── Sliders ── */
-.slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.slider-row label { margin-bottom: 0; flex-shrink: 0; width: 80px; }
-.slider-row input[type="range"] { flex: 1; }
-.slider-val { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; font-weight: 600; min-width: 44px; text-align: right; }
+/* ── Period + Possession row ── */
+.mid { display: flex; gap: 4px; flex-shrink: 0; }
+.mid .b { flex: 1; font-size: 0.7rem; padding: 6px 4px; }
+.mid .b.on { background: rgba(14,128,252,0.12); border-color: var(--accent); color: var(--accent); }
+.mid .poss { border-color: var(--gold); color: var(--gold); background: rgba(240,192,48,0.08); }
 
-/* ── Toggle ── */
-.toggle-row { display: flex; gap: 8px; }
-.toggle-row .btn { flex: 1; }
+/* ── Teams (bottom section, scrollable if needed) ── */
+.bottom { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.tcard { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+.tcard .card-t { font-family: 'Space Grotesk', sans-serif; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 4px; }
+.logo-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.logo-prev { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); background: var(--input); }
+.logo-prev.empty { display: none; }
+.logo-row .b { flex: 1; font-size: 0.7rem; padding: 5px 6px; }
+.cr { display: flex; gap: 4px; }
+.cr .f { flex: 1; }
 
-@media (max-width: 520px) {
-  .teams { grid-template-columns: 1fr; }
-  .score-grid { grid-template-columns: 1fr 1fr; }
-  .vs { display: none; }
-}
+/* ── Overlay controls ── */
+.ov { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; grid-column: span 2; }
+.ov .card-t { font-family: 'Space Grotesk', sans-serif; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 4px; }
+.sl { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.sl .lbl { margin-bottom: 0; flex-shrink: 0; width: 60px; }
+.sl input[type="range"] { flex: 1; accent-color: var(--accent); }
+.sl-v { font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 600; min-width: 36px; text-align: right; }
+.ov-btns { display: flex; gap: 4px; }
+.ov-btns .b { flex: 1; }
+.ov-ev { margin-bottom: 4px; }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <div class="hdr">
-  <h1>NSMT Control</h1>
+  <img src="NSMTWordmarkBlue.png" alt="NSMT" style="height:22px;width:auto;">
   <span class="badge" id="badge">Offline</span>
 </div>
 
-<!-- GAME SETUP -->
-<div class="card">
-  <div class="card-title">Game Setup</div>
-  <div class="field">
-    <label>Event Title</label>
-    <input type="text" id="eventTitle" placeholder="CHIPOTLE NATIONALS - QUARTERFINAL">
+<!-- TOP: Clock + Scores -->
+<div class="top">
+  <div class="score-col">
+    <div class="score-name" id="awayLbl">AWAY</div>
+    <div class="score-num" id="awayScoreNum">0</div>
+    <div class="score-btns">
+      <button class="b bs" onclick="adj('away',-1)">-1</button>
+      <button class="b bs ba" onclick="adj('away',1)">+1</button>
+      <button class="b bs ba" onclick="adj('away',2)">+2</button>
+      <button class="b bs ba" onclick="adj('away',3)">+3</button>
+    </div>
   </div>
-  <div class="card-title" style="margin-top:6px">Period</div>
-  <div class="period-btns" id="periodBtns">
-    <button class="btn btn-sm on" data-p="1ST">1ST</button>
-    <button class="btn btn-sm" data-p="2ND">2ND</button>
-    <button class="btn btn-sm" data-p="3RD">3RD</button>
-    <button class="btn btn-sm" data-p="4TH">4TH</button>
-    <button class="btn btn-sm" data-p="OT">OT</button>
-    <button class="btn btn-sm" data-p="HALF">HALF</button>
-    <button class="btn btn-sm" data-p="FINAL">FINAL</button>
+  <div class="clock-col">
+    <input type="text" class="clock-in" id="clockDisplay" value="8:00" inputmode="numeric">
+    <div class="clock-row">
+      <button class="b bg" id="clockToggleBtn" onclick="toggleClock()" style="flex:2">Start</button>
+      <button class="b bs" onclick="resetClock()">RST</button>
+    </div>
+    <div class="clock-row">
+      <button class="b bs" onclick="setClockTo('8:00')">8:00</button>
+      <button class="b bs" onclick="setClockTo('5:00')">5:00</button>
+      <button class="b bs" onclick="setClockTo('4:00')">4:00</button>
+    </div>
+  </div>
+  <div class="score-col">
+    <div class="score-name" id="homeLbl">HOME</div>
+    <div class="score-num" id="homeScoreNum">0</div>
+    <div class="score-btns">
+      <button class="b bs" onclick="adj('home',-1)">-1</button>
+      <button class="b bs ba" onclick="adj('home',1)">+1</button>
+      <button class="b bs ba" onclick="adj('home',2)">+2</button>
+      <button class="b bs ba" onclick="adj('home',3)">+3</button>
+    </div>
   </div>
 </div>
 
-<!-- TEAMS -->
-<div class="teams">
+<!-- PERIOD + POSSESSION -->
+<div class="mid" id="periodBtns">
+  <button class="b on" data-p="1ST">1ST</button>
+  <button class="b" data-p="2ND">2ND</button>
+  <button class="b" data-p="3RD">3RD</button>
+  <button class="b" data-p="4TH">4TH</button>
+  <button class="b" data-p="OT">OT</button>
+  <button class="b" data-p="HALF">HLF</button>
+  <button class="b" data-p="FINAL">FIN</button>
+  <button class="b poss" id="possBtn" onclick="cyclePoss()">POSS</button>
+</div>
+
+<!-- TEAMS + OVERLAY -->
+<div class="bottom">
   <!-- Away -->
-  <div class="team-card">
-    <div class="card-title">Away</div>
-    <img class="logo-preview empty" id="awayLogoPreview">
-    <button class="btn btn-sm file-btn" onclick="pickLogo('away')">Upload Logo</button>
-    <input type="file" id="awayFileInput" accept="image/*" style="display:none">
-    <div class="field"><label>Name</label><input type="text" id="awayName" placeholder="Team Name"></div>
-    <div class="field"><label>Code</label><input type="text" id="awayCode" placeholder="ABC" maxlength="4"></div>
-    <div class="field"><label>Record</label><input type="text" id="awayRecord" placeholder="12-3"></div>
-    <div class="color-row">
-      <div class="field"><label>Primary</label><input type="color" id="awayPrimary" value="#333333"></div>
-      <div class="field"><label>Text</label><input type="color" id="awayText" value="#ffffff"></div>
+  <div class="tcard">
+    <div class="card-t">Away</div>
+    <div class="logo-row">
+      <img class="logo-prev empty" id="awayLogoPreview">
+      <button class="b" onclick="pickLogo('away')">Logo</button>
+      <input type="file" id="awayFileInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f"><div class="lbl">Name</div><input type="text" id="awayName" placeholder="Team Name"></div>
+    <div class="g">
+      <div class="f"><div class="lbl">Code</div><input type="text" id="awayCode" placeholder="ABC" maxlength="4"></div>
+      <div class="f"><div class="lbl">Record</div><input type="text" id="awayRecord" placeholder="12-3"></div>
+    </div>
+    <div class="cr">
+      <div class="f"><div class="lbl">Color</div><input type="color" id="awayPrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Text</div><input type="color" id="awayText" value="#ffffff"></div>
     </div>
   </div>
   <!-- Home -->
-  <div class="team-card">
-    <div class="card-title">Home</div>
-    <img class="logo-preview empty" id="homeLogoPreview">
-    <button class="btn btn-sm file-btn" onclick="pickLogo('home')">Upload Logo</button>
-    <input type="file" id="homeFileInput" accept="image/*" style="display:none">
-    <div class="field"><label>Name</label><input type="text" id="homeName" placeholder="Team Name"></div>
-    <div class="field"><label>Code</label><input type="text" id="homeCode" placeholder="XYZ" maxlength="4"></div>
-    <div class="field"><label>Record</label><input type="text" id="homeRecord" placeholder="11-4"></div>
-    <div class="color-row">
-      <div class="field"><label>Primary</label><input type="color" id="homePrimary" value="#333333"></div>
-      <div class="field"><label>Text</label><input type="color" id="homeText" value="#ffffff"></div>
+  <div class="tcard">
+    <div class="card-t">Home</div>
+    <div class="logo-row">
+      <img class="logo-prev empty" id="homeLogoPreview">
+      <button class="b" onclick="pickLogo('home')">Logo</button>
+      <input type="file" id="homeFileInput" accept="image/*" style="display:none">
+    </div>
+    <div class="f"><div class="lbl">Name</div><input type="text" id="homeName" placeholder="Team Name"></div>
+    <div class="g">
+      <div class="f"><div class="lbl">Code</div><input type="text" id="homeCode" placeholder="XYZ" maxlength="4"></div>
+      <div class="f"><div class="lbl">Record</div><input type="text" id="homeRecord" placeholder="11-4"></div>
+    </div>
+    <div class="cr">
+      <div class="f"><div class="lbl">Color</div><input type="color" id="homePrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Text</div><input type="color" id="homeText" value="#ffffff"></div>
     </div>
   </div>
-</div>
-
-<!-- SCORE -->
-<div class="card">
-  <div class="card-title">Score</div>
-  <div class="score-grid">
-    <div class="score-side">
-      <div class="score-label" id="awayScoreLabel">AWAY</div>
-      <div class="score-num" id="awayScoreNum">0</div>
-      <div class="score-btns">
-        <button class="btn btn-sm" onclick="adj('away',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('away',1)">+1</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('away',2)">+2</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('away',3)">+3</button>
-      </div>
+  <!-- Overlay -->
+  <div class="ov">
+    <div class="card-t">Overlay</div>
+    <div class="ov-ev f"><div class="lbl">Event Title</div><input type="text" id="eventTitle" placeholder="CHIPOTLE NATIONALS - QUARTERFINAL"></div>
+    <div class="sl"><div class="lbl">Scale</div><input type="range" id="scaleSlider" min="0.5" max="2" step="0.05" value="1.25"><span class="sl-v" id="scaleVal">1.25</span></div>
+    <div class="sl"><div class="lbl">Logo</div><input type="range" id="logoSizeSlider" min="48" max="200" step="4" value="160"><span class="sl-v" id="logoSizeVal">160px</span></div>
+    <div class="ov-btns">
+      <button class="b bg" onclick="patch({visible:true})">Show</button>
+      <button class="b br" onclick="patch({visible:false})">Hide</button>
     </div>
-    <div class="vs">VS</div>
-    <div class="score-side">
-      <div class="score-label" id="homeScoreLabel">HOME</div>
-      <div class="score-num" id="homeScoreNum">0</div>
-      <div class="score-btns">
-        <button class="btn btn-sm" onclick="adj('home',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('home',1)">+1</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('home',2)">+2</button>
-        <button class="btn btn-sm btn-accent" onclick="adj('home',3)">+3</button>
-      </div>
-    </div>
-  </div>
-  <div class="poss-row">
-    <div class="poss-btn" id="possAway" onclick="setPoss('away')">&#9664; AWAY</div>
-    <div class="poss-btn" id="possNone" onclick="setPoss('')">NONE</div>
-    <div class="poss-btn" id="possHome" onclick="setPoss('home')">HOME &#9654;</div>
-  </div>
-</div>
-
-<!-- CLOCK -->
-<div class="card">
-  <div class="card-title">Game Clock — tap to edit</div>
-  <input type="text" class="clock-input" id="clockDisplay" value="8:00" inputmode="numeric">
-  <div class="clock-btns">
-    <button class="btn btn-green" id="clockToggleBtn" onclick="toggleClock()" style="flex:2">Start</button>
-    <button class="btn" onclick="resetClock()">Reset</button>
-  </div>
-  <div class="clock-btns" style="margin-top:6px">
-    <button class="btn btn-sm" onclick="setClockTo('8:00')">8:00</button>
-    <button class="btn btn-sm" onclick="setClockTo('5:00')">5:00</button>
-    <button class="btn btn-sm" onclick="setClockTo('4:00')">4:00</button>
-    <button class="btn btn-sm" onclick="setClockTo('2:00')">2:00</button>
-  </div>
-</div>
-
-<!-- FOULS & TIMEOUTS -->
-<div class="card">
-  <div class="card-title">Fouls</div>
-  <div class="ft-grid">
-    <div class="ft-item">
-      <div class="ft-label" id="awayFoulLabel">AWAY</div>
-      <div class="ft-num" id="awayFoulsNum">0</div>
-      <div class="ft-btns">
-        <button class="btn btn-sm" onclick="adjFoul('away',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adjFoul('away',1)">+1</button>
-      </div>
-    </div>
-    <div class="ft-item">
-      <div class="ft-label" id="homeFoulLabel">HOME</div>
-      <div class="ft-num" id="homeFoulsNum">0</div>
-      <div class="ft-btns">
-        <button class="btn btn-sm" onclick="adjFoul('home',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adjFoul('home',1)">+1</button>
-      </div>
-    </div>
-  </div>
-  <div class="card-title" style="margin-top:10px">Timeouts</div>
-  <div class="ft-grid">
-    <div class="ft-item">
-      <div class="ft-label" id="awayTOLabel">AWAY</div>
-      <div class="ft-num" id="awayTOsNum">5</div>
-      <div class="ft-btns">
-        <button class="btn btn-sm" onclick="adjTO('away',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adjTO('away',1)">+1</button>
-        <button class="btn btn-sm btn-gold" onclick="rstTO('away')">RST</button>
-      </div>
-    </div>
-    <div class="ft-item">
-      <div class="ft-label" id="homeTOLabel">HOME</div>
-      <div class="ft-num" id="homeTOsNum">5</div>
-      <div class="ft-btns">
-        <button class="btn btn-sm" onclick="adjTO('home',-1)">-1</button>
-        <button class="btn btn-sm btn-accent" onclick="adjTO('home',1)">+1</button>
-        <button class="btn btn-sm btn-gold" onclick="rstTO('home')">RST</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- OVERLAY CONTROLS -->
-<div class="card">
-  <div class="card-title">Overlay Controls</div>
-  <div class="slider-row">
-    <label>Bug Scale</label>
-    <input type="range" id="scaleSlider" min="0.5" max="2" step="0.05" value="1.25">
-    <span class="slider-val" id="scaleVal">1.25</span>
-  </div>
-  <div class="slider-row">
-    <label>Logo Size</label>
-    <input type="range" id="logoSizeSlider" min="48" max="200" step="4" value="160">
-    <span class="slider-val" id="logoSizeVal">160px</span>
-  </div>
-  <div class="toggle-row" style="margin-top:8px">
-    <button class="btn btn-green" onclick="patch({visible:true})">Show Bug</button>
-    <button class="btn btn-red" onclick="patch({visible:false})">Hide Bug</button>
   </div>
 </div>
 
 <canvas id="colorCanvas" style="display:none"></canvas>
 
-<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
 <script>
 (function(){
   firebase.initializeApp({
-    apiKey: "AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
-    authDomain: "sincere-nirvana-436014-v9.firebaseapp.com",
-    databaseURL: "https://nsmt-scorebug.firebaseio.com",
-    projectId: "sincere-nirvana-436014-v9",
-    storageBucket: "sincere-nirvana-436014-v9.firebasestorage.app",
-    appId: "1:417098775531:web:d1d88da74d217ecbd5f7ae"
+    apiKey:"AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",authDomain:"sincere-nirvana-436014-v9.firebaseapp.com",
+    databaseURL:"https://nsmt-scorebug.firebaseio.com",projectId:"sincere-nirvana-436014-v9",
+    storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
   });
-  var db = firebase.database();
-  var stateRef = db.ref('state');
-  var bugRef = stateRef.child('bug');
-  var state = {};
+  var db=firebase.database(), stateRef=db.ref('state'), bugRef=stateRef.child('bug'), state={};
+  function $(id){return document.getElementById(id)}
+  function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
 
-  // ── Connection badge ──
-  db.ref('.info/connected').on('value', function(s){
-    var b = document.getElementById('badge');
-    if(s.val()){ b.textContent='Live'; b.classList.add('on'); }
-    else { b.textContent='Offline'; b.classList.remove('on'); }
+  db.ref('.info/connected').on('value',function(s){
+    var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
   });
 
-  // ── Patch helper ──
-  window.patch = function(fields){
-    var updates = {};
-    for(var k in fields) updates['bug/'+k] = fields[k];
-    stateRef.update(updates);
-  };
+  window.patch=function(fields){var u={};for(var k in fields)u['bug/'+k]=fields[k];stateRef.update(u);};
 
-  // ── Listen for state ──
-  stateRef.on('value', function(snap){
-    state = snap.val() || {};
-    syncUI();
-  });
-
-  function safe(id){ return document.getElementById(id); }
-  function setIfBlur(id, val){
-    var el = safe(id);
-    if(document.activeElement !== el && val !== undefined) el.value = val ?? '';
-  }
+  stateRef.on('value',function(snap){state=snap.val()||{};syncUI();});
 
   function syncUI(){
-    var b = state.bug || {};
+    var b=state.bug||{};
+    setB('eventTitle',b.eventTitle);setB('awayName',b.awayName);setB('homeName',b.homeName);
+    setB('awayCode',b.awayCode);setB('homeCode',b.homeCode);
+    setB('awayRecord',b.awayRecord);setB('homeRecord',b.homeRecord);
+    setB('awayPrimary',b.awayPrimary||'#333333');setB('homePrimary',b.homePrimary||'#333333');
+    setB('awayText',b.awayText||'#ffffff');setB('homeText',b.homeText||'#ffffff');
+    showLogo('away',b.awayLogo);showLogo('home',b.homeLogo);
+    $('awayScoreNum').textContent=b.awayScore??0;
+    $('homeScoreNum').textContent=b.homeScore??0;
+    $('awayLbl').textContent=b.awayCode||b.awayName||'AWAY';
+    $('homeLbl').textContent=b.homeCode||b.homeName||'HOME';
 
-    setIfBlur('eventTitle', b.eventTitle);
-    setIfBlur('awayName', b.awayName);
-    setIfBlur('homeName', b.homeName);
-    setIfBlur('awayCode', b.awayCode);
-    setIfBlur('homeCode', b.homeCode);
-    setIfBlur('awayRecord', b.awayRecord);
-    setIfBlur('homeRecord', b.homeRecord);
-    setIfBlur('awayPrimary', b.awayPrimary || '#333333');
-    setIfBlur('homePrimary', b.homePrimary || '#333333');
-    setIfBlur('awayText', b.awayText || '#ffffff');
-    setIfBlur('homeText', b.homeText || '#ffffff');
+    // Clock
+    if(b.clockRunning&&!lcRun){lcMs=parseC(b.clock||'8:00');startLC();}
+    else if(!b.clockRunning&&lcRun){stopLC();lcMs=parseC(b.clock||'8:00');$('clockDisplay').value=b.clock||'8:00';}
+    else if(!b.clockRunning&&!lcRun){lcMs=parseC(b.clock||'8:00');if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=b.clock||'8:00';}
+    updToggle();
 
-    // Logos
-    showLogo('away', b.awayLogo);
-    showLogo('home', b.homeLogo);
+    // Period
+    document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){btn.classList.toggle('on',btn.dataset.p===(b.quarter||'1ST'));});
 
-    // Scores
-    safe('awayScoreNum').textContent = b.awayScore ?? 0;
-    safe('homeScoreNum').textContent = b.homeScore ?? 0;
-    safe('awayScoreLabel').textContent = b.awayCode || b.awayName || 'AWAY';
-    safe('homeScoreLabel').textContent = b.homeCode || b.homeName || 'HOME';
+    // Possession button label
+    var p=b.possession;
+    var pb=$('possBtn');
+    pb.textContent=p==='away'?(b.awayCode||'AWY')+' \u25C0':p==='home'?'\u25B6 '+(b.homeCode||'HOM'):'POSS';
+    pb.classList.toggle('poss',!!p);
 
-    // Clock — sync from Firebase but don't fight local countdown
-    if(b.clockRunning && !localClockRunning){
-      localClockMs = parseClock(b.clock || '8:00');
-      startLocalClock();
-    } else if(!b.clockRunning && localClockRunning){
-      stopLocalClock();
-      localClockMs = parseClock(b.clock || '8:00');
-      safe('clockDisplay').value = b.clock || '8:00';
-    } else if(!b.clockRunning && !localClockRunning){
-      localClockMs = parseClock(b.clock || '8:00');
-      if(document.activeElement !== safe('clockDisplay')){
-        safe('clockDisplay').value = b.clock || '8:00';
-      }
-    }
-    updateToggleBtn();
-
-    // Period buttons
-    var btns = document.querySelectorAll('#periodBtns .btn');
-    btns.forEach(function(btn){ btn.classList.toggle('on', btn.dataset.p === (b.quarter||'1ST')); });
-
-    // Possession
-    safe('possAway').classList.toggle('on', b.possession==='away');
-    safe('possNone').classList.toggle('on', !b.possession);
-    safe('possHome').classList.toggle('on', b.possession==='home');
-
-    // Fouls & TOs
-    safe('awayFoulsNum').textContent = b.awayFouls ?? 0;
-    safe('homeFoulsNum').textContent = b.homeFouls ?? 0;
-    safe('awayTOsNum').textContent = b.awayTOs ?? 5;
-    safe('homeTOsNum').textContent = b.homeTOs ?? 5;
-    safe('awayFoulLabel').textContent = b.awayCode || b.awayName || 'AWAY';
-    safe('homeFoulLabel').textContent = b.homeCode || b.homeName || 'HOME';
-    safe('awayTOLabel').textContent = b.awayCode || b.awayName || 'AWAY';
-    safe('homeTOLabel').textContent = b.homeCode || b.homeName || 'HOME';
-
-    // Sliders
-    setIfBlur('scaleSlider', b.bugScale || 1.25);
-    safe('scaleVal').textContent = b.bugScale || 1.25;
-    setIfBlur('logoSizeSlider', b.bugLogoSize || 160);
-    safe('logoSizeVal').textContent = (b.bugLogoSize || 160) + 'px';
+    setB('scaleSlider',b.bugScale||1.25);$('scaleVal').textContent=b.bugScale||1.25;
+    setB('logoSizeSlider',b.bugLogoSize||160);$('logoSizeVal').textContent=(b.bugLogoSize||160)+'px';
   }
 
-  function showLogo(side, dataUrl){
-    var img = safe(side+'LogoPreview');
-    if(dataUrl){
-      img.src = dataUrl;
-      img.classList.remove('empty');
-    } else {
-      img.classList.add('empty');
-      img.removeAttribute('src');
-    }
-  }
+  function showLogo(side,url){var img=$(side+'LogoPreview');if(url){img.src=url;img.classList.remove('empty');}else{img.classList.add('empty');img.removeAttribute('src');}}
 
   // ── Score ──
-  window.adj = function(side, delta){
-    bugRef.child(side+'Score').transaction(function(v){ return Math.max(0,(v||0)+delta); });
-  };
+  window.adj=function(side,d){bugRef.child(side+'Score').transaction(function(v){return Math.max(0,(v||0)+d);});};
 
-  // ── Possession ──
-  window.setPoss = function(val){ patch({possession:val}); };
+  // ── Possession cycle ──
+  window.cyclePoss=function(){
+    var cur=(state.bug||{}).possession||'';
+    var next=cur===''?'away':cur==='away'?'home':'';
+    patch({possession:next});
+  };
 
   // ── Clock ──
-  var localClockInterval = null;
-  var localClockMs = 0;
-  var localClockRunning = false;
-  var localClockStartPerf = 0;
-  var localClockStartMs = 0;
-  var lastSyncSec = -1;
+  var lcInt=null,lcMs=0,lcRun=false,lcPerf=0,lcStart=0,lcSync=-1;
+  function parseC(t){var p=String(t||'0:00').trim().split(':');return((parseInt(p[0])||0)*60+(parseInt(p[1])||0))*1000;}
+  function fmtC(ms){if(ms<0)ms=0;var t=Math.floor(ms/1000);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');}
 
-  function parseClock(text){
-    var parts = String(text||'0:00').trim().split(':');
-    var m = parseInt(parts[0])||0;
-    var s = parseInt(parts[1])||0;
-    return (m*60+s)*1000;
+  function startLC(){
+    if(lcRun)return;lcRun=true;lcPerf=performance.now();lcStart=lcMs;lcSync=-1;
+    $('clockDisplay').classList.add('running');
+    lcInt=setInterval(function(){
+      var e=performance.now()-lcPerf;lcMs=Math.max(0,lcStart-e);
+      var d=fmtC(lcMs);if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=d;
+      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;stateRef.update({'bug/clock':d});}
+      if(lcMs<=0){clearInterval(lcInt);lcRun=false;$('clockDisplay').classList.remove('running');patch({clock:'0:00',clockRunning:false});}
+    },100);
   }
-  function fmtClock(ms){
-    if(ms<0) ms=0;
-    var totalS = Math.floor(ms/1000);
-    var m = Math.floor(totalS/60);
-    var s = totalS%60;
-    return m+':'+String(s).padStart(2,'0');
-  }
+  function stopLC(){if(!lcRun)return;clearInterval(lcInt);lcMs=Math.max(0,lcStart-(performance.now()-lcPerf));lcRun=false;$('clockDisplay').classList.remove('running');}
+  function updToggle(){var b=$('clockToggleBtn');if(lcRun){b.textContent='Pause';b.classList.remove('bg');b.classList.add('br');}else{b.textContent='Start';b.classList.remove('br');b.classList.add('bg');}}
 
-  function startLocalClock(){
-    if(localClockRunning) return;
-    localClockRunning = true;
-    localClockStartPerf = performance.now();
-    localClockStartMs = localClockMs;
-    lastSyncSec = -1;
-    safe('clockDisplay').classList.add('running');
-    localClockInterval = setInterval(function(){
-      var elapsed = performance.now() - localClockStartPerf;
-      localClockMs = Math.max(0, localClockStartMs - elapsed);
-      var display = fmtClock(localClockMs);
-      if(document.activeElement !== safe('clockDisplay')){
-        safe('clockDisplay').value = display;
-      }
-      // Sync to Firebase every second so overlay stays in sync
-      var curSec = Math.floor(localClockMs / 1000);
-      if(curSec !== lastSyncSec){
-        lastSyncSec = curSec;
-        stateRef.update({'bug/clock': display});
-      }
-      if(localClockMs <= 0){
-        clearInterval(localClockInterval);
-        localClockRunning = false;
-        safe('clockDisplay').classList.remove('running');
-        patch({clock:'0:00', clockRunning:false});
-      }
-    }, 100);
-  }
-
-  function stopLocalClock(){
-    if(!localClockRunning) return;
-    clearInterval(localClockInterval);
-    var elapsed = performance.now() - localClockStartPerf;
-    localClockMs = Math.max(0, localClockStartMs - elapsed);
-    localClockRunning = false;
-    safe('clockDisplay').classList.remove('running');
-  }
-
-  function updateToggleBtn(){
-    var btn = safe('clockToggleBtn');
-    if(localClockRunning){
-      btn.textContent = 'Pause';
-      btn.classList.remove('btn-green');
-      btn.classList.add('btn-red');
-    } else {
-      btn.textContent = 'Start';
-      btn.classList.remove('btn-red');
-      btn.classList.add('btn-green');
-    }
-  }
-
-  window.toggleClock = function(){
-    if(localClockRunning){
-      stopLocalClock();
-      updateToggleBtn();
-      var display = fmtClock(localClockMs);
-      safe('clockDisplay').value = display;
-      patch({clock:display, clockRunning:false});
-    } else {
-      var display = safe('clockDisplay').value;
-      localClockMs = parseClock(display);
-      if(localClockMs <= 0) return;
-      startLocalClock();
-      updateToggleBtn();
-      patch({clock:display, clockRunning:true});
-    }
+  window.toggleClock=function(){
+    if(lcRun){stopLC();updToggle();var d=fmtC(lcMs);$('clockDisplay').value=d;patch({clock:d,clockRunning:false});}
+    else{var d=$('clockDisplay').value;lcMs=parseC(d);if(lcMs<=0)return;startLC();updToggle();patch({clock:d,clockRunning:true});}
   };
-  window.resetClock = function(){
-    stopLocalClock();
-    var q = (state.bug||{}).quarter||'1ST';
-    var def = q==='OT' ? '5:00' : '8:00';
-    localClockMs = parseClock(def);
-    safe('clockDisplay').value = def;
-    patch({clock:def, clockRunning:false});
-  };
-  window.setClockTo = function(val){
-    stopLocalClock();
-    localClockMs = parseClock(val);
-    safe('clockDisplay').value = val;
-    patch({clock:val, clockRunning:false});
-  };
+  window.resetClock=function(){stopLC();var q=(state.bug||{}).quarter||'1ST';var d=q==='OT'?'5:00':'8:00';lcMs=parseC(d);$('clockDisplay').value=d;updToggle();patch({clock:d,clockRunning:false});};
+  window.setClockTo=function(v){stopLC();lcMs=parseC(v);$('clockDisplay').value=v;updToggle();patch({clock:v,clockRunning:false});};
 
-  // Manual clock edit — tap the clock, type a time, blur or press Enter to set
-  safe('clockDisplay').addEventListener('blur', function(){
-    if(localClockRunning) return;
-    var val = this.value.trim();
-    if(val && parseClock(val) >= 0){
-      setClockTo(fmtClock(parseClock(val)));
-    }
-  });
-  safe('clockDisplay').addEventListener('keydown', function(e){
-    if(e.key === 'Enter'){
-      e.preventDefault();
-      this.blur();
-    }
-  });
-
-  // ── Fouls ──
-  window.adjFoul = function(side, delta){
-    var cur = ((state.bug||{})[side+'Fouls']) || 0;
-    patch({[side+'Fouls']: Math.max(0, cur+delta)});
-  };
-
-  // ── Timeouts ──
-  window.adjTO = function(side, delta){
-    var cur = ((state.bug||{})[side+'TOs']) ?? 5;
-    patch({[side+'TOs']: Math.max(0, Math.min(5, cur+delta))});
-  };
-  window.rstTO = function(side){ patch({[side+'TOs']:5}); };
+  $('clockDisplay').addEventListener('blur',function(){if(lcRun)return;var v=this.value.trim();if(v&&parseC(v)>=0)setClockTo(fmtC(parseC(v)));});
+  $('clockDisplay').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();this.blur();}});
 
   // ── Period ──
-  document.querySelectorAll('#periodBtns .btn').forEach(function(btn){
-    btn.addEventListener('click', function(){ patch({quarter:btn.dataset.p}); });
+  document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){
+    btn.addEventListener('click',function(){patch({quarter:btn.dataset.p});});
   });
 
-  // ── Debounced text inputs ──
-  var timers = {};
-  function bindText(id, key){
-    safe(id).addEventListener('input', function(){
-      var el = this;
-      clearTimeout(timers[id]);
-      timers[id] = setTimeout(function(){ patch({[key]:el.value}); }, 250);
-    });
-  }
-  bindText('eventTitle','eventTitle');
-  bindText('awayName','awayName');
-  bindText('homeName','homeName');
-  bindText('awayCode','awayCode');
-  bindText('homeCode','homeCode');
-  bindText('awayRecord','awayRecord');
-  bindText('homeRecord','homeRecord');
+  // ── Text inputs ──
+  var T={};
+  function bT(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},250);});}
+  bT('eventTitle','eventTitle');bT('awayName','awayName');bT('homeName','homeName');
+  bT('awayCode','awayCode');bT('homeCode','homeCode');bT('awayRecord','awayRecord');bT('homeRecord','homeRecord');
 
-  // ── Color pickers ──
-  function bindColor(id, key){
-    safe(id).addEventListener('input', function(){
-      clearTimeout(timers[id]);
-      var el = this;
-      timers[id] = setTimeout(function(){ patch({[key]:el.value}); }, 100);
-    });
-  }
-  bindColor('awayPrimary','awayPrimary');
-  bindColor('homePrimary','homePrimary');
-  bindColor('awayText','awayText');
-  bindColor('homeText','homeText');
+  function bC(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},100);});}
+  bC('awayPrimary','awayPrimary');bC('homePrimary','homePrimary');bC('awayText','awayText');bC('homeText','homeText');
 
-  // ── Sliders ──
-  safe('scaleSlider').addEventListener('input', function(){
-    safe('scaleVal').textContent = this.value;
-    clearTimeout(timers.scale);
-    var v = parseFloat(this.value);
-    timers.scale = setTimeout(function(){ patch({bugScale:v}); }, 100);
-  });
-  safe('logoSizeSlider').addEventListener('input', function(){
-    safe('logoSizeVal').textContent = this.value+'px';
-    clearTimeout(timers.logoSize);
-    var v = parseInt(this.value);
-    timers.logoSize = setTimeout(function(){ patch({bugLogoSize:v}); }, 100);
-  });
+  $('scaleSlider').addEventListener('input',function(){$('scaleVal').textContent=this.value;clearTimeout(T.sc);var v=parseFloat(this.value);T.sc=setTimeout(function(){patch({bugScale:v});},100);});
+  $('logoSizeSlider').addEventListener('input',function(){$('logoSizeVal').textContent=this.value+'px';clearTimeout(T.ls);var v=parseInt(this.value);T.ls=setTimeout(function(){patch({bugLogoSize:v});},100);});
 
-  // ── Logo Upload with Auto Color Extraction ──
-  window.pickLogo = function(side){
-    safe(side+'FileInput').click();
-  };
+  // ── Logo Upload + Auto Color ──
+  window.pickLogo=function(s){$(s+'FileInput').click();};
+  $('awayFileInput').addEventListener('change',function(){hLogo('away',this);});
+  $('homeFileInput').addEventListener('change',function(){hLogo('home',this);});
 
-  safe('awayFileInput').addEventListener('change', function(){ handleLogo('away', this); });
-  safe('homeFileInput').addEventListener('change', function(){ handleLogo('home', this); });
-
-  function handleLogo(side, input){
-    var file = input.files[0];
-    if(!file) return;
-
-    if(file.size > 500000){
-      alert('Logo file is large ('+Math.round(file.size/1024)+'KB). Consider using a smaller image for faster sync.');
-    }
-
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var dataUrl = e.target.result;
-      patch({[side+'Logo']: dataUrl});
-
-      // Extract dominant color
-      var img = new Image();
-      img.onload = function(){
-        var colors = extractColors(img);
-        if(colors){
-          patch({
-            [side+'Primary']: colors.primary,
-            [side+'Text']: colors.text,
-            [side+'Accent']: colors.accent
-          });
-          safe(side+'Primary').value = colors.primary;
-          safe(side+'Text').value = colors.text;
-        }
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-    input.value = '';
+  function hLogo(side,input){
+    var file=input.files[0];if(!file)return;
+    if(file.size>500000)alert('Large logo ('+Math.round(file.size/1024)+'KB). Use a smaller image for faster sync.');
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var url=e.target.result;patch({[side+'Logo']:url});
+      var img=new Image();img.onload=function(){
+        var c=exColors(img);if(c){patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});$(side+'Primary').value=c.primary;$(side+'Text').value=c.text;}
+      };img.src=url;
+    };reader.readAsDataURL(file);input.value='';
   }
 
-  function extractColors(img){
-    var canvas = safe('colorCanvas');
-    var ctx = canvas.getContext('2d');
-    var size = 64;
-    canvas.width = size; canvas.height = size;
-    ctx.drawImage(img, 0, 0, size, size);
-
-    var data = ctx.getImageData(0, 0, size, size).data;
-    var buckets = {};
-
-    for(var i = 0; i < data.length; i += 4){
-      var r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-      if(a < 128) continue; // skip transparent
-
-      var lum = (0.299*r + 0.587*g + 0.114*b) / 255;
-      if(lum > 0.9 || lum < 0.08) continue; // skip near-white/near-black
-
-      // Quantize to reduce noise
-      var qr = Math.round(r/16)*16;
-      var qg = Math.round(g/16)*16;
-      var qb = Math.round(b/16)*16;
-      var key = qr+','+qg+','+qb;
-
-      // Weight saturated colors higher
-      var max = Math.max(r,g,b), min = Math.min(r,g,b);
-      var sat = max === 0 ? 0 : (max-min)/max;
-      var weight = 1 + sat * 3;
-
-      buckets[key] = (buckets[key]||0) + weight;
+  function exColors(img){
+    var cv=$('colorCanvas'),ctx=cv.getContext('2d'),sz=64;cv.width=sz;cv.height=sz;ctx.drawImage(img,0,0,sz,sz);
+    var data=ctx.getImageData(0,0,sz,sz).data,bk={};
+    for(var i=0;i<data.length;i+=4){
+      var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];if(a<128)continue;
+      var lum=(0.299*r+0.587*g+0.114*b)/255;if(lum>0.9||lum<0.08)continue;
+      var qr=Math.round(r/16)*16,qg=Math.round(g/16)*16,qb=Math.round(b/16)*16,key=qr+','+qg+','+qb;
+      var mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx===0?0:(mx-mn)/mx;
+      bk[key]=(bk[key]||0)+1+sat*3;
     }
-
-    var best = null, bestCount = 0;
-    for(var k in buckets){
-      if(buckets[k] > bestCount){
-        bestCount = buckets[k];
-        best = k;
-      }
-    }
-
-    if(!best) return null;
-
-    var parts = best.split(',');
-    var pr = parseInt(parts[0]), pg = parseInt(parts[1]), pb = parseInt(parts[2]);
-    var hex = '#' + pr.toString(16).padStart(2,'0') + pg.toString(16).padStart(2,'0') + pb.toString(16).padStart(2,'0');
-
-    var lumP = (0.299*pr + 0.587*pg + 0.114*pb) / 255;
-    var textColor = lumP > 0.55 ? '#111111' : '#ffffff';
-
-    return { primary: hex, text: textColor, accent: '#CCCCCC' };
+    var best=null,bc=0;for(var k in bk)if(bk[k]>bc){bc=bk[k];best=k;}
+    if(!best)return null;
+    var p=best.split(','),pr=parseInt(p[0]),pg=parseInt(p[1]),pb=parseInt(p[2]);
+    var hex='#'+pr.toString(16).padStart(2,'0')+pg.toString(16).padStart(2,'0')+pb.toString(16).padStart(2,'0');
+    var lP=(0.299*pr+0.587*pg+0.114*pb)/255;
+    return{primary:hex,text:lP>0.55?'#111111':'#ffffff',accent:'#CCCCCC'};
   }
 })();
 </script>
