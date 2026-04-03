@@ -177,7 +177,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       <div class="f"><div class="lbl">Record</div><input type="text" id="awayRecord" placeholder="12-3"></div>
     </div>
     <div class="cr">
-      <div class="f"><div class="lbl">Color</div><input type="color" id="awayPrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Color</div><input type="color" id="awayPrimary" value="#000000"></div>
       <div class="f"><div class="lbl">Text</div><input type="color" id="awayText" value="#ffffff"></div>
     </div>
   </div>
@@ -195,7 +195,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       <div class="f"><div class="lbl">Record</div><input type="text" id="homeRecord" placeholder="11-4"></div>
     </div>
     <div class="cr">
-      <div class="f"><div class="lbl">Color</div><input type="color" id="homePrimary" value="#333333"></div>
+      <div class="f"><div class="lbl">Color</div><input type="color" id="homePrimary" value="#000000"></div>
       <div class="f"><div class="lbl">Text</div><input type="color" id="homeText" value="#ffffff"></div>
     </div>
   </div>
@@ -240,7 +240,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     setB('eventTitle',b.eventTitle);setB('awayName',b.awayName);setB('homeName',b.homeName);
     setB('awayCode',b.awayCode);setB('homeCode',b.homeCode);
     setB('awayRecord',b.awayRecord);setB('homeRecord',b.homeRecord);
-    setB('awayPrimary',b.awayPrimary||'#333333');setB('homePrimary',b.homePrimary||'#333333');
+    setB('awayPrimary',b.awayPrimary||'#000000');setB('homePrimary',b.homePrimary||'#000000');
     setB('awayText',b.awayText||'#ffffff');setB('homeText',b.homeText||'#ffffff');
     showLogo('away',b.awayLogo);showLogo('home',b.homeLogo);
     $('awayScoreNum').textContent=b.awayScore??0;
