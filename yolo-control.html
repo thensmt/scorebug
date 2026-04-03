@@ -402,8 +402,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     safe('awayScoreLabel').textContent = b.awayCode || b.awayName || 'AWAY';
     safe('homeScoreLabel').textContent = b.homeCode || b.homeName || 'HOME';
 
-    // Clock
-    safe('clockDisplay').textContent = b.clock || '8:00';
+    // Clock — sync from Firebase but don't fight local countdown
+    if(b.clockRunning && !localClockRunning){
+      localClockMs = parseClock(b.clock || '8:00');
+      startLocalClock();
+    } else if(!b.clockRunning && localClockRunning){
+      stopLocalClock();
+      localClockMs = parseClock(b.clock || '8:00');
+      safe('clockDisplay').textContent = b.clock || '8:00';
+    } else if(!b.clockRunning && !localClockRunning){
+      localClockMs = parseClock(b.clock || '8:00');
+      safe('clockDisplay').textContent = b.clock || '8:00';
+    }
 
     // Period buttons
     var btns = document.querySelectorAll('#periodBtns .btn');
@@ -451,17 +461,77 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   window.setPoss = function(val){ patch({possession:val}); };
 
   // ── Clock ──
-  window.startClock = function(){ patch({clockRunning:true}); };
-  window.stopClock = function(){
+  var localClockInterval = null;
+  var localClockMs = 0;
+  var localClockRunning = false;
+  var localClockStartPerf = 0;
+  var localClockStartMs = 0;
+
+  function parseClock(text){
+    var parts = String(text||'0:00').split(':');
+    var m = parseInt(parts[0])||0;
+    var s = parseInt(parts[1])||0;
+    return (m*60+s)*1000;
+  }
+  function fmtClock(ms){
+    if(ms<0) ms=0;
+    var totalS = Math.floor(ms/1000);
+    var m = Math.floor(totalS/60);
+    var s = totalS%60;
+    return m+':'+String(s).padStart(2,'0');
+  }
+
+  function startLocalClock(){
+    if(localClockRunning) return;
+    localClockRunning = true;
+    localClockStartPerf = performance.now();
+    localClockStartMs = localClockMs;
+    localClockInterval = setInterval(function(){
+      var elapsed = performance.now() - localClockStartPerf;
+      localClockMs = Math.max(0, localClockStartMs - elapsed);
+      safe('clockDisplay').textContent = fmtClock(localClockMs);
+      if(localClockMs <= 0){
+        clearInterval(localClockInterval);
+        localClockRunning = false;
+        patch({clock:'0:00', clockRunning:false});
+      }
+    }, 100);
+  }
+
+  function stopLocalClock(){
+    if(!localClockRunning) return;
+    clearInterval(localClockInterval);
+    var elapsed = performance.now() - localClockStartPerf;
+    localClockMs = Math.max(0, localClockStartMs - elapsed);
+    localClockRunning = false;
+  }
+
+  window.startClock = function(){
     var display = safe('clockDisplay').textContent;
+    localClockMs = parseClock(display);
+    startLocalClock();
+    patch({clock:display, clockRunning:true});
+  };
+  window.stopClock = function(){
+    stopLocalClock();
+    var display = fmtClock(localClockMs);
+    safe('clockDisplay').textContent = display;
     patch({clock:display, clockRunning:false});
   };
   window.resetClock = function(){
+    stopLocalClock();
     var q = (state.bug||{}).quarter||'1ST';
     var def = q==='OT' ? '5:00' : '8:00';
+    localClockMs = parseClock(def);
+    safe('clockDisplay').textContent = def;
     patch({clock:def, clockRunning:false});
   };
-  window.setClockTo = function(val){ patch({clock:val, clockRunning:false}); };
+  window.setClockTo = function(val){
+    stopLocalClock();
+    localClockMs = parseClock(val);
+    safe('clockDisplay').textContent = val;
+    patch({clock:val, clockRunning:false});
+  };
 
   // Custom clock
   safe('customClock').addEventListener('change', function(){
