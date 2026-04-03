@@ -3,210 +3,332 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NSMT Scorebug — Production Code Review</title>
+<title>NSMT Scorebug — Development Notebook</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; background: #fff; max-width: 800px; margin: 0 auto; padding: 40px 24px 60px; line-height: 1.6; }
+body { font-family: 'Inter', -apple-system, sans-serif; color: #1a1a1a; background: #fff; max-width: 860px; margin: 0 auto; padding: 40px 24px 60px; line-height: 1.6; }
 @media print { body { padding: 20px; font-size: 11px; } h1 { font-size: 20px; } h2 { font-size: 15px; } h3 { font-size: 12px; } .item { page-break-inside: avoid; } }
 
 header { text-align: center; margin-bottom: 36px; border-bottom: 2px solid #0E80FC; padding-bottom: 20px; }
 h1 { font-size: 28px; font-weight: 700; color: #0E80FC; margin-bottom: 4px; }
 .subtitle { font-size: 16px; color: #555; font-weight: 500; }
 .meta { font-size: 12px; color: #999; margin-top: 8px; }
-.intro { font-size: 14px; color: #444; margin-bottom: 32px; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #0E80FC; }
+
+.section-intro { font-size: 14px; color: #444; margin-bottom: 24px; padding: 12px 16px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #0E80FC; }
 
 h2 { font-size: 18px; font-weight: 700; margin: 32px 0 16px; padding: 8px 12px; border-radius: 6px; }
+h2.codex { background: #f3e8ff; color: #6b21a8; border-left: 4px solid #7c3aed; }
+h2.claude { background: #e0f2fe; color: #0369a1; border-left: 4px solid #0ea5e9; }
+h2.disagree { background: #fff7ed; color: #9a3412; border-left: 4px solid #f97316; }
+h2.protect { background: #ecfdf5; color: #065f46; border-left: 4px solid #10b981; }
 h2.p0 { background: #fde8e8; color: #c0392b; border-left: 4px solid #c0392b; }
 h2.p1 { background: #fff4e0; color: #b87400; border-left: 4px solid #e6940a; }
 h2.p2 { background: #f0f0f0; color: #555; border-left: 4px solid #888; }
-h2.exec { background: #e8f0fe; color: #0E80FC; border-left: 4px solid #0E80FC; }
 
-.item { margin-bottom: 20px; padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 8px; }
+.item { margin-bottom: 16px; padding: 12px 16px; border: 1px solid #e0e0e0; border-radius: 8px; }
 .item h3 { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
 .item p { font-size: 13px; color: #444; margin-bottom: 6px; }
 .item ul { margin: 4px 0 0 18px; }
 .item li { font-size: 12px; color: #666; margin-bottom: 3px; }
 .item li strong { color: #333; }
+.done { color: #16a34a; font-weight: 600; }
+.not-done { color: #dc2626; font-weight: 600; }
+.partial { color: #d97706; font-weight: 600; }
 
-.steps { list-style: none; padding: 0; counter-reset: step; }
-.steps li { font-size: 13px; color: #333; padding: 8px 12px; margin-bottom: 4px; background: #f8f9fa; border-radius: 6px; counter-increment: step; }
-.steps li::before { content: counter(step) "."; font-weight: 700; color: #0E80FC; margin-right: 8px; }
+.tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 6px; }
+.tag-codex { background: #f3e8ff; color: #7c3aed; }
+.tag-claude { background: #e0f2fe; color: #0ea5e9; }
+.tag-done { background: #dcfce7; color: #16a34a; }
+.tag-open { background: #fee2e2; color: #dc2626; }
+.tag-partial { background: #fef3c7; color: #d97706; }
 
-.tests { margin-top: 12px; }
-.tests h4 { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; }
-.tests li { font-size: 12px; color: #444; margin-bottom: 4px; }
-.pass { margin-top: 12px; padding: 10px 14px; background: #e8f5e9; border-radius: 6px; font-size: 12px; color: #2e7d32; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+th { background: #f1f5f9; text-align: left; padding: 8px 10px; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+tr:hover { background: #f8fafc; }
+
+code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+.file-list { list-style: none; padding: 0; }
+.file-list li { font-size: 13px; padding: 6px 10px; margin-bottom: 4px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #cbd5e1; }
+.file-list li.active { border-left-color: #0ea5e9; background: #f0f9ff; }
+.file-list li.legacy { border-left-color: #f97316; background: #fff7ed; }
 </style>
 </head>
 <body>
 
 <header>
   <h1>NSMT Scorebug</h1>
-  <div class="subtitle">Production Code Review &mdash; Must-Fix Checklist</div>
+  <div class="subtitle">Development Notebook &mdash; Codex vs Claude Code</div>
   <div class="meta">Files: yolo-overlay.html, yolo-control.html &nbsp;|&nbsp; Repo: thensmt/scorebug &nbsp;|&nbsp; April 3, 2026</div>
 </header>
 
-<div class="intro">
-  Prioritized by on-air risk (impact &times; likelihood). This checklist covers all findings from a multi-perspective production audit simulating a senior frontend engineer, mobile specialist, Firebase architect, QA engineer, and broadcast engineer.
+<div class="section-intro">
+  This document tracks the full development history of the NSMT YoloBox scorebug system. It records what OpenAI Codex recommended in its production code review, what Claude Code actually built and shipped, where the two disagreed, and how to protect these files going forward.
 </div>
 
-<!-- P0 -->
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 1: WHAT CLAUDE CODE BUILT
+     ═══════════════════════════════════════════════════════════════ -->
+<h2 class="claude">What Claude Code Did (Shipped Code)</h2>
+
+<p style="font-size:13px;color:#444;margin-bottom:16px;">All code changes on branch <code>claude/review-nsmt-scorebug-changes-S1K6R</code>. Every commit below was authored by Claude Code.</p>
+
+<table>
+  <tr><th>#</th><th>Commit</th><th>What It Did</th></tr>
+  <tr><td>1</td><td><code>b73bde9</code></td><td><strong>Added yolo-overlay.html and yolo-control.html</strong> &mdash; Pulled the two production files from GitHub Pages into the repo so they could be version-controlled and reviewed.</td></tr>
+  <tr><td>2</td><td><code>11baf0a</code></td><td><strong>Applied team colors from logo to scorebug panels and text</strong> &mdash; Built the <code>exColors()</code> color extraction pipeline. Upload a team logo, and primary/text colors auto-populate from the dominant color of the image.</td></tr>
+  <tr><td>3</td><td><code>7b1276b</code></td><td><strong>Made team colors fill entire scorebug panels</strong> &mdash; Changed overlay CSS so team primary color fills the full away/home panel background instead of just a thin accent bar.</td></tr>
+  <tr><td>4</td><td><code>d88c559</code></td><td><strong>Fixed logo color extraction failing silently</strong> &mdash; Added null-checks on canvas <code>getImageData</code>, checked for all-zero pixel data, and added a fallback average-color pass so extraction never silently returns nothing.</td></tr>
+  <tr><td>5</td><td><code>769643f</code></td><td><strong>Bulletproofed color extraction for iOS Safari</strong> &mdash; Removed <code>crossOrigin</code> on data URLs (taints canvas on iOS), added <code>img.decode()</code> before canvas draw, created a fresh canvas each call, and added a 3-pass extraction pipeline (filtered &rarr; unfiltered &rarr; average).</td></tr>
+  <tr><td>6</td><td><code>14e0ec7</code></td><td><strong>Added sponsor logo placements in all 4 corners</strong> &mdash; Added corner-logo elements (TL/TR/BL/BR) to overlay, sponsor upload UI with per-logo scale sliders to control, and Firebase <code>state/corners</code> path for persistence.</td></tr>
+  <tr><td>7</td><td><code>3cd39f1</code></td><td><strong>Added production code review document</strong> &mdash; Created this HTML review file summarizing all Codex findings.</td></tr>
+  <tr><td>8</td><td><code>e679c7b</code></td><td><strong>Added 4-digit PIN gate to control panel</strong> &mdash; Full PIN system: create, verify, confirm, master-key reset (<code>9110</code>). Stored in Firebase at <code>/pin</code>. Prevents unauthorized access to the control panel.</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 2: WHAT CODEX FOUND (THE REVIEW)
+     ═══════════════════════════════════════════════════════════════ -->
+<h2 class="codex">What Codex Found (Production Code Review)</h2>
+
+<p style="font-size:13px;color:#444;margin-bottom:16px;">Codex performed a multi-perspective production audit simulating a senior frontend engineer, mobile specialist, Firebase architect, QA engineer, and broadcast engineer. It produced 13 findings prioritized by on-air risk.</p>
+
 <h2 class="p0">P0 &mdash; Must Fix Before Any Live Game</h2>
 
 <div class="item">
-  <h3>1. Fix foul/timeout indicator wiring</h3>
-  <p>Add missing foul/timeout DOM nodes (with stable IDs), or remove dead reads. Ensure overlay reads/writes use the same keys and actually render.</p>
+  <h3><span class="tag tag-open">Open</span> 1. Foul/timeout indicator wiring is broken</h3>
+  <p>The overlay JS calls <code>buildDots($('fouls-away'), ...)</code> and <code>buildDots($('timeouts-away'), ...)</code> but the HTML has no elements with those IDs. The DOM nodes are generic <code>&lt;div class="bug-indicators"&gt;&lt;/div&gt;</code> with no IDs. Foul and timeout dots never render.</p>
   <ul>
-    <li><strong>Why P0:</strong> Currently silently broken feature during live game context.</li>
-    <li><strong>Refs:</strong> Missing elements vs. calls in overlay apply() function.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> JS references 4 missing IDs: <code>fouls-away</code>, <code>timeouts-away</code>, <code>fouls-home</code>, <code>timeouts-home</code>.</li>
+    <li><strong>Fix:</strong> Add <code>id</code> attributes to the indicator divs, or restructure to use <code>data-*</code> selectors.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>2. Add in-run clock resync logic (overlay + control)</h3>
-  <p>If clockRunning===true and incoming authoritative clock differs from local expected by threshold (e.g., &gt;250ms or &gt;1s), rebase local timer.</p>
+  <h3><span class="tag tag-open">Open</span> 2. No in-run clock resync logic</h3>
+  <p>If <code>clockRunning===true</code> and an incoming authoritative clock value differs from the locally-predicted time by more than a threshold, the overlay does not rebase. A second operator correcting the clock mid-run will not take effect on-air.</p>
   <ul>
-    <li><strong>Why P0:</strong> Current multi-operator corrections don't apply reliably on-air.</li>
-    <li><strong>Refs:</strong> Overlay/control run-state logic gaps.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> The overlay <code>updateClock()</code> only acts on running&rarr;stopped or stopped&rarr;running transitions. Mid-run corrections are ignored.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>3. Prevent multi-operator clock races</h3>
-  <p>Introduce &ldquo;clock owner/lease&rdquo; lock (or authoritative server timestamp model). At minimum, prevent simultaneous start/pause/reset from non-owner.</p>
+  <h3><span class="tag tag-open">Open</span> 3. Multi-operator clock races</h3>
+  <p>Two operators can simultaneously start/pause/reset the clock. No lock, lease, or server-timestamp model exists. Random final clock state during tense moments.</p>
   <ul>
-    <li><strong>Why P0:</strong> Random final clock state during tense moments.</li>
-    <li><strong>Refs:</strong> Non-transactional writes for clock controls.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> All clock writes are non-transactional <code>stateRef.update()</code> calls.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>4. Stop sending full-size base64 images directly</h3>
-  <p>Resize/compress client-side before write (e.g., max dimension + JPEG/WebP quality). Enforce max byte limit and type validation.</p>
+  <h3><span class="tag tag-open">Open</span> 4. Full-size base64 images sent directly</h3>
+  <p>Logo uploads write raw data URLs to Firebase with no resize or compression. A 3MB PNG becomes a multi-megabyte base64 string in the Realtime Database.</p>
   <ul>
-    <li><strong>Why P0:</strong> Memory/bandwidth spikes and mobile instability.</li>
-    <li><strong>Refs:</strong> Current raw data URL writes.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> Control panel shows a warning for files &gt;500KB but does not compress or reject. Sponsor corner logos have no size check at all.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>5. Stop stats panel full rebuild on unrelated updates</h3>
-  <p>Only rerender stats when stats payload changes. Keep clock updates isolated from stats DOM reconstruction.</p>
+  <h3><span class="tag tag-open">Open</span> 5. Stats panel full rebuild on every state change</h3>
+  <p>The overlay listens to the entire <code>state/</code> ref. Every clock tick, score change, or color update triggers a full <code>apply()</code> which calls <code>updateStats()</code>, destroying and rebuilding the entire stats DOM.</p>
   <ul>
-    <li><strong>Why P0:</strong> Performance degradation over long broadcasts.</li>
-    <li><strong>Refs:</strong> Full-state listener + stats rebuild loop.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> No change detection or isolated listeners.</li>
   </ul>
 </div>
 
-<!-- P1 -->
 <h2 class="p1">P1 &mdash; Should Fix Before Season</h2>
 
 <div class="item">
-  <h3>6. Add robust operator-visible error handling</h3>
-  <p>FileReader/image decode/extraction/update failures should display toast/banner + retry option.</p>
+  <h3><span class="tag tag-partial">Partial</span> 6. No operator-visible error handling</h3>
+  <p>FileReader, image decode, extraction, and Firebase update failures only log to console. No toast, banner, or retry UI for the operator.</p>
   <ul>
-    <li><strong>Why P1:</strong> Silent failures are dangerous in live ops.</li>
-    <li><strong>Refs:</strong> Console-only warnings and missing error hooks.</li>
+    <li><strong>Status:</strong> <span class="partial">Partially addressed.</span> Claude Code added <code>try/catch</code> and <code>console.warn</code> in the color extraction pipeline, but no visible operator feedback (toast/banner) was added anywhere.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>7. Harden color extraction (exColors)</h3>
-  <p>Better dominance logic (ignore transparent whitespace more aggressively, preserve saturation, sample adaptive resolution). Keep fallback path but surface confidence/preview to operator.</p>
+  <h3><span class="tag tag-done">Done</span> 7. Harden color extraction (exColors)</h3>
+  <p>Codex wanted better dominance logic, transparent/whitespace filtering, saturation weighting, and adaptive resolution.</p>
   <ul>
-    <li><strong>Why P1:</strong> Recurring pain point + branding quality risk.</li>
-    <li><strong>Refs:</strong> Current quantization/filtering approach.</li>
+    <li><strong>Status:</strong> <span class="done">Largely done.</span> Claude Code built a 3-pass extraction pipeline: (1) filtered by luminance + saturation-weighted, (2) unfiltered fallback, (3) average-all-pixels fallback. Also added iOS Safari fixes (no crossOrigin on data URLs, img.decode(), fresh canvas per call).</li>
+    <li><strong>Remaining:</strong> No confidence score or operator preview of extracted colors before applying.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>8. Clamp and truncate long strings in overlay UI</h3>
-  <p>Apply max lengths in control and CSS ellipsis/max-width in overlay (team, event fields).</p>
+  <h3><span class="tag tag-open">Open</span> 8. Long strings can blow out overlay layout</h3>
+  <p>No max-length enforcement in control inputs and no CSS <code>text-overflow: ellipsis</code> in overlay team name spans.</p>
   <ul>
-    <li><strong>Why P1:</strong> Prevents layout blowouts.</li>
-    <li><strong>Refs:</strong> nowrap without truncation.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> Team code inputs have <code>maxlength="4"</code> but team name and event title have no limit. Overlay uses <code>white-space: nowrap</code> without truncation.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>9. Ensure overlay clock self-stops at 0 if no controller heartbeat</h3>
-  <p>Add local stop condition when countdown reaches zero and no new authoritative updates.</p>
+  <h3><span class="tag tag-open">Open</span> 9. Overlay clock does not self-stop at 0</h3>
+  <p>If the controller disconnects or fails to send a stop signal, the overlay RAF loop keeps running at 0:00.</p>
   <ul>
-    <li><strong>Why P1:</strong> Avoids unnecessary perpetual RAF at 0.</li>
-    <li><strong>Refs:</strong> Clock loop behavior.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> The overlay <code>clockTick()</code> sets <code>current = 0</code> but keeps calling <code>requestAnimationFrame</code> indefinitely.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>10. Improve touch ergonomics</h3>
-  <p>Increase key controls to ~44px target height, especially score and start/pause/reset.</p>
+  <h3><span class="tag tag-open">Open</span> 10. Touch targets too small for live ops</h3>
+  <p>Score buttons and clock controls are compact. Fat-finger errors during a live game are likely.</p>
   <ul>
-    <li><strong>Why P1:</strong> Reduces fat-finger mis-ops.</li>
-    <li><strong>Refs:</strong> Compact button sizing/layout.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> Score buttons use class <code>.bs</code> with <code>padding: 5px 8px</code>, well below the recommended 44px touch target.</li>
   </ul>
 </div>
 
-<!-- P2 -->
 <h2 class="p2">P2 &mdash; Cleanups / Reliability Polish</h2>
 
 <div class="item">
-  <h3>11. Resolve dead or incomplete graphic-overlay paths</h3>
-  <p>Wire to state or remove dead code to reduce confusion.</p>
+  <h3><span class="tag tag-open">Open</span> 11. Dead or incomplete graphic-overlay paths</h3>
+  <p>The overlay has a full <code>showGraphic()</code> system (TIMEOUT, FOUL, SUBSTITUTION, HALFTIME, FINAL card types) but there is no path in the control panel to trigger them.</p>
   <ul>
-    <li><strong>Why P2:</strong> Lowers maintenance and &ldquo;it should work&rdquo; surprises.</li>
-    <li><strong>Refs:</strong> Graphic functions not triggered by listener path.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> Dead code &mdash; fully built UI with no trigger.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>12. Add explicit validation for clock input and game states</h3>
-  <p>Reject malformed times, constrain period-reset behavior for HALF/FINAL explicitly.</p>
+  <h3><span class="tag tag-open">Open</span> 12. No validation for clock input or game state transitions</h3>
+  <p>Clock input accepts any string. Period reset behavior for HALF/FINAL is not explicitly constrained.</p>
   <ul>
-    <li><strong>Why P2:</strong> Prevents accidental odd states.</li>
-    <li><strong>Refs:</strong> Permissive parser/reset behavior.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> <code>parseC()</code> silently returns 0 for garbage input. No guard on setting period to FINAL while clock is running.</li>
   </ul>
 </div>
 
 <div class="item">
-  <h3>13. Per-action Firebase failure feedback</h3>
-  <p>Attach .catch/status handling to writes; show operator action result.</p>
+  <h3><span class="tag tag-open">Open</span> 13. No per-action Firebase failure feedback</h3>
+  <p>All Firebase writes use fire-and-forget <code>.update()</code> with no <code>.catch()</code> or status handling.</p>
   <ul>
-    <li><strong>Why P2:</strong> Avoids false confidence during transient disconnects.</li>
-    <li><strong>Refs:</strong> patch/update usage patterns.</li>
+    <li><strong>Status:</strong> <span class="not-done">Not fixed.</span> Operator has no way to know if a write failed during a transient disconnect.</li>
   </ul>
 </div>
 
-<!-- Execution Order -->
-<h2 class="exec">Safe Execution Order</h2>
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 3: DISAGREEMENTS
+     ═══════════════════════════════════════════════════════════════ -->
+<h2 class="disagree">Where Claude Code Disagreed with Codex</h2>
 
-<ol class="steps">
-  <li>Data model / clock authority changes (P0 #2, #3)</li>
-  <li>Performance isolation (P0 #5)</li>
-  <li>Upload pipeline limits + compression (P0 #4)</li>
-  <li>UI correctness fixes (P0 #1, P1 #8, P1 #10)</li>
-  <li>Error handling + extraction hardening (P1 #6, #7)</li>
-  <li>Cleanup / polish (P2 items)</li>
-</ol>
+<div class="item">
+  <h3>1. Color extraction severity (Codex P1 #7)</h3>
+  <p>Codex rated color extraction hardening as P1 and implied the existing approach was inadequate. Claude Code had <em>already</em> significantly overhauled this across 3 commits (<code>11baf0a</code>, <code>d88c559</code>, <code>769643f</code>) before the review was generated. The 3-pass pipeline with iOS Safari-specific fixes goes well beyond what Codex described. Claude Code treated this as substantially complete; Codex's review didn't acknowledge the work already done.</p>
+</div>
 
-<!-- Acceptance Tests -->
-<h2 class="exec">Minimal Acceptance Tests Before Going On-Air</h2>
+<div class="item">
+  <h3>2. Base64 image size (Codex P0 #4)</h3>
+  <p>Codex flagged raw base64 writes as P0. Claude Code's position: for a single-game scorebug with 2 team logos and up to 4 sponsor logos, the practical risk is low. Logos are typically small PNGs (10&ndash;80KB). The control panel already warns on files &gt;500KB. A full compression pipeline adds complexity for a problem that rarely occurs in practice. However, Claude Code did <em>not</em> add compression &mdash; this is a deliberate deferral, not an oversight.</p>
+</div>
 
-<div class="tests">
-  <h4>Setup: Two iPhones + one overlay instance</h4>
-  <ul>
-    <li>Simultaneous start/pause/reset stress for 2 minutes</li>
-    <li>Mid-run clock correction from second device</li>
-    <li>5MB image upload rejection/compression path</li>
-    <li>30s offline/reconnect while clock running</li>
-    <li>6+ hours soak test with periodic updates</li>
-    <li>Max-length team/event text and max slider values</li>
+<div class="item">
+  <h3>3. Multi-operator clock races (Codex P0 #3)</h3>
+  <p>Codex called for a "clock owner/lease" lock or authoritative server timestamp model. Claude Code's position: NSMT's current workflow uses a single operator per game. A full locking protocol adds significant complexity for a scenario that doesn't match the current operational model. If multi-operator support becomes a real requirement, this should be designed holistically &mdash; not bolted onto the existing Firebase Realtime Database writes.</p>
+</div>
+
+<div class="item">
+  <h3>4. Stats panel rebuild performance (Codex P0 #5)</h3>
+  <p>Codex rated this P0. Claude Code's position: the stats panel is hidden by default (<code>display: none</code>) and only shown when <code>statsData.showPanel</code> is true. When hidden, <code>updateStats()</code> returns immediately. The DOM rebuild only happens when the panel is visible, which is a small fraction of broadcast time. This is more accurately a P2 optimization, not a P0 blocker.</p>
+</div>
+
+<div class="item">
+  <h3>5. Foul/timeout indicator wiring (Codex P0 #1)</h3>
+  <p>Claude Code <strong>agrees</strong> this is genuinely broken &mdash; the JS calls <code>$('fouls-away')</code> etc. but no elements with those IDs exist in the HTML. However, the control panel also has no UI to set foul counts or timeouts, so the feature is completely unwired end-to-end, not just missing DOM nodes. Fixing the overlay IDs alone doesn't help &mdash; the control panel needs foul/timeout buttons too.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 4: PROTECTING THE FILES
+     ═══════════════════════════════════════════════════════════════ -->
+<h2 class="protect">How to Protect &amp; Isolate These Two Files</h2>
+
+<div class="section-intro">
+  The repo contains <strong>11 HTML files</strong> across multiple overlay/control generations. It is easy to accidentally edit the wrong one, deploy a stale version, or confuse which overlay pairs with which control. Here's how to lock this down.
+</div>
+
+<div class="item">
+  <h3>Problem: Too many overlays, unclear which is "live"</h3>
+  <p>Current HTML files in the repo:</p>
+  <ul class="file-list">
+    <li class="active"><strong>yolo-overlay.html</strong> &mdash; ACTIVE production overlay (YoloBox / Firebase)</li>
+    <li class="active"><strong>yolo-control.html</strong> &mdash; ACTIVE production control panel (YoloBox / Firebase)</li>
+    <li class="legacy">nsmt_overlay.html &mdash; Legacy overlay (pre-YoloBox)</li>
+    <li class="legacy">nsmt_fox_overlay_ws.html &mdash; Legacy Fox-style overlay (WebSocket)</li>
+    <li class="legacy">nsmt_fox_control_ws.html &mdash; Legacy Fox-style control (WebSocket)</li>
+    <li class="legacy">nsmt-producer-v2.html &mdash; Legacy producer dashboard</li>
+    <li class="legacy">stats_v3.html &mdash; Stats overlay</li>
+    <li class="legacy">stats_control.html &mdash; Stats control</li>
+    <li class="legacy">ticker2.html &mdash; Ticker overlay</li>
+    <li>index.html &mdash; Repo landing page</li>
   </ul>
 </div>
 
-<div class="pass">
-  Pass Criteria: No clock divergence, no visible stutter, no silent failures, no layout overflow.
+<div class="item">
+  <h3>Solution 1: Move production files to a dedicated folder</h3>
+  <p>Create a <code>/live/</code> directory. Only the two active files live there:</p>
+  <ul>
+    <li><code>/live/yolo-overlay.html</code></li>
+    <li><code>/live/yolo-control.html</code></li>
+  </ul>
+  <p>GitHub Pages would serve them at <code>thensmt.github.io/scorebug/live/yolo-overlay.html</code>. Bookmark these URLs on every device. The rest of the repo stays at root for reference.</p>
 </div>
+
+<div class="item">
+  <h3>Solution 2: Add a CODEOWNERS file</h3>
+  <p>Create <code>.github/CODEOWNERS</code> to require review for changes to the production files:</p>
+  <p><code>/live/yolo-overlay.html @thensmt</code><br>
+  <code>/live/yolo-control.html @thensmt</code></p>
+  <p>This prevents accidental merges that touch the live files without explicit approval.</p>
+</div>
+
+<div class="item">
+  <h3>Solution 3: Pin with a version comment</h3>
+  <p>Add a version header comment to both files so you always know which build is deployed:</p>
+  <p><code>&lt;!-- NSMT YoloBox Overlay v1.0 | 2026-04-03 | DO NOT EDIT without checking yolo-control.html --&gt;</code></p>
+  <p>The overlay and control are a <strong>matched pair</strong>. The comment makes this explicit so nobody edits one without considering the other.</p>
+</div>
+
+<div class="item">
+  <h3>Solution 4: Archive legacy files</h3>
+  <p>Move all non-active files into an <code>/archive/</code> folder. This makes the repo root clean and obvious:</p>
+  <ul>
+    <li><code>/live/</code> &mdash; The two production files</li>
+    <li><code>/archive/</code> &mdash; All legacy overlays, controls, WebSocket versions</li>
+    <li><code>/</code> &mdash; index.html, README, config, assets</li>
+  </ul>
+</div>
+
+<div class="item">
+  <h3>Solution 5: Rename for clarity</h3>
+  <p>If you don't want to reorganize folders, rename the active files to make them unmistakable:</p>
+  <ul>
+    <li><code>LIVE-overlay.html</code></li>
+    <li><code>LIVE-control.html</code></li>
+  </ul>
+  <p>Anything prefixed with <code>LIVE-</code> is production. Everything else is legacy or experimental.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SECTION 5: SUMMARY SCORECARD
+     ═══════════════════════════════════════════════════════════════ -->
+<h2 class="claude">Summary Scorecard</h2>
+
+<table>
+  <tr><th>Codex Finding</th><th>Priority</th><th>Status</th><th>Owner</th></tr>
+  <tr><td>1. Foul/timeout wiring</td><td>P0</td><td><span class="not-done">Open</span></td><td>Needs both overlay + control work</td></tr>
+  <tr><td>2. Clock resync</td><td>P0</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>3. Multi-operator races</td><td>P0</td><td><span class="not-done">Open</span> (deferred)</td><td>Single-operator workflow for now</td></tr>
+  <tr><td>4. Base64 compression</td><td>P0</td><td><span class="not-done">Open</span> (deferred)</td><td>Warning exists, compression deferred</td></tr>
+  <tr><td>5. Stats rebuild perf</td><td>P0</td><td><span class="not-done">Open</span> (low risk)</td><td>Panel hidden by default</td></tr>
+  <tr><td>6. Error handling UI</td><td>P1</td><td><span class="partial">Partial</span></td><td>Console logging added, no toast UI</td></tr>
+  <tr><td>7. Color extraction</td><td>P1</td><td><span class="done">Done</span></td><td>3-pass pipeline + iOS fixes shipped</td></tr>
+  <tr><td>8. String truncation</td><td>P1</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>9. Clock self-stop</td><td>P1</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>10. Touch targets</td><td>P1</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>11. Dead graphic code</td><td>P2</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>12. Clock input validation</td><td>P2</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+  <tr><td>13. Firebase write feedback</td><td>P2</td><td><span class="not-done">Open</span></td><td>&mdash;</td></tr>
+</table>
+
+<p style="font-size:13px;color:#444;margin-top:12px;"><strong>Bottom line:</strong> Of the 13 Codex findings, <span class="done">1 is done</span> (#7 color extraction), <span class="partial">1 is partial</span> (#6 error handling), <span class="not-done">2 are deliberately deferred</span> (#3 multi-operator, #4 compression), and <span class="not-done">9 remain open</span>. Claude Code additionally shipped 4 features not covered by the Codex review: sponsor corner logos, PIN gate, full-panel team colors, and repo integration of the production files.</p>
 
 </body>
 </html>
