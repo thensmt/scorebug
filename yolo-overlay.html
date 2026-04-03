@@ -117,21 +117,12 @@ html, body {
 .corner-logo {
   position: absolute; z-index: 3;
   object-fit: contain; display: none;
+  transform-origin: top left;
 }
-#corner-tl { top: 24px; left: 24px; width: 120px; height: 60px; }
-#corner-tr { top: 24px; right: 24px; width: 120px; height: 60px; }
-#corner-bl { left: 24px; width: 120px; height: 60px; }
-#corner-br { right: 24px; width: 120px; height: 60px; }
-
-/* ── Promo Logos ────────────────────────────────────────────────── */
-.promo-logo {
-  position: absolute; z-index: 4;
-  object-fit: contain; display: none;
-}
-#promo-tl { top: 100px; left: 24px; width: 360px; height: 180px; }
-#promo-tr { top: 100px; right: 24px; width: 360px; height: 180px; }
-#promo-bl { left: 24px; width: 360px; height: 180px; }
-#promo-bar { width: 300px; height: 40px; }
+#corner-tl { top: 24px; left: 24px; width: 120px; height: auto; transform-origin: top left; }
+#corner-tr { top: 24px; right: 24px; width: 120px; height: auto; transform-origin: top right; }
+#corner-bl { bottom: 24px; left: 24px; width: 120px; height: auto; transform-origin: bottom left; }
+#corner-br { bottom: 24px; right: 24px; width: 120px; height: auto; transform-origin: bottom right; }
 
 /* ════════════════════════════════════════════════════════════════════
    SCOREBUG — TNT-Style Compact Bar
@@ -532,17 +523,11 @@ html, body {
 <!-- LIVE Indicator -->
 <div id="live-indicator"><span class="dot"></span>LIVE</div>
 
-<!-- Corner Logos -->
+<!-- Corner Logos (Sponsors) -->
 <img id="corner-tl" class="corner-logo" alt="">
 <img id="corner-tr" class="corner-logo" alt="">
 <img id="corner-bl" class="corner-logo" alt="">
 <img id="corner-br" class="corner-logo" alt="">
-
-<!-- Promo Logos -->
-<img id="promo-tl" class="promo-logo" alt="">
-<img id="promo-tr" class="promo-logo" alt="">
-<img id="promo-bl" class="promo-logo" alt="">
-<img id="promo-bar" class="promo-logo" alt="">
 
 <!-- ════════════════════════════════════════════════════════════════════
      SCOREBUG — TNT-Style Compact Bar
@@ -1018,6 +1003,22 @@ html, body {
     if (bug.bugLogoSize) {
       document.documentElement.style.setProperty('--bug-logo-size', bug.bugLogoSize + 'px');
     }
+
+    // Corner sponsor logos
+    var corners = state.corners || {};
+    ['tl','tr','bl','br'].forEach(function(pos){
+      var c = corners[pos] || {};
+      var el = $('corner-' + pos);
+      if(c.src){
+        el.src = c.src;
+        el.style.display = 'block';
+        var s = c.scale || 1;
+        el.style.transform = 'scale(' + s + ')';
+      } else {
+        el.style.display = 'none';
+        el.src = '';
+      }
+    });
 
     // Ticker
     if (state.ticker) updateTicker(state.ticker);
