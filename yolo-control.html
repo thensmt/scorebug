@@ -124,7 +124,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .poss-btn.on { border-color: var(--gold); color: var(--gold); background: rgba(240,192,48,0.08); }
 
 /* ── Clock ── */
-.clock-num { font-family: 'Space Grotesk', sans-serif; font-size: 3rem; font-weight: 700; text-align: center; margin: 6px 0; }
+.clock-input {
+  display: block; width: 100%; border: 1px solid var(--card-border); background: var(--input-bg);
+  font-family: 'Space Grotesk', sans-serif; font-size: 3rem; font-weight: 700;
+  text-align: center; margin: 6px 0; padding: 8px 0; color: var(--text);
+  border-radius: 8px; outline: none; -webkit-tap-highlight-color: transparent;
+}
+.clock-input:focus { border-color: var(--accent); }
+.clock-input.running { color: var(--green); }
 .clock-btns { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 .period-btns { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
 .period-btns .btn { flex: 1; min-width: 48px; }
@@ -248,8 +255,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 <!-- CLOCK -->
 <div class="card">
-  <div class="card-title">Game Clock</div>
-  <div class="clock-num" id="clockDisplay">8:00</div>
+  <div class="card-title">Game Clock — tap to edit</div>
+  <input type="text" class="clock-input" id="clockDisplay" value="8:00" inputmode="numeric">
   <div class="clock-btns">
     <button class="btn btn-green" id="clockStartBtn" onclick="startClock()">Start</button>
     <button class="btn btn-red" onclick="stopClock()">Stop</button>
@@ -260,10 +267,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     <button class="btn btn-sm" onclick="setClockTo('5:00')">5:00</button>
     <button class="btn btn-sm" onclick="setClockTo('4:00')">4:00</button>
     <button class="btn btn-sm" onclick="setClockTo('2:00')">2:00</button>
-  </div>
-  <div class="field" style="margin-top:8px">
-    <label>Custom Clock</label>
-    <input type="text" id="customClock" placeholder="M:SS" inputmode="numeric">
   </div>
 </div>
 
@@ -409,10 +412,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     } else if(!b.clockRunning && localClockRunning){
       stopLocalClock();
       localClockMs = parseClock(b.clock || '8:00');
-      safe('clockDisplay').textContent = b.clock || '8:00';
+      safe('clockDisplay').value = b.clock || '8:00';
     } else if(!b.clockRunning && !localClockRunning){
       localClockMs = parseClock(b.clock || '8:00');
-      safe('clockDisplay').textContent = b.clock || '8:00';
+      if(document.activeElement !== safe('clockDisplay')){
+        safe('clockDisplay').value = b.clock || '8:00';
+      }
     }
 
     // Period buttons
@@ -466,9 +471,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   var localClockRunning = false;
   var localClockStartPerf = 0;
   var localClockStartMs = 0;
+  var lastSyncSec = -1;
 
   function parseClock(text){
-    var parts = String(text||'0:00').split(':');
+    var parts = String(text||'0:00').trim().split(':');
     var m = parseInt(parts[0])||0;
     var s = parseInt(parts[1])||0;
     return (m*60+s)*1000;
@@ -486,13 +492,25 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     localClockRunning = true;
     localClockStartPerf = performance.now();
     localClockStartMs = localClockMs;
+    lastSyncSec = -1;
+    safe('clockDisplay').classList.add('running');
     localClockInterval = setInterval(function(){
       var elapsed = performance.now() - localClockStartPerf;
       localClockMs = Math.max(0, localClockStartMs - elapsed);
-      safe('clockDisplay').textContent = fmtClock(localClockMs);
+      var display = fmtClock(localClockMs);
+      if(document.activeElement !== safe('clockDisplay')){
+        safe('clockDisplay').value = display;
+      }
+      // Sync to Firebase every second so overlay stays in sync
+      var curSec = Math.floor(localClockMs / 1000);
+      if(curSec !== lastSyncSec){
+        lastSyncSec = curSec;
+        stateRef.update({'bug/clock': display});
+      }
       if(localClockMs <= 0){
         clearInterval(localClockInterval);
         localClockRunning = false;
+        safe('clockDisplay').classList.remove('running');
         patch({clock:'0:00', clockRunning:false});
       }
     }, 100);
@@ -504,18 +522,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     var elapsed = performance.now() - localClockStartPerf;
     localClockMs = Math.max(0, localClockStartMs - elapsed);
     localClockRunning = false;
+    safe('clockDisplay').classList.remove('running');
   }
 
   window.startClock = function(){
-    var display = safe('clockDisplay').textContent;
+    var display = safe('clockDisplay').value;
     localClockMs = parseClock(display);
+    if(localClockMs <= 0) return;
     startLocalClock();
     patch({clock:display, clockRunning:true});
   };
   window.stopClock = function(){
     stopLocalClock();
     var display = fmtClock(localClockMs);
-    safe('clockDisplay').textContent = display;
+    safe('clockDisplay').value = display;
     patch({clock:display, clockRunning:false});
   };
   window.resetClock = function(){
@@ -523,19 +543,29 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     var q = (state.bug||{}).quarter||'1ST';
     var def = q==='OT' ? '5:00' : '8:00';
     localClockMs = parseClock(def);
-    safe('clockDisplay').textContent = def;
+    safe('clockDisplay').value = def;
     patch({clock:def, clockRunning:false});
   };
   window.setClockTo = function(val){
     stopLocalClock();
     localClockMs = parseClock(val);
-    safe('clockDisplay').textContent = val;
+    safe('clockDisplay').value = val;
     patch({clock:val, clockRunning:false});
   };
 
-  // Custom clock
-  safe('customClock').addEventListener('change', function(){
-    if(this.value){ window.setClockTo(this.value); this.value=''; }
+  // Manual clock edit — tap the clock, type a time, blur or press Enter to set
+  safe('clockDisplay').addEventListener('blur', function(){
+    if(localClockRunning) return;
+    var val = this.value.trim();
+    if(val && parseClock(val) >= 0){
+      setClockTo(fmtClock(parseClock(val)));
+    }
+  });
+  safe('clockDisplay').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      this.blur();
+    }
   });
 
   // ── Fouls ──
