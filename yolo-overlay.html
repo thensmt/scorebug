@@ -2,509 +2,1050 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=1920,height=1080">
-<title>NSMT Scorebug — YoloBox Overlay</title>
+<meta name="viewport" content="width=1920">
+<title>NSMT Fastbreak — YoloBox Overlay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,700;1,800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --scale: 1;
-    --safe-bottom: 42px;
-    --bug-width: 960px;
-    --bug-height: 116px;
-    --panel: rgba(5, 7, 10, 0.98);
-    --panel-soft: rgba(14, 18, 24, 0.98);
-    --line: rgba(255, 255, 255, 0.09);
-    --text: #ffffff;
-    --muted: rgba(255, 255, 255, 0.68);
-    --gold: #f3c51d;
-    --brand: #0e80fc;
-    --shadow: 0 18px 32px rgba(0, 0, 0, 0.34);
-  }
+/* ── Reset & Canvas ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Design Tokens ──────────────────────────────────────────────── */
+:root {
+  --fb-primary: #0E80FC;
+  --fb-silver: #C0C0C0;
+  --fb-surface: #070d1f;
+  --fb-surface-container: #11192e;
+  --fb-surface-container-low: #0c1326;
+  --fb-surface-container-high: #171f36;
+  --fb-surface-container-highest: #1c253e;
+  --fb-surface-bright: #222b47;
+  --fb-surface-variant: #1c253e;
+  --fb-surface-tint: #81aeff;
+  --fb-on-surface: #dfe4fe;
+  --fb-on-surface-variant: #a5aac2;
+  --fb-outline-variant: #41475b;
+  --fb-error: #E60000;
+  --fb-error-container: #9f0519;
+  --fb-on-error-container: #ffa8a3;
+  --fb-tertiary: #f6b1ff;
+  --fb-primary-fixed: #67a0ff;
+  --fb-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --fb-font-body: 'Inter', system-ui, sans-serif;
 
-  html, body {
-    width: 100%; height: 100%;
-    overflow: hidden;
-    background: transparent;
-    font-family: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
-  }
+  /* Team colors (set dynamically) */
+  --away-bg1: #333333;
+  --away-bg2: #222222;
+  --away-text: #FFFFFF;
+  --away-accent: #CCCCCC;
+  --home-bg1: #333333;
+  --home-bg2: #222222;
+  --home-text: #FFFFFF;
+  --home-accent: #CCCCCC;
 
-  .stage {
-    position: relative;
-    width: 100%; height: 100%;
-    pointer-events: none;
-  }
+  --ticker-h: 0px;
+  --bug-logo-size: 160px;
+  --bug-scale: 1.25;
+}
 
-  /* ─── MAIN WRAPPER ─── */
-  .scorebug-wrap {
-    position: absolute;
-    bottom: var(--safe-bottom);
-    left: 50%;
-    width: var(--bug-width);
-    height: var(--bug-height);
-    transform: translateX(-50%) scale(var(--scale));
-    transform-origin: bottom center;
-    filter: drop-shadow(var(--shadow));
-    opacity: 1;
-    transition: opacity 0.4s ease;
-  }
-  .scorebug-wrap.hidden { opacity: 0; pointer-events: none; }
+/* ── Keyframes ──────────────────────────────────────────────────── */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes scorePulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 0; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOutDown {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(30px); opacity: 0; }
+}
+@keyframes spotlightIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes lowerThirdUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes lowerThirdDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes bugSlideUp {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
 
-  /* ─── 5-COLUMN GRID ─── */
-  .scorebug {
-    position: relative;
-    width: 100%; height: 100%;
-    display: grid;
-    grid-template-columns: 128px 260px 128px 260px 128px;
-    background: linear-gradient(180deg, rgba(11, 13, 16, 0.99), rgba(3, 5, 8, 0.99));
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    overflow: visible;
-  }
+/* ── LIVE Indicator ─────────────────────────────────────────────── */
+#live-indicator {
+  position: absolute; top: 20px; left: 20px; z-index: 100;
+  display: none; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+  font-family: var(--fb-font-display); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; color: #fff;
+  letter-spacing: 0.1em;
+}
+#live-indicator .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fb-error);
+  animation: livePulse 1.2s ease-in-out infinite;
+}
 
-  /* Subtle scan-line texture */
-  .scorebug::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.08), transparent 28%, transparent 72%, rgba(255,255,255,0.03)),
-      repeating-linear-gradient(90deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 106px);
-    pointer-events: none;
-    z-index: 1;
-  }
+/* ── Corner Logos ───────────────────────────────────────────────── */
+.corner-logo {
+  position: absolute; z-index: 3;
+  object-fit: contain; display: none;
+}
+#corner-tl { top: 24px; left: 24px; width: 120px; height: 60px; }
+#corner-tr { top: 24px; right: 24px; width: 120px; height: 60px; }
+#corner-bl { left: 24px; width: 120px; height: 60px; }
+#corner-br { right: 24px; width: 120px; height: 60px; }
 
-  .panel {
-    position: relative;
-    z-index: 2;
-    min-width: 0;
-    border-left: 1px solid var(--line);
-  }
-  .panel:first-of-type { border-left: 0; }
+/* ── Promo Logos ────────────────────────────────────────────────── */
+.promo-logo {
+  position: absolute; z-index: 4;
+  object-fit: contain; display: none;
+}
+#promo-tl { top: 100px; left: 24px; width: 360px; height: 180px; }
+#promo-tr { top: 100px; right: 24px; width: 360px; height: 180px; }
+#promo-bl { left: 24px; width: 360px; height: 180px; }
+#promo-bar { width: 300px; height: 40px; }
 
-  /* ─── LOGO PANELS ─── */
-  .logo-panel {
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    overflow: visible;
-  }
+/* ════════════════════════════════════════════════════════════════════
+   SCOREBUG — TNT-Style Compact Bar
+   ════════════════════════════════════════════════════════════════════ */
+#scorebug-wrap {
+  position: absolute; z-index: 10;
+  bottom: calc(40px + var(--ticker-h));
+  left: 50%; transform: translateX(-50%) scale(var(--bug-scale));
+  transform-origin: bottom center;
+  display: flex; align-items: center;
+  gap: 0;
+  will-change: transform;
+}
+#scorebug {
+  display: flex; align-items: stretch;
+  height: 72px;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  filter: drop-shadow(0 2px 20px rgba(0, 0, 0, 0.6));
+}
 
-  .logo-frame {
-    width: 96px;
-    height: 96px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 3px solid #000000;
-    border-radius: 4px;
-    overflow: hidden;
-  }
+/* NSMT brand tab */
+.bug-brand {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 16px;
+  background: var(--fb-primary);
+  font-family: var(--fb-font-display);
+  font-weight: 700; font-size: 0.875rem;
+  color: #fff; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
-  .logo-frame img {
-    width: 100%; height: 100%;
-    object-fit: contain;
-    display: block;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
-  }
+/* Team sections */
+.bug-team {
+  display: flex; align-items: center;
+  padding: 0 10px;
+  position: relative;
+  min-width: 170px;
+}
+.bug-team .team-color-bar {
+  position: absolute; top: 0; bottom: 0;
+  width: 4px; flex-shrink: 0;
+}
+.bug-team.away .team-color-bar { left: 0; }
+.bug-team.home .team-color-bar { right: 0; }
 
-  .logo-frame.is-empty {
-    border-color: transparent;
-  }
-  .logo-frame.is-empty::after {
-    content: attr(data-fallback);
-    font-size: 38px;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.15);
-    letter-spacing: 1px;
-  }
+.bug-team.away { padding-left: 18px; }
+.bug-team.home { padding-right: 18px; }
 
-  /* ─── TEAM PANELS ─── */
-  .team-panel {
-    display: grid;
-    grid-template-columns: 1fr 74px;
-    align-items: center;
-    padding: 38px 16px 10px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.035), transparent 34%),
-      linear-gradient(180deg, rgba(255,255,255,0.025), rgba(0,0,0,0.18));
-  }
+.bug-team-logo-wrap {
+  width: var(--bug-logo-size, 48px);
+  height: 72px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid rgba(0,0,0,0.92);
+  border-left: none;
+  background: transparent;
+}
+.bug-team-logo-wrap.away-side {
+  border-left: 2px solid rgba(0,0,0,0.92);
+  border-right: none;
+}
+.bug-team-logo {
+  width: var(--bug-logo-size, 48px);
+  height: var(--bug-logo-size, 48px);
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+.bug-team-info {
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 0;
+  min-width: 0;
+}
+.bug-team-name {
+  font-family: var(--fb-font-display);
+  font-size: 1rem; font-weight: 700;
+  text-transform: uppercase; color: #fff;
+  letter-spacing: 0.04em;
+  white-space: nowrap; line-height: 1.1;
+}
+.bug-team-record {
+  font-family: var(--fb-font-body);
+  font-size: 0.5625rem; color: var(--fb-on-surface-variant);
+  white-space: nowrap; line-height: 1;
+}
+.bug-team.home .bug-team-info { text-align: right; }
+.bug-team.away .bug-team-info { text-align: left; }
+.bug-team-score {
+  font-family: var(--fb-font-display);
+  font-size: 2.25rem; font-weight: 700;
+  color: #fff; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px; text-align: center;
+}
+.bug-team.away .bug-team-inner {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%;
+}
+.bug-team.home .bug-team-inner {
+  display: flex; align-items: center; gap: 14px;
+  flex-direction: row-reverse;
+  width: 100%;
+}
 
-  .team-panel.home-panel {
-    grid-template-columns: 74px 1fr;
-  }
+/* Foul/timeout indicators — compact */
+.bug-indicators {
+  display: flex; flex-direction: column; gap: 3px;
+  align-items: center; margin-left: 2px;
+}
+.bug-team.home .bug-indicators { margin-left: 0; margin-right: 2px; }
 
-  .team-info {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .team-info.home-info { text-align: right; }
+.foul-dots, .timeout-dots {
+  display: flex; gap: 2px; align-items: center;
+}
+.foul-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+}
+.foul-dot.active { background: #FACC15; }
+.timeout-dot {
+  width: 6px; height: 6px; border-radius: 0;
+  background: rgba(255,255,255,0.15);
+}
+.timeout-dot.active { background: #FACC15; }
 
-  .team-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    min-width: 0;
-  }
-  .team-row.home-row { justify-content: flex-end; }
+/* Possession arrow */
+.possession-arrow {
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  flex-shrink: 0; opacity: 0;
+  transition: opacity 0.2s;
+}
+.possession-arrow.visible { opacity: 1; }
+.bug-team.away .possession-arrow { border-right: 6px solid var(--fb-primary); margin-right: 4px; }
+.bug-team.home .possession-arrow { border-left: 6px solid var(--fb-primary); margin-left: 4px; }
 
-  .team-code {
-    font-size: 40px;
-    line-height: 0.95;
-    font-weight: 800;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
+/* Dividers between sections */
+.bug-divider {
+  width: 1px; background: rgba(255,255,255,0.12);
+  align-self: stretch;
+}
 
-  .team-record {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 18px;
-    line-height: 1;
-    font-weight: 700;
-    color: var(--muted);
-    margin-bottom: 3px;
-    white-space: nowrap;
-  }
+/* Center panel — clock & period */
+.bug-center {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 0 24px; gap: 2px;
+  min-width: 110px;
+}
+.clock-display {
+  font-family: var(--fb-font-display); font-size: 1.625rem;
+  font-weight: 700; color: #fff; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.period-display {
+  font-family: var(--fb-font-display); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase;
+  color: #fff; letter-spacing: 0.15em;
+  line-height: 1;
+}
+.bug-logo-text {
+  margin-top: 4px;
+  font-family: var(--fb-font-display);
+  font-size: 0.75rem; font-weight: 700;
+  font-style: italic; color: var(--fb-primary);
+  letter-spacing: 0.06em; line-height: 1;
+  opacity: 0.85;
+}
 
-  /* ─── TIMEOUT / BONUS DOTS ─── */
-  .bonus {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-top: 10px;
-  }
-  .bonus.home-bonus { justify-content: flex-end; }
+/* ── Event Bar ──────────────────────────────────────────────────── */
+#event-bar {
+  position: absolute; z-index: 11;
+  bottom: 100%; left: 0; right: 0;
+  height: 24px; display: none;
+  align-items: center; justify-content: center;
+  padding: 0 20px;
+  background: rgba(0, 0, 0, 0.92);
+  font-family: var(--fb-font-display); font-size: 0.625rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+  color: #fff; white-space: nowrap;
+}
 
-  .dot {
-    width: 8px; height: 8px;
-    border-radius: 1px;
-    background: rgba(255,255,255,0.22);
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
-  }
-  .dot.active {
-    background: var(--gold);
-    box-shadow: 0 0 8px rgba(243,197,29,0.28);
-  }
+/* ── Score Pop ──────────────────────────────────────────────────── */
+.score-pop {
+  position: absolute; z-index: 50;
+  font-family: var(--fb-font-display); font-size: 3rem;
+  font-weight: 700; font-style: italic;
+  color: #fff; pointer-events: none;
+  animation: scorePulse 0.6s ease-out forwards;
+  will-change: transform, opacity;
+}
 
-  /* ─── SCORES ─── */
-  .score {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 64px;
-    line-height: 0.9;
-    font-weight: 700;
-    text-align: center;
-  }
+/* ── Ticker ─────────────────────────────────────────────────────── */
+#ticker {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 32px; z-index: 2;
+  background: rgba(0, 0, 0, 0.92); display: none;
+  align-items: center; overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+#ticker-accent {
+  width: 24px; height: 32px; background: var(--fb-primary);
+  flex-shrink: 0; position: relative; z-index: 1;
+}
+#ticker-track {
+  flex: 1; overflow: hidden; height: 100%;
+  display: flex; align-items: center;
+  position: relative;
+}
+#ticker-content {
+  display: flex; white-space: nowrap;
+  will-change: transform;
+  animation: tickerScroll 30s linear infinite;
+}
+.ticker-item {
+  font-family: var(--fb-font-body); font-size: 0.8125rem;
+  color: var(--fb-on-surface); padding: 0 48px;
+  display: flex; align-items: center;
+}
+.ticker-sep {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--fb-primary); margin: 0 24px;
+  flex-shrink: 0;
+}
 
-  @keyframes scoreFlash {
-    0% { color: var(--gold); text-shadow: 0 0 20px rgba(243,197,29,0.5); }
-    100% { color: var(--text); text-shadow: none; }
-  }
-  .score-flash { animation: scoreFlash 0.8s ease-out; }
+/* ── Graphic Overlay (Foul/Timeout/Sub cards) ───────────────────── */
+#graphic-overlay {
+  position: absolute; left: 60px;
+  bottom: calc(200px + var(--ticker-h));
+  z-index: 200; width: 400px;
+  display: none;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+#graphic-accent {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; background: var(--fb-primary);
+}
+#graphic-body {
+  padding: 16px 20px 16px 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#graphic-type {
+  font-family: var(--fb-font-display); font-size: 0.6875rem;
+  font-weight: 700; text-transform: uppercase;
+  color: var(--fb-primary); letter-spacing: 0.1em;
+}
+#graphic-line1 {
+  font-family: var(--fb-font-display); font-size: 1.25rem;
+  font-weight: 700; color: #fff;
+}
+#graphic-line2 {
+  font-family: var(--fb-font-body); font-size: 0.875rem;
+  color: var(--fb-on-surface-variant);
+}
+#graphic-line3 {
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface-variant);
+}
 
-  /* ─── CENTER PANEL ─── */
-  .center-panel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 22px 10px 8px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.04), transparent 26%),
-      linear-gradient(180deg, var(--panel-soft), var(--panel));
-    text-align: center;
-  }
+/* ── Spotlight Card ─────────────────────────────────────────────── */
+#spotlight {
+  position: absolute; z-index: 210;
+  width: 360px; display: none;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+#spotlight-accent {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 6px;
+}
+#spotlight-body {
+  padding: 16px 20px 16px 24px;
+  display: flex; gap: 16px;
+}
+#spotlight-photo {
+  width: 120px; height: 120px;
+  object-fit: cover; flex-shrink: 0;
+}
+#spotlight-info {
+  display: flex; flex-direction: column; gap: 6px;
+  flex: 1; min-width: 0;
+}
+#spotlight-team-label {
+  font-family: var(--fb-font-display); font-size: 0.6875rem;
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+#spotlight-name {
+  font-family: var(--fb-font-display); font-size: 1.75rem;
+  font-weight: 700; color: #fff; line-height: 1.1;
+}
+#spotlight-details {
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface-variant);
+}
+#spotlight-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-top: 4px;
+}
+.spotlight-stat {
+  display: flex; flex-direction: column; align-items: center;
+}
+.spotlight-stat-val {
+  font-family: var(--fb-font-display); font-size: 1.375rem;
+  font-weight: 700; color: #fff;
+}
+.spotlight-stat-label {
+  font-family: var(--fb-font-body); font-size: 0.625rem;
+  text-transform: uppercase; color: var(--fb-on-surface-variant);
+  letter-spacing: 0.06em;
+}
 
-  .game-clock {
-    font-family: "Rajdhani", sans-serif;
-    font-size: 58px;
-    line-height: 0.9;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    margin-top: 4px;
-  }
+/* ── Lower Third ────────────────────────────────────────────────── */
+#lower-third {
+  position: absolute; z-index: 50;
+  bottom: var(--ticker-h); left: 0; right: 0;
+  height: 56px; display: none;
+  background: var(--fb-primary);
+  align-items: center; justify-content: center;
+  will-change: transform;
+}
+#lower-third-text {
+  font-family: var(--fb-font-display); font-size: 1.75rem;
+  font-weight: 700; text-transform: uppercase;
+  color: #fff; font-style: italic;
+  letter-spacing: 0.04em;
+}
 
-  .period {
-    font-size: 26px;
-    line-height: 1;
-    font-weight: 700;
-    color: rgba(255,255,255,0.9);
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-
-  .brand {
-    margin-top: 4px;
-    font-size: 25px;
-    line-height: 1;
-    font-style: italic;
-    font-weight: 800;
-    color: var(--brand);
-    letter-spacing: 0.6px;
-  }
-
-  .status {
-    position: absolute;
-    top: 10px;
-    right: 14px;
-    font-size: 11px;
-    line-height: 1;
-    letter-spacing: 1.2px;
-    font-weight: 700;
-    color: rgba(255,255,255,0.72);
-    text-transform: uppercase;
-    z-index: 3;
-  }
-  .status.running { color: #93f6b2; }
-
-  /* ─── EVENT RIBBON ─── */
-  .top-ribbon {
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 18px;
-    line-height: 1;
-    letter-spacing: 2.8px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.92);
-    z-index: 3;
-    white-space: nowrap;
-  }
-  .top-ribbon:empty { display: none; }
+/* ── Stats Panel ────────────────────────────────────────────────── */
+#stats-panel {
+  position: absolute; z-index: 6;
+  bottom: calc(120px + var(--ticker-h));
+  left: 50%; transform: translateX(-50%);
+  display: none; width: 800px;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+#stats-header {
+  display: flex; height: 40px;
+  font-family: var(--fb-font-display); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stats-team-header {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+#stats-body {
+  display: flex; max-height: 500px;
+  overflow-y: auto;
+}
+.stats-col {
+  flex: 1; display: flex; flex-direction: column;
+}
+.stats-row {
+  display: flex; padding: 4px 12px;
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface);
+  align-items: center;
+}
+.stats-row:nth-child(even) { background: rgba(255,255,255,0.03); }
+.stats-row .num { width: 28px; text-align: center; font-weight: 600; }
+.stats-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-row .stat { width: 32px; text-align: center; font-variant-numeric: tabular-nums; }
+.stats-col-header {
+  display: flex; padding: 6px 12px;
+  font-family: var(--fb-font-display); font-size: 0.625rem;
+  font-weight: 600; text-transform: uppercase;
+  color: var(--fb-on-surface-variant);
+  letter-spacing: 0.06em;
+}
+.stats-col-header .num { width: 28px; text-align: center; }
+.stats-col-header .name { flex: 1; }
+.stats-col-header .stat { width: 32px; text-align: center; }
 </style>
 </head>
 <body>
 
-<div class="stage">
-  <div class="scorebug-wrap" id="bugWrap">
-    <div class="scorebug">
-      <div class="top-ribbon" id="eventBar"></div>
-      <div class="status" id="statusBadge">Paused</div>
+<!-- LIVE Indicator -->
+<div id="live-indicator"><span class="dot"></span>LIVE</div>
 
-      <!-- Away Logo -->
-      <div class="panel logo-panel">
-        <div class="logo-frame is-empty" id="awayLogoFrame" data-fallback="A">
-          <img id="awayLogo" alt="Away logo" hidden>
+<!-- Corner Logos -->
+<img id="corner-tl" class="corner-logo" alt="">
+<img id="corner-tr" class="corner-logo" alt="">
+<img id="corner-bl" class="corner-logo" alt="">
+<img id="corner-br" class="corner-logo" alt="">
+
+<!-- Promo Logos -->
+<img id="promo-tl" class="promo-logo" alt="">
+<img id="promo-tr" class="promo-logo" alt="">
+<img id="promo-bl" class="promo-logo" alt="">
+<img id="promo-bar" class="promo-logo" alt="">
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCOREBUG — TNT-Style Compact Bar
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="scorebug-wrap">
+  <!-- Event Banner — spans full width above scorebug -->
+  <div id="event-bar"><span id="event-bar-text"></span></div>
+  <div class="bug-team-logo-wrap away-side" id="logo-wrap-away"><img class="bug-team-logo" id="logo-away" alt="" src=""></div>
+  <div id="scorebug">
+    <!-- Away Team -->
+    <div class="bug-team away" id="panel-away">
+      <div class="team-color-bar" id="color-bar-away"></div>
+      <div class="bug-team-inner">
+        <div class="possession-arrow" id="poss-away"></div>
+        <div class="bug-team-info">
+          <span class="bug-team-name" id="name-away">AWAY</span>
+          <span class="bug-team-record" id="record-away"></span>
         </div>
-      </div>
-
-      <!-- Away Team -->
-      <div class="panel team-panel away-panel">
-        <div class="team-info">
-          <div class="team-row">
-            <div class="team-code" id="awayName">AWAY</div>
-            <div class="team-record" id="awayRecord"></div>
-          </div>
-          <div class="bonus" id="awayBonus">
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-          </div>
-        </div>
-        <div class="score" id="awayScore">0</div>
-      </div>
-
-      <!-- Center Clock -->
-      <div class="panel center-panel">
-        <div class="game-clock" id="gameClock">8:00</div>
-        <div class="period" id="periodLabel">1ST</div>
-        <div class="brand">NSMT</div>
-      </div>
-
-      <!-- Home Team -->
-      <div class="panel team-panel home-panel">
-        <div class="score" id="homeScore">0</div>
-        <div class="team-info home-info">
-          <div class="team-row home-row">
-            <div class="team-code" id="homeName">HOME</div>
-            <div class="team-record" id="homeRecord"></div>
-          </div>
-          <div class="bonus home-bonus" id="homeBonus">
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-            <span class="dot active"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Home Logo -->
-      <div class="panel logo-panel">
-        <div class="logo-frame is-empty" id="homeLogoFrame" data-fallback="H">
-          <img id="homeLogo" alt="Home logo" hidden>
+        <span class="bug-team-score" id="score-away">0</span>
+        <div class="bug-indicators">
+          <div class="foul-dots" id="fouls-away" data-type="foul"></div>
+          <div class="timeout-dots" id="timeouts-away" data-type="timeout"></div>
         </div>
       </div>
     </div>
+    <div class="bug-divider"></div>
+
+    <!-- Center: Clock & Period -->
+    <div class="bug-center" id="center-panel">
+      <div class="clock-display" id="clock">8:00</div>
+      <div class="period-display" id="period">1ST</div>
+      <div class="bug-logo-text">NSMT</div>
+    </div>
+    <div class="bug-divider"></div>
+
+    <!-- Home Team -->
+    <div class="bug-team home" id="panel-home">
+      <div class="team-color-bar" id="color-bar-home"></div>
+      <div class="bug-team-inner">
+        <div class="possession-arrow" id="poss-home"></div>
+        <div class="bug-team-info">
+          <span class="bug-team-name" id="name-home">HOME</span>
+          <span class="bug-team-record" id="record-home"></span>
+        </div>
+        <span class="bug-team-score" id="score-home">0</span>
+        <div class="bug-indicators">
+          <div class="foul-dots" id="fouls-home" data-type="foul"></div>
+          <div class="timeout-dots" id="timeouts-home" data-type="timeout"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bug-team-logo-wrap" id="logo-wrap-home"><img class="bug-team-logo" id="logo-home" alt="" src=""></div>
+</div>
+
+<!-- Ticker -->
+<div id="ticker">
+  <div id="ticker-accent"></div>
+  <div id="ticker-track">
+    <div id="ticker-content"></div>
+  </div>
+</div>
+
+<!-- Graphic Overlay -->
+<div id="graphic-overlay">
+  <div id="graphic-accent"></div>
+  <div id="graphic-body">
+    <div id="graphic-type"></div>
+    <div id="graphic-line1"></div>
+    <div id="graphic-line2"></div>
+    <div id="graphic-line3"></div>
+  </div>
+</div>
+
+<!-- Spotlight Card -->
+<div id="spotlight">
+  <div id="spotlight-accent"></div>
+  <div id="spotlight-body">
+    <img id="spotlight-photo" alt="" src="">
+    <div id="spotlight-info">
+      <div id="spotlight-team-label"></div>
+      <div id="spotlight-name"></div>
+      <div id="spotlight-details"></div>
+      <div id="spotlight-stats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Lower Third -->
+<div id="lower-third">
+  <div id="lower-third-text"></div>
+</div>
+
+<!-- Stats Panel -->
+<div id="stats-panel">
+  <div id="stats-header">
+    <div class="stats-team-header" id="stats-header-away"></div>
+    <div class="stats-team-header" id="stats-header-home"></div>
+  </div>
+  <div id="stats-body">
+    <div class="stats-col" id="stats-col-away"></div>
+    <div class="stats-col" id="stats-col-home"></div>
   </div>
 </div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="firebase-client.js"></script>
 
 <script>
 (function () {
-  function updateScale() {
-    const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-    document.documentElement.style.setProperty('--scale', String(scale || 1));
+  // ── Firebase Config ─────────────────────────────────────────────
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
+    authDomain: "sincere-nirvana-436014-v9.firebaseapp.com",
+    databaseURL: "https://nsmt-scorebug.firebaseio.com",
+    projectId: "sincere-nirvana-436014-v9",
+    storageBucket: "sincere-nirvana-436014-v9.firebasestorage.app",
+    appId: "1:417098775531:web:d1d88da74d217ecbd5f7ae"
+  };
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // ── DOM refs ────────────────────────────────────────────────────
+  const $ = function (id) { return document.getElementById(id); };
+
+  // ── Helpers ─────────────────────────────────────────────────────
+  function luminance(hex) {
+    if (!hex || hex.length < 7) return 0;
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    const toLinear = function (c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
   }
 
-  function abbreviate(name, fallback) {
-    const text = String(name || fallback || '').trim();
-    if (!text) return fallback || '?';
-    const parts = text.split(/\s+/).filter(Boolean);
-    if (parts.length === 1) return parts[0].slice(0, 3).toUpperCase();
-    return parts.slice(0, 3).map(p => p.charAt(0)).join('').toUpperCase();
+  function darken(hex, pct) {
+    if (!hex || hex.length < 7) return '#000000';
+    const r = Math.max(0, Math.round(parseInt(hex.slice(1,3), 16) * (1 - pct)));
+    const g = Math.max(0, Math.round(parseInt(hex.slice(3,5), 16) * (1 - pct)));
+    const b = Math.max(0, Math.round(parseInt(hex.slice(5,7), 16) * (1 - pct)));
+    return '#' + r.toString(16).padStart(2,'0') + g.toString(16).padStart(2,'0') + b.toString(16).padStart(2,'0');
   }
 
-  function flashScore(id, newVal) {
-    const el = document.getElementById(id);
-    const oldVal = parseInt(el.textContent);
-    if (newVal !== undefined && newVal !== oldVal) {
-      el.classList.remove('score-flash');
-      void el.offsetWidth;
-      el.classList.add('score-flash');
+  function setImg(el, src) {
+    if (!src) { el.style.display = 'none'; el.src = ''; return; }
+    el.src = src;
+    el.style.display = 'block';
+  }
+
+  function buildDots(container, count, max) {
+    if (!container) return;
+    if (container.children.length !== max) {
+      container.textContent = '';
+      for (var i = 0; i < max; i++) {
+        var d = document.createElement('span');
+        d.className = container.dataset.type === 'foul' ? 'foul-dot' : 'timeout-dot';
+        container.appendChild(d);
+      }
+    }
+    var dots = container.children;
+    for (var i = 0; i < max; i++) {
+      dots[i].classList.toggle('active', i < count);
     }
   }
 
-  function renderDots(containerId, count) {
-    const container = document.getElementById(containerId);
-    const dots = container.querySelectorAll('.dot');
-    const active = Math.max(0, Math.min(5, count));
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i < active);
+  function applyTeamColors(side, primary, text, accent) {
+    if (!primary) return;
+    var bg2 = darken(primary, 0.22);
+    var textColor = luminance(primary) > 0.6 ? '#111111' : (text || '#FFFFFF');
+    var root = document.documentElement.style;
+    root.setProperty('--' + side + '-bg1', primary);
+    root.setProperty('--' + side + '-bg2', bg2);
+    root.setProperty('--' + side + '-text', textColor);
+    root.setProperty('--' + side + '-accent', accent || '#CCCCCC');
+    var colorBar = $('color-bar-' + side);
+    if (colorBar) colorBar.style.background = primary;
+  }
+
+  // ── Clock System ────────────────────────────────────────────────
+  var clockRunning = false;
+  var clockRafId = null;
+  var clockStartPerf = 0;
+  var clockStartSecs = 0;
+
+  function parseClockToSecs(display) {
+    if (!display) return 0;
+    var parts = display.split(':');
+    if (parts.length === 2) {
+      var m = parseInt(parts[0], 10) || 0;
+      var sParts = parts[1].split('.');
+      var s = parseInt(sParts[0], 10) || 0;
+      var tenths = sParts.length > 1 ? parseInt(sParts[1], 10) || 0 : 0;
+      return m * 60 + s + tenths / 10;
+    }
+    return parseFloat(display) || 0;
+  }
+
+  function formatClock(secs) {
+    if (secs < 0) secs = 0;
+    var m = Math.floor(secs / 60);
+    if (secs <= 60 && secs > 0) {
+      var s = Math.floor(secs);
+      var tenths = Math.floor((secs - s) * 10);
+      return m + ':' + (s % 60).toString().padStart(2, '0') + '.' + tenths;
+    }
+    var s = Math.floor(secs) % 60;
+    return m + ':' + s.toString().padStart(2, '0');
+  }
+
+  function clockTick() {
+    if (!clockRunning) return;
+    var now = performance.now();
+    var elapsed = (now - clockStartPerf) / 1000;
+    var current = clockStartSecs - elapsed;
+    if (current < 0) current = 0;
+    $('clock').textContent = formatClock(current);
+    clockRafId = requestAnimationFrame(clockTick);
+  }
+
+  function updateClock(display, running) {
+    var newDisplay = display || '8:00';
+    var newRunning = running || false;
+
+    if (newRunning && !clockRunning) {
+      clockRunning = true;
+      clockStartSecs = parseClockToSecs(newDisplay);
+      clockStartPerf = performance.now();
+      clockRafId = requestAnimationFrame(clockTick);
+    } else if (!newRunning && clockRunning) {
+      clockRunning = false;
+      if (clockRafId) cancelAnimationFrame(clockRafId);
+      $('clock').textContent = newDisplay;
+    } else if (!newRunning) {
+      $('clock').textContent = newDisplay;
+    }
+  }
+
+  // ── Score Pop ───────────────────────────────────────────────────
+  var prevScores = { away: 0, home: 0 };
+
+  function showScorePop(team, pts) {
+    var scoreEl = $('score-' + team);
+    var rect = scoreEl.getBoundingClientRect();
+    var pop = document.createElement('div');
+    pop.className = 'score-pop';
+    pop.textContent = '+' + pts;
+    var teamColor = getComputedStyle(document.documentElement).getPropertyValue('--' + team + '-bg1').trim();
+    pop.style.textShadow = '0 2px 12px ' + teamColor;
+    pop.style.left = (rect.left + rect.width / 2 - 30) + 'px';
+    pop.style.top = (rect.top - 50) + 'px';
+    document.body.appendChild(pop);
+    pop.addEventListener('animationend', function () { pop.remove(); });
+  }
+
+  // ── Graphic Overlay ─────────────────────────────────────────────
+  var graphicTimer = null;
+
+  function showGraphic(data) {
+    if (!data || !data.type) { hideGraphic(); return; }
+    var el = $('graphic-overlay');
+    var type = data.type;
+    var d = data.data || {};
+
+    $('graphic-type').textContent = type;
+
+    switch (type) {
+      case 'TIMEOUT':
+        $('graphic-line1').textContent = d.teamName || '';
+        $('graphic-line2').textContent = d.timeoutType || 'Full Timeout';
+        $('graphic-line3').textContent = d.remaining != null ? d.remaining + ' remaining' : '';
+        break;
+      case 'FOUL':
+        $('graphic-line1').textContent = d.playerName ? '#' + (d.playerNum || '') + ' ' + d.playerName : (d.teamName || '');
+        $('graphic-line2').textContent = d.foulCount != null ? d.foulCount + ' Foul' + (d.foulCount !== 1 ? 's' : '') : '';
+        $('graphic-line3').textContent = d.foulCount >= 5 ? 'FOULED OUT' : d.foulCount === 4 ? 'FOUL TROUBLE' : '';
+        break;
+      case 'SUBSTITUTION':
+        $('graphic-line1').textContent = d.teamName || '';
+        $('graphic-line2').textContent = d.playerIn ? 'IN: ' + d.playerIn : '';
+        $('graphic-line3').textContent = d.playerOut ? 'OUT: ' + d.playerOut : '';
+        break;
+      case 'HALFTIME':
+      case 'FINAL':
+        $('graphic-line1').textContent = type;
+        $('graphic-line2').textContent = d.awayName ? d.awayName + '  ' + d.awayScore : '';
+        $('graphic-line3').textContent = d.homeName ? d.homeName + '  ' + d.homeScore : '';
+        break;
+      default:
+        $('graphic-line1').textContent = d.line1 || '';
+        $('graphic-line2').textContent = d.line2 || '';
+        $('graphic-line3').textContent = d.line3 || '';
+    }
+
+    el.style.display = 'block';
+    el.style.animation = 'slideInLeft 0.3s ease-out forwards';
+    if (graphicTimer) clearTimeout(graphicTimer);
+    graphicTimer = setTimeout(function () { hideGraphic(); }, 5000);
+  }
+
+  function hideGraphic() {
+    var el = $('graphic-overlay');
+    el.style.animation = 'slideOutDown 0.35s ease-in forwards';
+    setTimeout(function () { el.style.display = 'none'; }, 350);
+    if (graphicTimer) { clearTimeout(graphicTimer); graphicTimer = null; }
+  }
+
+  // ── Ticker ──────────────────────────────────────────────────────
+  var lastTickerJson = '';
+
+  function updateTicker(tickerData) {
+    if (!tickerData) return;
+    var show = tickerData.show;
+    var el = $('ticker');
+
+    if (!show) {
+      el.style.display = 'none';
+      document.documentElement.style.setProperty('--ticker-h', '0px');
+      return;
+    }
+
+    el.style.display = 'flex';
+    document.documentElement.style.setProperty('--ticker-h', '32px');
+
+    var entries = tickerData.entries || [];
+    var json = JSON.stringify(entries);
+    if (json === lastTickerJson) {
+      var speed = tickerData.speed || 50;
+      var duration = Math.max(10, 200 - speed * 2);
+      $('ticker-content').style.animationDuration = duration + 's';
+      return;
+    }
+    lastTickerJson = json;
+
+    var content = $('ticker-content');
+    content.textContent = '';
+
+    if (entries.length === 0) return;
+
+    function buildItems() {
+      var frag = document.createDocumentFragment();
+      entries.forEach(function (entry, i) {
+        if (i > 0) {
+          var sep = document.createElement('span');
+          sep.className = 'ticker-sep';
+          frag.appendChild(sep);
+        }
+        var item = document.createElement('span');
+        item.className = 'ticker-item';
+        item.textContent = typeof entry === 'string' ? entry : (entry.text || '');
+        frag.appendChild(item);
+      });
+      return frag;
+    }
+
+    content.appendChild(buildItems());
+    content.appendChild(buildItems());
+
+    var speed = tickerData.speed || 50;
+    var duration = Math.max(10, 200 - speed * 2);
+    content.style.animationDuration = duration + 's';
+  }
+
+  // ── Stats Panel ─────────────────────────────────────────────────
+  var STAT_KEYS = ['PTS', 'REB', 'AST', 'STL', 'BLK'];
+
+  function updateStats(statsData) {
+    if (!statsData) return;
+    var el = $('stats-panel');
+    if (!statsData.showPanel) { el.style.display = 'none'; return; }
+
+    el.style.display = 'block';
+    el.style.animation = 'fadeIn 0.5s forwards';
+
+    $('stats-header-away').textContent = (statsData.away && statsData.away.name) || 'AWAY';
+    $('stats-header-home').textContent = (statsData.home && statsData.home.name) || 'HOME';
+
+    ['away', 'home'].forEach(function (side) {
+      var col = $('stats-col-' + side);
+      col.textContent = '';
+
+      var hdr = document.createElement('div');
+      hdr.className = 'stats-col-header';
+      var numH = document.createElement('span'); numH.className = 'num'; numH.textContent = '#'; hdr.appendChild(numH);
+      var nameH = document.createElement('span'); nameH.className = 'name'; nameH.textContent = 'Player'; hdr.appendChild(nameH);
+      STAT_KEYS.forEach(function (k) {
+        var s = document.createElement('span'); s.className = 'stat'; s.textContent = k; hdr.appendChild(s);
+      });
+      col.appendChild(hdr);
+
+      var players = (statsData[side] && statsData[side].players) || [];
+      players.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'stats-row';
+        var numS = document.createElement('span'); numS.className = 'num'; numS.textContent = p.num || ''; row.appendChild(numS);
+        var nameS = document.createElement('span'); nameS.className = 'name'; nameS.textContent = p.name || ''; row.appendChild(nameS);
+        var ptsS = document.createElement('span'); ptsS.className = 'stat'; ptsS.textContent = String(p.pts ?? p.PTS ?? 0); row.appendChild(ptsS);
+        var rebS = document.createElement('span'); rebS.className = 'stat'; rebS.textContent = String(p.reb ?? p.REB ?? 0); row.appendChild(rebS);
+        var astS = document.createElement('span'); astS.className = 'stat'; astS.textContent = String(p.ast ?? p.AST ?? 0); row.appendChild(astS);
+        var stlS = document.createElement('span'); stlS.className = 'stat'; stlS.textContent = String(p.stl ?? p.STL ?? 0); row.appendChild(stlS);
+        var blkS = document.createElement('span'); blkS.className = 'stat'; blkS.textContent = String(p.blk ?? p.BLK ?? 0); row.appendChild(blkS);
+        col.appendChild(row);
+      });
     });
   }
 
-  function applyLogo(imgEl, frameEl, url, fallbackText) {
-    frameEl.dataset.fallback = fallbackText;
-    frameEl.classList.add('is-empty');
-    imgEl.hidden = true;
-    imgEl.removeAttribute('src');
-
-    if (!url) return;
-
-    // Handle relative URLs
-    let resolved = url;
-    if (!/^[a-z][a-z0-9+.-]*:/i.test(url) && !url.startsWith('/')) {
-      resolved = location.origin + '/' + url;
-    }
-
-    imgEl.onload = function () {
-      frameEl.classList.remove('is-empty');
-      imgEl.hidden = false;
-    };
-    imgEl.onerror = function () {
-      frameEl.classList.add('is-empty');
-      imgEl.hidden = true;
-    };
-    imgEl.src = resolved;
-  }
-
+  // ── Main Apply ──────────────────────────────────────────────────
+  // Handles flat Firebase state (state/bug) format
   function apply(state) {
-    const bug = state.bug || {};
+    if (!state) return;
+    var bug = state.bug || {};
 
-    // Event ribbon
-    document.getElementById('eventBar').textContent = bug.eventTitle || '';
+    // Away team
+    $('name-away').textContent = bug.awayName || 'AWAY';
+    $('record-away').textContent = bug.awayRecord || '';
+    var awayScore = bug.awayScore ?? 0;
+    var diff = awayScore - prevScores.away;
+    if (diff > 0 && prevScores.away > 0) showScorePop('away', diff);
+    prevScores.away = awayScore;
+    $('score-away').textContent = awayScore;
+    buildDots($('fouls-away'), bug.awayFouls || 0, 5);
+    buildDots($('timeouts-away'), bug.awayTOs ?? 5, 5);
+    applyTeamColors('away', bug.awayPrimary, bug.awayText, bug.awayAccent);
 
-    // Away
-    document.getElementById('awayName').textContent = abbreviate(bug.awayName, 'AWAY');
-    document.getElementById('awayRecord').textContent = bug.awayRecord || '';
-    flashScore('awayScore', bug.awayScore);
-    document.getElementById('awayScore').textContent = String(bug.awayScore ?? 0);
-    renderDots('awayBonus', bug.awayTOs ?? 5);
+    // Away logo
+    setImg($('logo-away'), bug.awayLogo);
+    $('logo-wrap-away').style.display = bug.awayLogo ? 'flex' : 'none';
 
-    // Home
-    document.getElementById('homeName').textContent = abbreviate(bug.homeName, 'HOME');
-    document.getElementById('homeRecord').textContent = bug.homeRecord || '';
-    flashScore('homeScore', bug.homeScore);
-    document.getElementById('homeScore').textContent = String(bug.homeScore ?? 0);
-    renderDots('homeBonus', bug.homeTOs ?? 5);
+    // Home team
+    $('name-home').textContent = bug.homeName || 'HOME';
+    $('record-home').textContent = bug.homeRecord || '';
+    var homeScore = bug.homeScore ?? 0;
+    var diffH = homeScore - prevScores.home;
+    if (diffH > 0 && prevScores.home > 0) showScorePop('home', diffH);
+    prevScores.home = homeScore;
+    $('score-home').textContent = homeScore;
+    buildDots($('fouls-home'), bug.homeFouls || 0, 5);
+    buildDots($('timeouts-home'), bug.homeTOs ?? 5, 5);
+    applyTeamColors('home', bug.homePrimary, bug.homeText, bug.homeAccent);
+
+    // Home logo
+    setImg($('logo-home'), bug.homeLogo);
+    $('logo-wrap-home').style.display = bug.homeLogo ? 'flex' : 'none';
 
     // Clock
-    document.getElementById('gameClock').textContent = bug.clock || '8:00';
-    document.getElementById('periodLabel').textContent = bug.quarter || '1ST';
+    updateClock(bug.clock, bug.clockRunning);
 
-    const running = !!bug.clockRunning;
-    const badge = document.getElementById('statusBadge');
-    badge.textContent = running ? 'Running' : 'Paused';
-    badge.classList.toggle('running', running);
+    // Period
+    $('period').textContent = (bug.quarter || '1ST').toUpperCase();
 
-    // Logos
-    applyLogo(
-      document.getElementById('awayLogo'),
-      document.getElementById('awayLogoFrame'),
-      bug.awayLogo,
-      abbreviate(bug.awayName, 'A')
-    );
-    applyLogo(
-      document.getElementById('homeLogo'),
-      document.getElementById('homeLogoFrame'),
-      bug.homeLogo,
-      abbreviate(bug.homeName, 'H')
-    );
+    // Possession
+    $('poss-away').classList.toggle('visible', bug.possession === 'away');
+    $('poss-home').classList.toggle('visible', bug.possession === 'home');
+
+    // Event bar
+    var bar = $('event-bar');
+    if (bug.eventTitle) {
+      $('event-bar-text').textContent = bug.eventTitle;
+      bar.style.display = 'flex';
+    } else {
+      bar.style.display = 'none';
+    }
 
     // Visibility
-    document.getElementById('bugWrap').classList.toggle('hidden', bug.visible === false);
+    var wrap = $('scorebug-wrap');
+    if (bug.visible === false) {
+      wrap.style.opacity = '0';
+      wrap.style.pointerEvents = 'none';
+    } else {
+      wrap.style.opacity = '1';
+      wrap.style.pointerEvents = 'auto';
+    }
+
+    // Scale & logo size overrides
+    if (bug.bugScale) {
+      document.documentElement.style.setProperty('--bug-scale', bug.bugScale);
+    }
+    if (bug.bugLogoSize) {
+      document.documentElement.style.setProperty('--bug-logo-size', bug.bugLogoSize + 'px');
+    }
+
+    // Ticker
+    if (state.ticker) updateTicker(state.ticker);
+
+    // Stats
+    if (state.stats) updateStats(state.stats);
   }
 
-  // Clock countdown (local for smooth display)
-  let clockInterval = null;
-  let clockRunning = false;
+  // ── Firebase Listeners ──────────────────────────────────────────
+  var stateRef = db.ref('state');
 
-  NSMTClient.onMessage((msg) => {
-    if (msg.type === 'state' && msg.data) {
-      apply(msg.data);
+  stateRef.on('value', function (snap) {
+    var data = snap.val();
+    if (data) apply(data);
+  });
 
-      const bug = msg.data.bug || {};
-      const parts = (bug.clock || '0:00').split(':');
-      const clockMs = (parseInt(parts[0]) || 0) * 60000 + (parseFloat(parts[1]) || 0) * 1000;
-
-      if (bug.clockRunning && !clockRunning) {
-        clockRunning = true;
-        const startedAt = performance.now();
-        const startMs = clockMs;
-        clearInterval(clockInterval);
-        clockInterval = setInterval(() => {
-          const elapsed = performance.now() - startedAt;
-          const remaining = Math.max(0, startMs - elapsed);
-          const min = Math.floor(remaining / 60000);
-          const sec = Math.floor((remaining % 60000) / 1000);
-          document.getElementById('gameClock').textContent =
-            min + ':' + String(sec).padStart(2, '0');
-          if (remaining <= 0) {
-            clearInterval(clockInterval);
-            clockRunning = false;
-          }
-        }, 100);
-      } else if (!bug.clockRunning) {
-        clearInterval(clockInterval);
-        clockRunning = false;
-      }
+  // Connection monitoring
+  db.ref('.info/connected').on('value', function (snap) {
+    if (snap.val() === true) {
+      console.log('[NSMT] Connected to Firebase');
+    } else {
+      console.log('[NSMT] Disconnected from Firebase');
     }
   });
 
-  NSMTClient.onConnect(() => console.log('[NSMT] Connected to Firebase'));
-  NSMTClient.onDisconnect(() => console.log('[NSMT] Disconnected'));
-
-  window.addEventListener('resize', updateScale);
-  updateScale();
-  NSMTClient.connect();
+  console.log('[Overlay] NSMT Fastbreak YoloBox overlay loaded');
 })();
 </script>
 </body>
