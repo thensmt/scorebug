@@ -258,8 +258,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <div class="card-title">Game Clock — tap to edit</div>
   <input type="text" class="clock-input" id="clockDisplay" value="8:00" inputmode="numeric">
   <div class="clock-btns">
-    <button class="btn btn-green" id="clockStartBtn" onclick="startClock()">Start</button>
-    <button class="btn btn-red" onclick="stopClock()">Stop</button>
+    <button class="btn btn-green" id="clockToggleBtn" onclick="toggleClock()" style="flex:2">Start</button>
     <button class="btn" onclick="resetClock()">Reset</button>
   </div>
   <div class="clock-btns" style="margin-top:6px">
@@ -419,6 +418,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         safe('clockDisplay').value = b.clock || '8:00';
       }
     }
+    updateToggleBtn();
 
     // Period buttons
     var btns = document.querySelectorAll('#periodBtns .btn');
@@ -525,18 +525,34 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     safe('clockDisplay').classList.remove('running');
   }
 
-  window.startClock = function(){
-    var display = safe('clockDisplay').value;
-    localClockMs = parseClock(display);
-    if(localClockMs <= 0) return;
-    startLocalClock();
-    patch({clock:display, clockRunning:true});
-  };
-  window.stopClock = function(){
-    stopLocalClock();
-    var display = fmtClock(localClockMs);
-    safe('clockDisplay').value = display;
-    patch({clock:display, clockRunning:false});
+  function updateToggleBtn(){
+    var btn = safe('clockToggleBtn');
+    if(localClockRunning){
+      btn.textContent = 'Pause';
+      btn.classList.remove('btn-green');
+      btn.classList.add('btn-red');
+    } else {
+      btn.textContent = 'Start';
+      btn.classList.remove('btn-red');
+      btn.classList.add('btn-green');
+    }
+  }
+
+  window.toggleClock = function(){
+    if(localClockRunning){
+      stopLocalClock();
+      updateToggleBtn();
+      var display = fmtClock(localClockMs);
+      safe('clockDisplay').value = display;
+      patch({clock:display, clockRunning:false});
+    } else {
+      var display = safe('clockDisplay').value;
+      localClockMs = parseClock(display);
+      if(localClockMs <= 0) return;
+      startLocalClock();
+      updateToggleBtn();
+      patch({clock:display, clockRunning:true});
+    }
   };
   window.resetClock = function(){
     stopLocalClock();
