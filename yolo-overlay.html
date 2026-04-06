@@ -11,12 +11,26 @@
 /* ── Reset & Canvas ─────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
-  width: 1920px; height: 1080px;
+  width: 100%; height: 100%;
   overflow: hidden;
   background: transparent;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+#stage {
+  width: 1920px; height: 1080px;
+  position: relative; overflow: hidden;
+  transform-origin: top left;
+}
+#no-event {
+  position: fixed; inset: 0; z-index: 9999;
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 8px;
+  font-family: var(--fb-font-display); color: rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.85);
+}
+#no-event .title { font-size: 1.5rem; font-weight: 700; }
+#no-event .sub { font-size: 0.875rem; color: rgba(255,255,255,0.3); }
 
 /* ── Design Tokens ──────────────────────────────────────────────── */
 :root {
@@ -520,6 +534,15 @@ html, body {
 </head>
 <body>
 
+<!-- No Event Screen -->
+<div id="no-event">
+  <div class="title">Event Not Found</div>
+  <div class="sub">No event ID was provided. Use /o/{eventId} or ?event={eventId}</div>
+</div>
+
+<!-- Stage: 1920x1080 internal coordinate system, scaled to fit viewport -->
+<div id="stage">
+
 <!-- LIVE Indicator -->
 <div id="live-indicator"><span class="dot"></span>LIVE</div>
 
@@ -627,12 +650,39 @@ html, body {
   </div>
 </div>
 
+</div><!-- /stage -->
+
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <script>
 (function () {
+  // ── Stage Scaling ───────────────────────────────────────────────
+  function fitStage() {
+    var stage = document.getElementById('stage');
+    var sx = window.innerWidth / 1920;
+    var sy = window.innerHeight / 1080;
+    var s = Math.min(sx, sy);
+    stage.style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fitStage);
+  fitStage();
+
+  // ── Event ID from URL ──────────────────────────────────────────
+  var eventId = null;
+  var urlParams = new URLSearchParams(window.location.search);
+  eventId = urlParams.get('event');
+  // Support /o/{eventId} path style
+  var pathMatch = window.location.pathname.match(/\/o\/([^\/]+)/);
+  if (pathMatch) eventId = pathMatch[1];
+
+  if (!eventId) {
+    document.getElementById('no-event').style.display = 'flex';
+    document.getElementById('stage').style.display = 'none';
+    return; // Stop initialization — no event to display
+  }
+
   // ── Firebase Config ─────────────────────────────────────────────
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
@@ -648,6 +698,7 @@ html, body {
 
   // ── DOM refs ────────────────────────────────────────────────────
   const $ = function (id) { return document.getElementById(id); };
+  const stage = $('stage');
 
   // ── Helpers ─────────────────────────────────────────────────────
   function luminance(hex) {
@@ -766,15 +817,18 @@ html, body {
 
   function showScorePop(team, pts) {
     var scoreEl = $('score-' + team);
-    var rect = scoreEl.getBoundingClientRect();
     var pop = document.createElement('div');
     pop.className = 'score-pop';
     pop.textContent = '+' + pts;
     var teamColor = getComputedStyle(document.documentElement).getPropertyValue('--' + team + '-bg1').trim();
     pop.style.textShadow = '0 2px 12px ' + teamColor;
-    pop.style.left = (rect.left + rect.width / 2 - 30) + 'px';
-    pop.style.top = (rect.top - 50) + 'px';
-    document.body.appendChild(pop);
+    // Position relative to stage (1920x1080 coordinate space)
+    var el = scoreEl;
+    var left = 0, top = 0;
+    while (el && el !== stage) { left += el.offsetLeft; top += el.offsetTop; el = el.offsetParent; }
+    pop.style.left = (left + scoreEl.offsetWidth / 2 - 30) + 'px';
+    pop.style.top = (top - 50) + 'px';
+    stage.appendChild(pop);
     pop.addEventListener('animationend', function () { pop.remove(); });
   }
 
@@ -1027,8 +1081,8 @@ html, body {
     if (state.stats) updateStats(state.stats);
   }
 
-  // ── Firebase Listeners ──────────────────────────────────────────
-  var stateRef = db.ref('state');
+  // ── Firebase Listeners (event-scoped) ───────────────────────────
+  var stateRef = db.ref('publicEvents/' + eventId);
 
   stateRef.on('value', function (snap) {
     var data = snap.val();
@@ -1038,13 +1092,13 @@ html, body {
   // Connection monitoring
   db.ref('.info/connected').on('value', function (snap) {
     if (snap.val() === true) {
-      console.log('[NSMT] Connected to Firebase');
+      console.log('[NSMT] Connected to Firebase — event: ' + eventId);
     } else {
       console.log('[NSMT] Disconnected from Firebase');
     }
   });
 
-  console.log('[Overlay] NSMT Fastbreak YoloBox overlay loaded');
+  console.log('[Overlay] NSMT Fastbreak YoloBox overlay loaded — event: ' + eventId);
 })();
 </script>
 </body>

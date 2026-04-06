@@ -113,89 +113,89 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
 .spn .logo-prev { width: 32px; height: 32px; }
 .spn .sl { margin-top: 4px; }
 
-/* ── PIN Screen ── */
-#pin-screen {
+/* ── Auth Screen ── */
+#auth-screen {
   position: fixed; inset: 0; z-index: 9999;
   background: var(--bg);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 16px;
 }
-#pin-screen.hidden { display: none; }
-.pin-title {
+#auth-screen.hidden { display: none; }
+.auth-title {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.1rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--accent);
 }
-.pin-sub { font-size: 0.75rem; color: var(--dim); }
-.pin-dots {
-  display: flex; gap: 12px; margin: 8px 0;
-}
-.pin-dot {
-  width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--border);
-  background: transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
-.pin-dot.error { background: var(--red); border-color: var(--red); }
-.pin-pad {
-  display: grid; grid-template-columns: repeat(3, 72px);
-  gap: 8px; margin-top: 8px;
-}
-.pin-pad button {
-  height: 56px; border-radius: 10px;
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.5rem; font-weight: 600;
+.auth-sub { font-size: 0.75rem; color: var(--dim); }
+.auth-form { width: 280px; display: flex; flex-direction: column; gap: 12px; }
+.auth-form input[type="text"], .auth-form input[type="password"] {
+  width: 100%; padding: 10px 12px; font-size: 1rem;
   background: var(--input); border: 1px solid var(--border);
-  color: var(--text); cursor: pointer;
-  -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none;
+  border-radius: 8px; color: var(--text); font-family: inherit; outline: none;
 }
-.pin-pad button:active { background: var(--accent); border-color: var(--accent); }
-.pin-pad button.pin-del { font-size: 0.8rem; color: var(--dim); }
-.pin-pad button.pin-empty { visibility: hidden; }
-.pin-error-msg { font-size: 0.75rem; color: var(--red); min-height: 18px; }
-.pin-reset-link {
-  font-size: 0.65rem; color: var(--dim); margin-top: 12px;
-  text-decoration: underline; cursor: pointer;
+.auth-form input:focus { border-color: var(--accent); }
+.auth-role-toggle {
+  display: flex; gap: 0; border-radius: 8px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.auth-role-toggle button {
+  flex: 1; padding: 8px; font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; cursor: pointer; border: none;
+  background: var(--input); color: var(--dim);
   -webkit-tap-highlight-color: transparent;
 }
+.auth-role-toggle button.active { background: var(--accent); color: #fff; }
+.auth-submit {
+  padding: 12px; font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.auth-error { font-size: 0.75rem; color: var(--red); min-height: 18px; text-align: center; }
+.session-info {
+  font-size: 0.55rem; color: var(--dim); display: flex; align-items: center; gap: 8px;
+}
+.session-info .role-badge {
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 1px 6px; border-radius: 4px; font-size: 0.5rem;
+}
+.session-info .role-badge.operator { background: rgba(14,128,252,0.15); color: var(--accent); }
+.session-info .role-badge.owner { background: rgba(240,192,48,0.15); color: var(--gold); }
+/* ── Owner Controls ── */
+.owner-controls { display: none; grid-column: span 2; }
+.owner-controls.visible { display: block; }
+.owner-controls .ov { margin-bottom: 0; }
 </style>
 </head>
 <body>
 
-<!-- PIN SCREEN -->
-<div id="pin-screen">
-  <div class="pin-title" id="pinTitle">Enter PIN</div>
-  <div class="pin-sub" id="pinSub">4-digit access code</div>
-  <div class="pin-dots">
-    <div class="pin-dot" id="pd0"></div>
-    <div class="pin-dot" id="pd1"></div>
-    <div class="pin-dot" id="pd2"></div>
-    <div class="pin-dot" id="pd3"></div>
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-title">NSMT Control Hub</div>
+  <div class="auth-sub">Sign in to manage an event</div>
+  <div class="auth-form">
+    <input type="text" id="authEventId" placeholder="Event ID" autocomplete="off" spellcheck="false">
+    <input type="password" id="authPin" placeholder="PIN" inputmode="numeric" autocomplete="off">
+    <div class="auth-role-toggle">
+      <button id="roleOperator" class="active" onclick="setAuthRole('operator')">Operator</button>
+      <button id="roleOwner" onclick="setAuthRole('owner')">Owner</button>
+    </div>
+    <button class="auth-submit" id="authSubmit" onclick="doAuth()">Sign In</button>
+    <div class="auth-error" id="authError"></div>
   </div>
-  <div class="pin-error-msg" id="pinError"></div>
-  <div class="pin-pad">
-    <button onclick="pinKey('1')">1</button>
-    <button onclick="pinKey('2')">2</button>
-    <button onclick="pinKey('3')">3</button>
-    <button onclick="pinKey('4')">4</button>
-    <button onclick="pinKey('5')">5</button>
-    <button onclick="pinKey('6')">6</button>
-    <button onclick="pinKey('7')">7</button>
-    <button onclick="pinKey('8')">8</button>
-    <button onclick="pinKey('9')">9</button>
-    <button class="pin-empty"></button>
-    <button onclick="pinKey('0')">0</button>
-    <button class="pin-del" onclick="pinDel()">DELETE</button>
-  </div>
-  <div class="pin-reset-link" id="pinResetLink" style="display:none" onclick="pinStartReset()">Forgot PIN?</div>
 </div>
 
 <!-- HEADER -->
 <div class="hdr">
-  <img src="NSMTWordmarkBlue.png" alt="NSMT" style="height:22px;width:auto;">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <img src="NSMTWordmarkBlue.png" alt="NSMT" style="height:22px;width:auto;">
+    <span class="session-info" id="sessionInfo"></span>
+  </div>
   <span class="badge" id="badge">Offline</span>
 </div>
 
@@ -338,12 +338,39 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       </div>
     </div>
   </div>
+  <!-- Owner Controls -->
+  <div class="owner-controls" id="ownerControls">
+    <div class="ov">
+      <div class="card-t" style="color:var(--gold)">Owner Controls</div>
+      <div class="ov-btns" style="margin-bottom:6px;">
+        <button class="b br" onclick="revokeOperator()">Revoke Operator</button>
+        <button class="b" onclick="showRotatePin()">Rotate PIN</button>
+        <button class="b br" onclick="doSignOut()">Sign Out</button>
+      </div>
+      <div id="rotatePinUI" style="display:none;">
+        <div class="g">
+          <div class="f">
+            <div class="lbl">Target</div>
+            <select id="rotatePinTarget" style="width:100%;padding:5px;background:var(--input);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:0.8rem;">
+              <option value="operator">Operator</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+          <div class="f"><div class="lbl">New PIN</div><input type="password" id="rotatePinValue" placeholder="New PIN" inputmode="numeric"></div>
+        </div>
+        <button class="b ba" style="width:100%;margin-top:4px;" onclick="doRotatePin()">Set New PIN</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <canvas id="colorCanvas" style="display:none"></canvas>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script>
 (function(){
   firebase.initializeApp({
@@ -351,112 +378,136 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     databaseURL:"https://nsmt-scorebug.firebaseio.com",projectId:"sincere-nirvana-436014-v9",
     storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
   });
-  var db=firebase.database(), stateRef=db.ref('state'), bugRef=stateRef.child('bug'), state={};
-  var pinRef=db.ref('pin');
+  var db=firebase.database(), storage=firebase.storage(), fns=firebase.functions();
+  var eventId=null, sessionId=null, sessionRole=null, sessionExpiry=0;
+  var stateRef=null, bugRef=null, cornersRef=null, state={};
+  var authRole='operator';
+
   function $(id){return document.getElementById(id)}
   function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
 
-  // ── PIN Gate ──
-  var pinEntry='', pinStored=null, pinMode='verify', pinConfirm='';
-  var MASTER_KEY='9110'; // master reset code — change this to your own secret
+  // ── Pre-fill event ID from URL ──
+  var urlParams=new URLSearchParams(window.location.search);
+  var urlEvent=urlParams.get('event');
+  // Also support /c/{eventId} path style
+  var pathMatch=window.location.pathname.match(/\/c\/([^\/]+)/);
+  if(pathMatch) urlEvent=pathMatch[1];
+  if(urlEvent) $('authEventId').value=urlEvent;
 
-  pinRef.once('value',function(snap){
-    pinStored=snap.val();
-    if(!pinStored){
-      // No PIN set yet — prompt to create one
-      pinMode='create';
-      $('pinTitle').textContent='Create PIN';
-      $('pinSub').textContent='Set a 4-digit access code';
-      $('pinResetLink').style.display='none';
-    } else {
-      pinMode='verify';
-      $('pinTitle').textContent='Enter PIN';
-      $('pinSub').textContent='4-digit access code';
-      $('pinResetLink').style.display='block';
+  // ── Auth Screen ──
+  window.setAuthRole=function(role){
+    authRole=role;
+    $('roleOperator').classList.toggle('active',role==='operator');
+    $('roleOwner').classList.toggle('active',role==='owner');
+  };
+
+  window.doAuth=function(){
+    var eid=$('authEventId').value.trim();
+    var pin=$('authPin').value.trim();
+    if(!eid){$('authError').textContent='Event ID is required.';return;}
+    if(!pin){$('authError').textContent='PIN is required.';return;}
+    $('authError').textContent='';
+    $('authSubmit').disabled=true;
+    $('authSubmit').textContent='Signing in...';
+
+    var authenticate=fns.httpsCallable('authenticate');
+    authenticate({eventId:eid,pin:pin,role:authRole}).then(function(result){
+      var d=result.data;
+      return firebase.auth().signInWithCustomToken(d.customToken).then(function(){
+        eventId=d.eventId;
+        sessionId=d.sessionId;
+        sessionRole=d.role;
+        sessionExpiry=d.expiresAt;
+        onAuthenticated();
+      });
+    }).catch(function(err){
+      $('authError').textContent=err.message||'Authentication failed.';
+      $('authSubmit').disabled=false;
+      $('authSubmit').textContent='Sign In';
+    });
+  };
+
+  // Allow Enter key to submit
+  $('authPin').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();doAuth();}});
+  $('authEventId').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('authPin').focus();}});
+
+  function onAuthenticated(){
+    $('auth-screen').classList.add('hidden');
+    $('authPin').value='';
+
+    // Set up event-scoped refs
+    stateRef=db.ref('publicEvents/'+eventId);
+    bugRef=stateRef.child('bug');
+    cornersRef=stateRef.child('corners');
+
+    // Update header
+    var info=$('sessionInfo');
+    info.innerHTML='<span style="color:var(--text)">'+eventId+'</span> <span class="role-badge '+sessionRole+'">'+sessionRole+'</span>';
+
+    // Show owner controls if owner
+    if(sessionRole==='owner'){
+      $('ownerControls').classList.add('visible');
     }
-  });
 
-  function pinUpdateDots(){
-    for(var i=0;i<4;i++){
-      var d=$('pd'+i);
-      d.classList.toggle('filled',i<pinEntry.length);
-      d.classList.remove('error');
-    }
-    $('pinError').textContent='';
-  }
+    // Listen for state changes
+    stateRef.on('value',function(snap){state=snap.val()||{};syncUI();});
 
-  function pinShakeError(msg){
-    for(var i=0;i<4;i++) $('pd'+i).classList.add('error');
-    $('pinError').textContent=msg;
-    pinEntry='';
-    setTimeout(pinUpdateDots,800);
-  }
+    // Connection badge
+    db.ref('.info/connected').on('value',function(s){
+      var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
+    });
 
-  function pinUnlock(){
-    $('pin-screen').classList.add('hidden');
-  }
-
-  function pinHandleFull(){
-    if(pinMode==='verify'){
-      if(pinEntry===pinStored||pinEntry===MASTER_KEY){
-        if(pinEntry===MASTER_KEY){
-          // Master key used — let them set a new PIN
-          pinEntry='';pinMode='create';
-          $('pinTitle').textContent='Set New PIN';
-          $('pinSub').textContent='Master key accepted. Create a new 4-digit PIN';
-          $('pinResetLink').style.display='none';
-          pinUpdateDots();
-          return;
-        }
-        pinUnlock();
-      } else {
-        pinShakeError('Wrong PIN');
+    // Monitor session revocation
+    db.ref('sessions/'+sessionId+'/revoked').on('value',function(snap){
+      if(snap.val()===true){
+        alert('Your session has been revoked.');
+        doSignOut();
       }
-    } else if(pinMode==='create'){
-      pinConfirm=pinEntry;pinEntry='';pinMode='confirm';
-      $('pinTitle').textContent='Confirm PIN';
-      $('pinSub').textContent='Re-enter the same 4 digits';
-      pinUpdateDots();
-    } else if(pinMode==='confirm'){
-      if(pinEntry===pinConfirm){
-        pinRef.set(pinEntry);
-        pinStored=pinEntry;
-        pinUnlock();
-      } else {
-        pinEntry='';pinMode='create';pinConfirm='';
-        $('pinTitle').textContent='Create PIN';
-        $('pinSub').textContent='PINs didn\'t match. Try again';
-        pinUpdateDots();
-      }
-    }
+    });
+
+    // Auto-renew session 15 min before expiry
+    scheduleRenewal();
+
+    // Bind all input handlers
+    bindInputs();
   }
 
-  window.pinKey=function(k){
-    if(pinEntry.length>=4)return;
-    pinEntry+=k;
-    pinUpdateDots();
-    if(pinEntry.length===4) setTimeout(pinHandleFull,200);
+  function scheduleRenewal(){
+    var msUntilRenew=Math.max(0,(sessionExpiry-Date.now())-15*60*1000);
+    setTimeout(function(){
+      if(!sessionId)return;
+      var renewSession=fns.httpsCallable('renewSession');
+      renewSession({sessionId:sessionId,eventId:eventId}).then(function(result){
+        var d=result.data;
+        sessionExpiry=d.expiresAt;
+        return firebase.auth().signInWithCustomToken(d.customToken);
+      }).then(function(){
+        scheduleRenewal();
+      }).catch(function(err){
+        console.warn('Session renewal failed:',err);
+        alert('Session expired. Please sign in again.');
+        doSignOut();
+      });
+    },msUntilRenew);
+  }
+
+  window.doSignOut=function(){
+    if(stateRef)stateRef.off();
+    firebase.auth().signOut();
+    eventId=null;sessionId=null;sessionRole=null;
+    $('auth-screen').classList.remove('hidden');
+    $('ownerControls').classList.remove('visible');
+    $('sessionInfo').innerHTML='';
+    $('authSubmit').disabled=false;
+    $('authSubmit').textContent='Sign In';
   };
 
-  window.pinDel=function(){
-    if(pinEntry.length>0){pinEntry=pinEntry.slice(0,-1);pinUpdateDots();}
+  // ── Patch (event-scoped) ──
+  window.patch=function(fields){
+    if(!stateRef)return;
+    var u={};for(var k in fields)u['bug/'+k]=fields[k];
+    stateRef.update(u);
   };
-
-  window.pinStartReset=function(){
-    pinEntry='';pinMode='verify';
-    $('pinTitle').textContent='Enter Master Key';
-    $('pinSub').textContent='Contact admin for the master reset code';
-    $('pinResetLink').style.display='none';
-    pinUpdateDots();
-  };
-
-  db.ref('.info/connected').on('value',function(s){
-    var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
-  });
-
-  window.patch=function(fields){var u={};for(var k in fields)u['bug/'+k]=fields[k];stateRef.update(u);};
-
-  stateRef.on('value',function(snap){state=snap.val()||{};syncUI();});
 
   function syncUI(){
     var b=state.bug||{};
@@ -496,7 +547,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   function showLogo(side,url){var img=$(side+'LogoPreview');if(url){img.src=url;img.classList.remove('empty');}else{img.classList.add('empty');img.removeAttribute('src');}}
 
   // ── Score ──
-  window.adj=function(side,d){bugRef.child(side+'Score').transaction(function(v){return Math.max(0,(v||0)+d);});};
+  window.adj=function(side,d){if(!bugRef)return;bugRef.child(side+'Score').transaction(function(v){return Math.max(0,(v||0)+d);});};
 
   // ── Possession cycle ──
   window.cyclePoss=function(){
@@ -516,7 +567,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     lcInt=setInterval(function(){
       var e=performance.now()-lcPerf;lcMs=Math.max(0,lcStart-e);
       var d=fmtC(lcMs);if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=d;
-      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;stateRef.update({'bug/clock':d});}
+      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;if(stateRef)stateRef.update({'bug/clock':d});}
       if(lcMs<=0){clearInterval(lcInt);lcRun=false;$('clockDisplay').classList.remove('running');patch({clock:'0:00',clockRunning:false});}
     },100);
   }
@@ -530,76 +581,102 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   window.resetClock=function(){stopLC();var q=(state.bug||{}).quarter||'1ST';var d=q==='OT'?'5:00':'8:00';lcMs=parseC(d);$('clockDisplay').value=d;updToggle();patch({clock:d,clockRunning:false});};
   window.setClockTo=function(v){stopLC();lcMs=parseC(v);$('clockDisplay').value=v;updToggle();patch({clock:v,clockRunning:false});};
 
-  $('clockDisplay').addEventListener('blur',function(){if(lcRun)return;var v=this.value.trim();if(v&&parseC(v)>=0)setClockTo(fmtC(parseC(v)));});
-  $('clockDisplay').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();this.blur();}});
+  function bindInputs(){
+    $('clockDisplay').addEventListener('blur',function(){if(lcRun)return;var v=this.value.trim();if(v&&parseC(v)>=0)setClockTo(fmtC(parseC(v)));});
+    $('clockDisplay').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();this.blur();}});
 
-  // ── Period ──
-  document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){
-    btn.addEventListener('click',function(){patch({quarter:btn.dataset.p});});
-  });
+    // ── Period ──
+    document.querySelectorAll('#periodBtns .b[data-p]').forEach(function(btn){
+      btn.addEventListener('click',function(){patch({quarter:btn.dataset.p});});
+    });
 
-  // ── Text inputs ──
+    // ── Text inputs ──
+    function bT(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},250);});}
+    bT('eventTitle','eventTitle');bT('awayName','awayName');bT('homeName','homeName');
+    bT('awayCode','awayCode');bT('homeCode','homeCode');bT('awayRecord','awayRecord');bT('homeRecord','homeRecord');
+
+    function bC(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},100);});}
+    bC('awayPrimary','awayPrimary');bC('homePrimary','homePrimary');bC('awayText','awayText');bC('homeText','homeText');
+
+    $('scaleSlider').addEventListener('input',function(){$('scaleVal').textContent=this.value;clearTimeout(T.sc);var v=parseFloat(this.value);T.sc=setTimeout(function(){patch({bugScale:v});},100);});
+    $('logoSizeSlider').addEventListener('input',function(){$('logoSizeVal').textContent=this.value+'px';clearTimeout(T.ls);var v=parseInt(this.value);T.ls=setTimeout(function(){patch({bugLogoSize:v});},100);});
+
+    // ── Logo Upload → Cloud Storage ──
+    $('awayFileInput').addEventListener('change',function(){hLogo('away',this);});
+    $('homeFileInput').addEventListener('change',function(){hLogo('home',this);});
+
+    // ── Sponsor Corner Logos → Cloud Storage ──
+    POSITIONS.forEach(function(pos){
+      $('spn-'+pos+'-file').addEventListener('change',function(){
+        var file=this.files[0];if(!file)return;
+        uploadAsset(file,'corner-'+pos).then(function(url){
+          cornersRef.child(pos).update({src:url});
+        }).catch(function(err){alert('Upload failed: '+err.message);});
+        this.value='';
+      });
+      $('spn-'+pos+'-scale').addEventListener('input',function(){
+        var v=parseFloat(this.value);
+        $('spn-'+pos+'-sv').textContent=v+'x';
+        clearTimeout(T['spn'+pos]);
+        T['spn'+pos]=setTimeout(function(){if(cornersRef)cornersRef.child(pos).update({scale:v});},100);
+      });
+    });
+  }
+
   var T={};
-  function bT(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},250);});}
-  bT('eventTitle','eventTitle');bT('awayName','awayName');bT('homeName','homeName');
-  bT('awayCode','awayCode');bT('homeCode','homeCode');bT('awayRecord','awayRecord');bT('homeRecord','homeRecord');
-
-  function bC(id,key){$(id).addEventListener('input',function(){var el=this;clearTimeout(T[id]);T[id]=setTimeout(function(){patch({[key]:el.value});},100);});}
-  bC('awayPrimary','awayPrimary');bC('homePrimary','homePrimary');bC('awayText','awayText');bC('homeText','homeText');
-
-  $('scaleSlider').addEventListener('input',function(){$('scaleVal').textContent=this.value;clearTimeout(T.sc);var v=parseFloat(this.value);T.sc=setTimeout(function(){patch({bugScale:v});},100);});
-  $('logoSizeSlider').addEventListener('input',function(){$('logoSizeVal').textContent=this.value+'px';clearTimeout(T.ls);var v=parseInt(this.value);T.ls=setTimeout(function(){patch({bugLogoSize:v});},100);});
-
-  // ── Logo Upload + Auto Color ──
   window.pickLogo=function(s){$(s+'FileInput').click();};
-  $('awayFileInput').addEventListener('change',function(){hLogo('away',this);});
-  $('homeFileInput').addEventListener('change',function(){hLogo('home',this);});
+  var POSITIONS=['tl','tr','bl','br'];
+  window.pickCorner=function(pos){$('spn-'+pos+'-file').click();};
+  window.clearCorner=function(pos){if(cornersRef)cornersRef.child(pos).remove();};
+
+  // ── Cloud Storage Upload ──
+  function uploadAsset(file,name){
+    var path='events/'+eventId+'/assets/'+name+'-'+Date.now();
+    var ref=storage.ref(path);
+    return ref.put(file,{contentType:file.type}).then(function(snap){
+      return snap.ref.getDownloadURL();
+    });
+  }
 
   function hLogo(side,input){
     var file=input.files[0];if(!file)return;
-    if(file.size>500000)alert('Large logo ('+Math.round(file.size/1024)+'KB). Use a smaller image for faster sync.');
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var url=e.target.result;
+    if(file.size>2000000){alert('Logo too large ('+Math.round(file.size/1024)+'KB). Max 2MB.');return;}
+
+    // Upload to Cloud Storage
+    uploadAsset(file,side+'-logo').then(function(url){
       patch({[side+'Logo']:url});
+      // Extract colors from a local preview
+      var localUrl=URL.createObjectURL(file);
       var img=new Image();
-      // Do NOT set crossOrigin on data URLs — it taints the canvas on iOS Safari
-      img.onerror=function(){console.warn('Logo image failed to load');};
       img.onload=function(){
-        function doExtract(){
-          try{
-            var c=exColors(img);
-            if(c){
-              patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});
-              var cp=$(side+'Primary'),ct=$(side+'Text');
-              cp.value=c.primary;ct.value=c.text;
-              // Force iOS color pickers to visually update
-              cp.dispatchEvent(new Event('input',{bubbles:true}));
-              ct.dispatchEvent(new Event('input',{bubbles:true}));
-            }
-          }catch(err){console.warn('Color extraction failed:',err);}
+        var c=exColors(img);
+        URL.revokeObjectURL(localUrl);
+        if(c){
+          patch({[side+'Primary']:c.primary,[side+'Text']:c.text,[side+'Accent']:c.accent});
+          var cp=$(side+'Primary'),ct=$(side+'Text');
+          cp.value=c.primary;ct.value=c.text;
+          cp.dispatchEvent(new Event('input',{bubbles:true}));
+          ct.dispatchEvent(new Event('input',{bubbles:true}));
         }
-        // Use decode() if available — ensures pixels are ready before canvas draw
-        if(img.decode){img.decode().then(doExtract).catch(doExtract);}
-        else{doExtract();}
       };
-      img.src=url;
-    };reader.readAsDataURL(file);input.value='';
+      img.onerror=function(){URL.revokeObjectURL(localUrl);};
+      img.src=localUrl;
+    }).catch(function(err){
+      alert('Logo upload failed: '+err.message);
+    });
+    input.value='';
   }
 
   function exColors(img){
-    // Create a fresh canvas each time to avoid stale state
     var cv=document.createElement('canvas'),sz=64;
     cv.width=sz;cv.height=sz;
     var ctx=cv.getContext('2d',{willReadFrequently:true});
     ctx.drawImage(img,0,0,sz,sz);
     var data;
     try{data=ctx.getImageData(0,0,sz,sz).data;}catch(e){return null;}
-    // Check for all-zero data (iOS can silently return blank pixels)
     var hasData=false;
     for(var j=0;j<data.length;j+=4){if(data[j+3]>0){hasData=true;break;}}
     if(!hasData)return null;
-    // Pass 1: filter extremes, weight by saturation
     var bk={},total=0;
     for(var i=0;i<data.length;i+=4){
       var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
@@ -613,7 +690,6 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       bk[key]=(bk[key]||0)+1+sat*5;
       total++;
     }
-    // Pass 2: if nothing passed, retry with no luminance filter
     if(total===0){
       for(var i=0;i<data.length;i+=4){
         var r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
@@ -624,7 +700,6 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
         total++;
       }
     }
-    // Pass 3: absolute fallback — average all non-transparent pixels
     if(total===0){
       var sr=0,sg=0,sb=0,cnt=0;
       for(var i=0;i<data.length;i+=4){
@@ -646,31 +721,6 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     return{primary:hex,text:lP>0.5?'#111111':'#ffffff',accent:'#CCCCCC'};
   }
 
-  // ── Sponsor Corner Logos ──
-  var cornersRef=stateRef.child('corners');
-  var POSITIONS=['tl','tr','bl','br'];
-
-  window.pickCorner=function(pos){$('spn-'+pos+'-file').click();};
-  POSITIONS.forEach(function(pos){
-    $('spn-'+pos+'-file').addEventListener('change',function(){
-      var file=this.files[0];if(!file)return;
-      var reader=new FileReader();
-      reader.onload=function(e){
-        var url=e.target.result;
-        cornersRef.child(pos).update({src:url});
-      };
-      reader.readAsDataURL(file);this.value='';
-    });
-    $('spn-'+pos+'-scale').addEventListener('input',function(){
-      var v=parseFloat(this.value);
-      $('spn-'+pos+'-sv').textContent=v+'x';
-      clearTimeout(T['spn'+pos]);
-      T['spn'+pos]=setTimeout(function(){cornersRef.child(pos).update({scale:v});},100);
-    });
-  });
-
-  window.clearCorner=function(pos){cornersRef.child(pos).remove();};
-
   function syncCorners(corners){
     POSITIONS.forEach(function(pos){
       var c=(corners&&corners[pos])||{};
@@ -681,6 +731,32 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       $('spn-'+pos+'-sv').textContent=(c.scale||1)+'x';
     });
   }
+
+  // ── Owner Controls ──
+  window.revokeOperator=function(){
+    if(!confirm('Revoke the current operator session?'))return;
+    var fn=fns.httpsCallable('revokeOperator');
+    fn({eventId:eventId,ownerSessionId:sessionId}).then(function(){
+      alert('Operator session revoked.');
+    }).catch(function(err){alert('Failed: '+err.message);});
+  };
+
+  window.showRotatePin=function(){
+    var el=$('rotatePinUI');
+    el.style.display=el.style.display==='none'?'block':'none';
+  };
+
+  window.doRotatePin=function(){
+    var target=$('rotatePinTarget').value;
+    var newPin=$('rotatePinValue').value.trim();
+    if(!newPin){alert('Enter a new PIN.');return;}
+    var fn=fns.httpsCallable('rotatePin');
+    fn({eventId:eventId,ownerSessionId:sessionId,target:target,newPin:newPin}).then(function(){
+      alert(target+' PIN updated.');
+      $('rotatePinValue').value='';
+      $('rotatePinUI').style.display='none';
+    }).catch(function(err){alert('Failed: '+err.message);});
+  };
 })();
 </script>
 </body>
