@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "publicEvents": {
+      "$eventId": {
+        ".read": true,
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+      }
+    },
+    "adminEvents": {
+      "$eventId": {
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'",
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'"
+      }
+    },
+    "sessions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+    "auditLogs": {
+      "$eventId": {
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'",
+        ".write": false
+      }
+    },
+    "eventMeta": {
+      "$eventId": {
+        "activeOperator": {
+          ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId"
+        }
+      }
+    },
+
+    "_comment": "Legacy paths locked down — no reads or writes",
+    "state": {
+      ".read": false,
+      ".write": false
+    },
+    "pin": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

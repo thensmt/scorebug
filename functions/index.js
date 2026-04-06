@@ -1,0 +1,352 @@
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
+
+admin.initializeApp();
+const db = admin.database();
+
+// ── Constants ────────────────────────────────────────────────────
+const SALT_ROUNDS = 10;
+const OPERATOR_SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+const OWNER_SESSION_TTL_MS = 1 * 60 * 60 * 1000;    // 1 hour
+const MAX_PIN_ATTEMPTS = 10;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;          // 15 minutes
+const OPERATOR_PIN_LENGTH = 4;
+const OWNER_PIN_MIN_LENGTH = 6;
+
+// ── Rate Limiting ────────────────────────────────────────────────
+async function checkRateLimit(eventId, ip) {
+  const key = `rateLimits/${eventId}/${ip.replace(/\./g, "_")}`;
+  const ref = db.ref(key);
+  const snap = await ref.once("value");
+  const data = snap.val() || { attempts: 0, lockedUntil: 0 };
+
+  if (data.lockedUntil > Date.now()) {
+    const remainSec = Math.ceil((data.lockedUntil - Date.now()) / 1000);
+    throw new functions.https.HttpsError(
+      "resource-exhausted",
+      `Too many attempts. Try again in ${remainSec}s.`
+    );
+  }
+
+  if (data.attempts >= MAX_PIN_ATTEMPTS) {
+    await ref.update({ lockedUntil: Date.now() + LOCKOUT_DURATION_MS });
+    throw new functions.https.HttpsError(
+      "resource-exhausted",
+      "Too many attempts. Locked for 15 minutes."
+    );
+  }
+
+  return { ref, attempts: data.attempts };
+}
+
+async function recordAttempt(rateRef, currentAttempts) {
+  await rateRef.update({ attempts: currentAttempts + 1 });
+}
+
+async function clearAttempts(rateRef) {
+  await rateRef.remove();
+}
+
+// ── Create Event ─────────────────────────────────────────────────
+// Creates a new event with hashed operator and owner PINs
+exports.createEvent = functions.https.onCall(async (data, context) => {
+  const { eventId, eventTitle, operatorPin, ownerPin } = data;
+
+  if (!eventId || typeof eventId !== "string" || eventId.length < 2) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId is required (min 2 chars).");
+  }
+  if (!operatorPin || operatorPin.length < OPERATOR_PIN_LENGTH) {
+    throw new functions.https.HttpsError("invalid-argument", `Operator PIN must be at least ${OPERATOR_PIN_LENGTH} digits.`);
+  }
+  if (!ownerPin || ownerPin.length < OWNER_PIN_MIN_LENGTH) {
+    throw new functions.https.HttpsError("invalid-argument", `Owner PIN must be at least ${OWNER_PIN_MIN_LENGTH} digits.`);
+  }
+  if (operatorPin === ownerPin) {
+    throw new functions.https.HttpsError("invalid-argument", "Operator and owner PINs must be different.");
+  }
+
+  // Check if event already exists
+  const existing = await db.ref(`adminEvents/${eventId}`).once("value");
+  if (existing.exists()) {
+    throw new functions.https.HttpsError("already-exists", "Event already exists.");
+  }
+
+  const operatorHash = await bcrypt.hash(operatorPin, SALT_ROUNDS);
+  const ownerHash = await bcrypt.hash(ownerPin, SALT_ROUNDS);
+
+  // Write admin event data (never publicly readable)
+  await db.ref(`adminEvents/${eventId}`).set({
+    eventTitle: eventTitle || eventId,
+    operatorPinHash: operatorHash,
+    ownerPinHash: ownerHash,
+    createdAt: admin.database.ServerValue.TIMESTAMP,
+    activeOperatorSessionId: null,
+  });
+
+  // Initialize public event data (readable by overlay)
+  await db.ref(`publicEvents/${eventId}`).set({
+    bug: {
+      awayName: "AWAY",
+      homeName: "HOME",
+      awayCode: "",
+      homeCode: "",
+      awayScore: 0,
+      homeScore: 0,
+      clock: "8:00",
+      clockRunning: false,
+      quarter: "1ST",
+      visible: true,
+      eventTitle: eventTitle || "",
+      bugScale: 1.25,
+      bugLogoSize: 160,
+      possession: "",
+    },
+    corners: {},
+    ticker: { show: false, entries: [], speed: 50 },
+  });
+
+  // Audit log
+  await db.ref(`auditLogs/${eventId}`).push({
+    action: "EVENT_CREATED",
+    timestamp: admin.database.ServerValue.TIMESTAMP,
+    ip: context.rawRequest?.ip || "unknown",
+  });
+
+  return { success: true, eventId };
+});
+
+// ── Authenticate (PIN validation + session creation) ─────────────
+exports.authenticate = functions.https.onCall(async (data, context) => {
+  const { eventId, pin, role } = data;
+
+  if (!eventId || !pin || !role) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId, pin, and role are required.");
+  }
+  if (role !== "operator" && role !== "owner") {
+    throw new functions.https.HttpsError("invalid-argument", "Role must be 'operator' or 'owner'.");
+  }
+
+  const ip = context.rawRequest?.ip || "unknown";
+  const { ref: rateRef, attempts } = await checkRateLimit(eventId, ip);
+
+  // Load admin event
+  const adminSnap = await db.ref(`adminEvents/${eventId}`).once("value");
+  if (!adminSnap.exists()) {
+    await recordAttempt(rateRef, attempts);
+    throw new functions.https.HttpsError("not-found", "Event not found.");
+  }
+
+  const adminData = adminSnap.val();
+  const hashField = role === "owner" ? "ownerPinHash" : "operatorPinHash";
+  const storedHash = adminData[hashField];
+
+  if (!storedHash) {
+    await recordAttempt(rateRef, attempts);
+    throw new functions.https.HttpsError("failed-precondition", "PIN not configured for this role.");
+  }
+
+  const match = await bcrypt.compare(pin, storedHash);
+  if (!match) {
+    await recordAttempt(rateRef, attempts);
+    throw new functions.https.HttpsError("permission-denied", "Invalid PIN.");
+  }
+
+  // PIN correct — clear rate limit and create session
+  await clearAttempts(rateRef);
+
+  const sessionId = uuidv4();
+  const ttl = role === "owner" ? OWNER_SESSION_TTL_MS : OPERATOR_SESSION_TTL_MS;
+  const expiresAt = Date.now() + ttl;
+
+  // Create a custom Firebase Auth token so RTDB rules can check auth.uid
+  const customToken = await admin.auth().createCustomToken(sessionId, {
+    eventId,
+    role,
+    sessionId,
+  });
+
+  // Store session in RTDB (for rule validation)
+  await db.ref(`sessions/${sessionId}`).set({
+    eventId,
+    role,
+    createdAt: admin.database.ServerValue.TIMESTAMP,
+    expiresAt,
+    ip,
+    revoked: false,
+  });
+
+  // If operator, claim the active operator lease
+  if (role === "operator") {
+    const prevSessionId = adminData.activeOperatorSessionId;
+    // Revoke previous operator session if it exists
+    if (prevSessionId) {
+      await db.ref(`sessions/${prevSessionId}/revoked`).set(true);
+    }
+    await db.ref(`adminEvents/${eventId}/activeOperatorSessionId`).set(sessionId);
+  }
+
+  // Audit log
+  await db.ref(`auditLogs/${eventId}`).push({
+    action: `${role.toUpperCase()}_AUTHENTICATED`,
+    sessionId,
+    timestamp: admin.database.ServerValue.TIMESTAMP,
+    ip,
+  });
+
+  return {
+    success: true,
+    customToken,
+    sessionId,
+    role,
+    eventId,
+    expiresAt,
+  };
+});
+
+// ── Renew Session ────────────────────────────────────────────────
+exports.renewSession = functions.https.onCall(async (data, context) => {
+  const { sessionId, eventId } = data;
+
+  if (!sessionId || !eventId) {
+    throw new functions.https.HttpsError("invalid-argument", "sessionId and eventId required.");
+  }
+
+  const sessionSnap = await db.ref(`sessions/${sessionId}`).once("value");
+  if (!sessionSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "Session not found.");
+  }
+
+  const session = sessionSnap.val();
+  if (session.revoked) {
+    throw new functions.https.HttpsError("permission-denied", "Session has been revoked.");
+  }
+  if (session.eventId !== eventId) {
+    throw new functions.https.HttpsError("permission-denied", "Session/event mismatch.");
+  }
+  if (session.expiresAt < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Session expired.");
+  }
+
+  const ttl = session.role === "owner" ? OWNER_SESSION_TTL_MS : OPERATOR_SESSION_TTL_MS;
+  const newExpiry = Date.now() + ttl;
+
+  await db.ref(`sessions/${sessionId}/expiresAt`).set(newExpiry);
+
+  // Generate a fresh custom token
+  const customToken = await admin.auth().createCustomToken(sessionId, {
+    eventId: session.eventId,
+    role: session.role,
+    sessionId,
+  });
+
+  return { success: true, customToken, expiresAt: newExpiry };
+});
+
+// ── Revoke Session (owner action) ────────────────────────────────
+exports.revokeOperator = functions.https.onCall(async (data, context) => {
+  const { eventId, ownerSessionId } = data;
+
+  if (!eventId || !ownerSessionId) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId and ownerSessionId required.");
+  }
+
+  // Verify caller is an owner with valid session
+  const ownerSnap = await db.ref(`sessions/${ownerSessionId}`).once("value");
+  if (!ownerSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "Owner session not found.");
+  }
+  const ownerSession = ownerSnap.val();
+  if (ownerSession.role !== "owner" || ownerSession.eventId !== eventId || ownerSession.revoked || ownerSession.expiresAt < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid or expired owner session.");
+  }
+
+  // Find and revoke current operator
+  const adminSnap = await db.ref(`adminEvents/${eventId}/activeOperatorSessionId`).once("value");
+  const activeOpId = adminSnap.val();
+
+  if (activeOpId) {
+    await db.ref(`sessions/${activeOpId}/revoked`).set(true);
+    await db.ref(`adminEvents/${eventId}/activeOperatorSessionId`).set(null);
+  }
+
+  // Audit
+  await db.ref(`auditLogs/${eventId}`).push({
+    action: "OPERATOR_REVOKED_BY_OWNER",
+    revokedSessionId: activeOpId,
+    ownerSessionId,
+    timestamp: admin.database.ServerValue.TIMESTAMP,
+  });
+
+  return { success: true, revokedSessionId: activeOpId };
+});
+
+// ── Rotate PIN (owner action) ────────────────────────────────────
+exports.rotatePin = functions.https.onCall(async (data, context) => {
+  const { eventId, ownerSessionId, target, newPin } = data;
+
+  if (!eventId || !ownerSessionId || !target || !newPin) {
+    throw new functions.https.HttpsError("invalid-argument", "All fields required.");
+  }
+  if (target !== "operator" && target !== "owner") {
+    throw new functions.https.HttpsError("invalid-argument", "Target must be 'operator' or 'owner'.");
+  }
+
+  const minLen = target === "owner" ? OWNER_PIN_MIN_LENGTH : OPERATOR_PIN_LENGTH;
+  if (newPin.length < minLen) {
+    throw new functions.https.HttpsError("invalid-argument", `PIN must be at least ${minLen} digits.`);
+  }
+
+  // Verify owner session
+  const ownerSnap = await db.ref(`sessions/${ownerSessionId}`).once("value");
+  if (!ownerSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "Owner session not found.");
+  }
+  const ownerSession = ownerSnap.val();
+  if (ownerSession.role !== "owner" || ownerSession.eventId !== eventId || ownerSession.revoked || ownerSession.expiresAt < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid owner session.");
+  }
+
+  const hash = await bcrypt.hash(newPin, SALT_ROUNDS);
+  const field = target === "owner" ? "ownerPinHash" : "operatorPinHash";
+  await db.ref(`adminEvents/${eventId}/${field}`).set(hash);
+
+  // Audit
+  await db.ref(`auditLogs/${eventId}`).push({
+    action: `${target.toUpperCase()}_PIN_ROTATED`,
+    ownerSessionId,
+    timestamp: admin.database.ServerValue.TIMESTAMP,
+  });
+
+  return { success: true };
+});
+
+// ── Upload Asset URL (moves base64 out of RTDB) ─────────────────
+// Client uploads to Cloud Storage, then calls this to record the URL
+exports.registerAsset = functions.https.onCall(async (data, context) => {
+  const { eventId, sessionId, assetType, assetKey, storageUrl } = data;
+
+  if (!eventId || !sessionId || !assetType || !storageUrl) {
+    throw new functions.https.HttpsError("invalid-argument", "Missing required fields.");
+  }
+
+  // Verify session
+  const sessionSnap = await db.ref(`sessions/${sessionId}`).once("value");
+  if (!sessionSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "Session not found.");
+  }
+  const session = sessionSnap.val();
+  if (session.eventId !== eventId || session.revoked || session.expiresAt < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid session.");
+  }
+
+  // Write the Storage URL to the public event data (not the base64 data)
+  if (assetType === "teamLogo") {
+    await db.ref(`publicEvents/${eventId}/bug/${assetKey}`).set(storageUrl);
+  } else if (assetType === "corner") {
+    await db.ref(`publicEvents/${eventId}/corners/${assetKey}/src`).set(storageUrl);
+  }
+
+  return { success: true };
+});

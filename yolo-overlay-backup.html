@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920">
+<title>NSMT Fastbreak — YoloBox Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@100..900&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Canvas ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 1920px; height: 1080px;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Design Tokens ──────────────────────────────────────────────── */
+:root {
+  --fb-primary: #0E80FC;
+  --fb-silver: #C0C0C0;
+  --fb-surface: #070d1f;
+  --fb-surface-container: #11192e;
+  --fb-surface-container-low: #0c1326;
+  --fb-surface-container-high: #171f36;
+  --fb-surface-container-highest: #1c253e;
+  --fb-surface-bright: #222b47;
+  --fb-surface-variant: #1c253e;
+  --fb-surface-tint: #81aeff;
+  --fb-on-surface: #dfe4fe;
+  --fb-on-surface-variant: #a5aac2;
+  --fb-outline-variant: #41475b;
+  --fb-error: #E60000;
+  --fb-error-container: #9f0519;
+  --fb-on-error-container: #ffa8a3;
+  --fb-tertiary: #f6b1ff;
+  --fb-primary-fixed: #67a0ff;
+  --fb-font-display: 'Space Grotesk', system-ui, sans-serif;
+  --fb-font-body: 'Inter', system-ui, sans-serif;
+
+  /* Team colors (set dynamically) */
+  --away-bg1: #000000;
+  --away-bg2: #000000;
+  --away-text: #FFFFFF;
+  --away-accent: #CCCCCC;
+  --home-bg1: #000000;
+  --home-bg2: #000000;
+  --home-text: #FFFFFF;
+  --home-accent: #CCCCCC;
+
+  --ticker-h: 0px;
+  --bug-logo-size: 160px;
+  --bug-scale: 1.25;
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────── */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes scorePulse {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.25); opacity: 1; }
+  100% { transform: scale(1.0); opacity: 0; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOutDown {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(30px); opacity: 0; }
+}
+@keyframes spotlightIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes lowerThirdUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes lowerThirdDown {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes bugSlideUp {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ── LIVE Indicator ─────────────────────────────────────────────── */
+#live-indicator {
+  position: absolute; top: 20px; left: 20px; z-index: 100;
+  display: none; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+  font-family: var(--fb-font-display); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; color: #fff;
+  letter-spacing: 0.1em;
+}
+#live-indicator .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--fb-error);
+  animation: livePulse 1.2s ease-in-out infinite;
+}
+
+/* ── Corner Logos ───────────────────────────────────────────────── */
+.corner-logo {
+  position: absolute; z-index: 3;
+  object-fit: contain; display: none;
+  transform-origin: top left;
+}
+#corner-tl { top: 24px; left: 24px; width: 120px; height: auto; transform-origin: top left; }
+#corner-tr { top: 24px; right: 24px; width: 120px; height: auto; transform-origin: top right; }
+#corner-bl { bottom: 24px; left: 24px; width: 120px; height: auto; transform-origin: bottom left; }
+#corner-br { bottom: 24px; right: 24px; width: 120px; height: auto; transform-origin: bottom right; }
+
+/* ════════════════════════════════════════════════════════════════════
+   SCOREBUG — TNT-Style Compact Bar
+   ════════════════════════════════════════════════════════════════════ */
+#scorebug-wrap {
+  position: absolute; z-index: 10;
+  bottom: calc(40px + var(--ticker-h));
+  left: 50%; transform: translateX(-50%) scale(var(--bug-scale));
+  transform-origin: bottom center;
+  display: flex; align-items: center;
+  gap: 0;
+  will-change: transform;
+}
+#scorebug {
+  display: flex; align-items: stretch;
+  height: 54px;
+  background: transparent;
+  filter: drop-shadow(0 2px 20px rgba(0, 0, 0, 0.6));
+}
+
+/* NSMT brand tab */
+.bug-brand {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 16px;
+  background: var(--fb-primary);
+  font-family: var(--fb-font-display);
+  font-weight: 700; font-size: 0.875rem;
+  color: #fff; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Team sections */
+.bug-team {
+  display: flex; align-items: center;
+  padding: 0 10px;
+  position: relative;
+  min-width: 170px;
+}
+.bug-team.away { background: var(--away-bg1); }
+.bug-team.home { background: var(--home-bg1); }
+.bug-team .team-color-bar {
+  position: absolute; top: 0; bottom: 0;
+  width: 4px; flex-shrink: 0;
+}
+.bug-team.away .team-color-bar { left: 0; }
+.bug-team.home .team-color-bar { right: 0; }
+
+.bug-team.away { padding-left: 18px; }
+.bug-team.home { padding-right: 18px; }
+
+.bug-team-logo-wrap {
+  width: var(--bug-logo-size, 48px);
+  height: 54px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid rgba(0,0,0,0.92);
+  border-left: none;
+  background: var(--home-bg1);
+}
+.bug-team-logo-wrap.away-side {
+  border-left: 2px solid rgba(0,0,0,0.92);
+  border-right: none;
+  background: var(--away-bg1);
+}
+.bug-team-logo {
+  width: var(--bug-logo-size, 48px);
+  height: var(--bug-logo-size, 48px);
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+}
+.bug-team-info {
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 0;
+  min-width: 0;
+}
+.bug-team-name {
+  font-family: var(--fb-font-display);
+  font-size: 0.85rem; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap; line-height: 1.1;
+}
+.bug-team.away .bug-team-name { color: var(--away-text); }
+.bug-team.home .bug-team-name { color: var(--home-text); }
+.bug-team-record {
+  font-family: var(--fb-font-body);
+  font-size: 0.5625rem; color: var(--fb-on-surface-variant);
+  white-space: nowrap; line-height: 1;
+}
+.bug-team.home .bug-team-info { text-align: right; }
+.bug-team.away .bug-team-info { text-align: left; }
+.bug-team-score {
+  font-family: var(--fb-font-display);
+  font-size: 1.75rem; font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px; text-align: center;
+}
+.bug-team.away .bug-team-score { color: var(--away-text); }
+.bug-team.home .bug-team-score { color: var(--home-text); }
+.bug-team.away .bug-team-inner {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%;
+}
+.bug-team.home .bug-team-inner {
+  display: flex; align-items: center; gap: 14px;
+  flex-direction: row-reverse;
+  width: 100%;
+}
+
+/* Foul/timeout indicators — compact */
+.bug-indicators {
+  display: flex; flex-direction: column; gap: 3px;
+  align-items: center; margin-left: 2px;
+}
+.bug-team.home .bug-indicators { margin-left: 0; margin-right: 2px; }
+
+.foul-dots, .timeout-dots {
+  display: flex; gap: 2px; align-items: center;
+}
+.foul-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+}
+.foul-dot.active { background: #FACC15; }
+.timeout-dot {
+  width: 6px; height: 6px; border-radius: 0;
+  background: rgba(255,255,255,0.15);
+}
+.timeout-dot.active { background: #FACC15; }
+
+/* Possession arrow */
+.possession-arrow {
+  width: 0; height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  flex-shrink: 0; opacity: 0;
+  transition: opacity 0.2s;
+}
+.possession-arrow.visible { opacity: 1; }
+.bug-team.away .possession-arrow { border-right: 6px solid var(--fb-primary); margin-right: 4px; }
+.bug-team.home .possession-arrow { border-left: 6px solid var(--fb-primary); margin-left: 4px; }
+
+/* Dividers between sections */
+.bug-divider {
+  width: 1px; background: rgba(255,255,255,0.12);
+  align-self: stretch;
+}
+
+/* Center panel — clock & period */
+.bug-center {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 0 18px; gap: 1px;
+  min-width: 90px;
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.clock-display {
+  font-family: var(--fb-font-display); font-size: 1.3rem;
+  font-weight: 700; color: #fff; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.period-display {
+  font-family: var(--fb-font-display); font-size: 0.6rem;
+  font-weight: 700; text-transform: uppercase;
+  color: #fff; letter-spacing: 0.15em;
+  line-height: 1;
+}
+.bug-logo {
+  height: 12px; width: auto; object-fit: contain;
+  margin-top: 2px; opacity: 0.85;
+}
+
+/* ── Event Bar ──────────────────────────────────────────────────── */
+#event-bar {
+  position: absolute; z-index: 11;
+  bottom: 100%; left: 0; right: 0;
+  height: 24px; display: none;
+  align-items: center; justify-content: center;
+  padding: 0 20px;
+  background: rgba(0, 0, 0, 0.92);
+  font-family: var(--fb-font-display); font-size: 0.625rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;
+  color: #fff; white-space: nowrap;
+}
+
+/* ── Score Pop ──────────────────────────────────────────────────── */
+.score-pop {
+  position: absolute; z-index: 50;
+  font-family: var(--fb-font-display); font-size: 3rem;
+  font-weight: 700; font-style: italic;
+  color: #fff; pointer-events: none;
+  animation: scorePulse 0.6s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* ── Ticker ─────────────────────────────────────────────────────── */
+#ticker {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 32px; z-index: 2;
+  background: rgba(0, 0, 0, 0.92); display: none;
+  align-items: center; overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+#ticker-accent {
+  width: 24px; height: 32px; background: var(--fb-primary);
+  flex-shrink: 0; position: relative; z-index: 1;
+}
+#ticker-track {
+  flex: 1; overflow: hidden; height: 100%;
+  display: flex; align-items: center;
+  position: relative;
+}
+#ticker-content {
+  display: flex; white-space: nowrap;
+  will-change: transform;
+  animation: tickerScroll 30s linear infinite;
+}
+.ticker-item {
+  font-family: var(--fb-font-body); font-size: 0.8125rem;
+  color: var(--fb-on-surface); padding: 0 48px;
+  display: flex; align-items: center;
+}
+.ticker-sep {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: var(--fb-primary); margin: 0 24px;
+  flex-shrink: 0;
+}
+
+/* ── Graphic Overlay (Foul/Timeout/Sub cards) ───────────────────── */
+#graphic-overlay {
+  position: absolute; left: 60px;
+  bottom: calc(200px + var(--ticker-h));
+  z-index: 200; width: 400px;
+  display: none;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+#graphic-accent {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; background: var(--fb-primary);
+}
+#graphic-body {
+  padding: 16px 20px 16px 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+#graphic-type {
+  font-family: var(--fb-font-display); font-size: 0.6875rem;
+  font-weight: 700; text-transform: uppercase;
+  color: var(--fb-primary); letter-spacing: 0.1em;
+}
+#graphic-line1 {
+  font-family: var(--fb-font-display); font-size: 1.25rem;
+  font-weight: 700; color: #fff;
+}
+#graphic-line2 {
+  font-family: var(--fb-font-body); font-size: 0.875rem;
+  color: var(--fb-on-surface-variant);
+}
+#graphic-line3 {
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface-variant);
+}
+
+/* ── Spotlight Card ─────────────────────────────────────────────── */
+#spotlight {
+  position: absolute; z-index: 210;
+  width: 360px; display: none;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+#spotlight-accent {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 6px;
+}
+#spotlight-body {
+  padding: 16px 20px 16px 24px;
+  display: flex; gap: 16px;
+}
+#spotlight-photo {
+  width: 120px; height: 120px;
+  object-fit: cover; flex-shrink: 0;
+}
+#spotlight-info {
+  display: flex; flex-direction: column; gap: 6px;
+  flex: 1; min-width: 0;
+}
+#spotlight-team-label {
+  font-family: var(--fb-font-display); font-size: 0.6875rem;
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+#spotlight-name {
+  font-family: var(--fb-font-display); font-size: 1.75rem;
+  font-weight: 700; color: #fff; line-height: 1.1;
+}
+#spotlight-details {
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface-variant);
+}
+#spotlight-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; margin-top: 4px;
+}
+.spotlight-stat {
+  display: flex; flex-direction: column; align-items: center;
+}
+.spotlight-stat-val {
+  font-family: var(--fb-font-display); font-size: 1.375rem;
+  font-weight: 700; color: #fff;
+}
+.spotlight-stat-label {
+  font-family: var(--fb-font-body); font-size: 0.625rem;
+  text-transform: uppercase; color: var(--fb-on-surface-variant);
+  letter-spacing: 0.06em;
+}
+
+/* ── Lower Third ────────────────────────────────────────────────── */
+#lower-third {
+  position: absolute; z-index: 50;
+  bottom: var(--ticker-h); left: 0; right: 0;
+  height: 56px; display: none;
+  background: var(--fb-primary);
+  align-items: center; justify-content: center;
+  will-change: transform;
+}
+#lower-third-text {
+  font-family: var(--fb-font-display); font-size: 1.75rem;
+  font-weight: 700; text-transform: uppercase;
+  color: #fff; font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+/* ── Stats Panel ────────────────────────────────────────────────── */
+#stats-panel {
+  position: absolute; z-index: 6;
+  bottom: calc(120px + var(--ticker-h));
+  left: 50%; transform: translateX(-50%);
+  display: none; width: 800px;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+#stats-header {
+  display: flex; height: 40px;
+  font-family: var(--fb-font-display); font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stats-team-header {
+  flex: 1; display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+  color: #fff;
+  background: rgba(255,255,255,0.04);
+}
+#stats-body {
+  display: flex; max-height: 500px;
+  overflow-y: auto;
+}
+.stats-col {
+  flex: 1; display: flex; flex-direction: column;
+}
+.stats-row {
+  display: flex; padding: 4px 12px;
+  font-family: var(--fb-font-body); font-size: 0.75rem;
+  color: var(--fb-on-surface);
+  align-items: center;
+}
+.stats-row:nth-child(even) { background: rgba(255,255,255,0.03); }
+.stats-row .num { width: 28px; text-align: center; font-weight: 600; }
+.stats-row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stats-row .stat { width: 32px; text-align: center; font-variant-numeric: tabular-nums; }
+.stats-col-header {
+  display: flex; padding: 6px 12px;
+  font-family: var(--fb-font-display); font-size: 0.625rem;
+  font-weight: 600; text-transform: uppercase;
+  color: var(--fb-on-surface-variant);
+  letter-spacing: 0.06em;
+}
+.stats-col-header .num { width: 28px; text-align: center; }
+.stats-col-header .name { flex: 1; }
+.stats-col-header .stat { width: 32px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- LIVE Indicator -->
+<div id="live-indicator"><span class="dot"></span>LIVE</div>
+
+<!-- Corner Logos (Sponsors) -->
+<img id="corner-tl" class="corner-logo" alt="">
+<img id="corner-tr" class="corner-logo" alt="">
+<img id="corner-bl" class="corner-logo" alt="">
+<img id="corner-br" class="corner-logo" alt="">
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCOREBUG — TNT-Style Compact Bar
+     ════════════════════════════════════════════════════════════════════ -->
+<div id="scorebug-wrap">
+  <!-- Event Banner — spans full width above scorebug -->
+  <div id="event-bar"><span id="event-bar-text"></span></div>
+  <div class="bug-team-logo-wrap away-side" id="logo-wrap-away"><img class="bug-team-logo" id="logo-away" alt="" src=""></div>
+  <div id="scorebug">
+    <!-- Away Team -->
+    <div class="bug-team away" id="panel-away">
+      <div class="team-color-bar" id="color-bar-away"></div>
+      <div class="bug-team-inner">
+        <div class="possession-arrow" id="poss-away"></div>
+        <div class="bug-team-info">
+          <span class="bug-team-name" id="name-away">AWAY</span>
+          <span class="bug-team-record" id="record-away"></span>
+        </div>
+        <span class="bug-team-score" id="score-away">0</span>
+        <div class="bug-indicators"></div>
+      </div>
+    </div>
+    <div class="bug-divider"></div>
+
+    <!-- Center: Clock & Period -->
+    <div class="bug-center" id="center-panel">
+      <div class="clock-display" id="clock">8:00</div>
+      <div class="period-display" id="period">1ST</div>
+      <img class="bug-logo" src="NSMTWordmarkBlue.png" alt="NSMT">
+    </div>
+    <div class="bug-divider"></div>
+
+    <!-- Home Team -->
+    <div class="bug-team home" id="panel-home">
+      <div class="team-color-bar" id="color-bar-home"></div>
+      <div class="bug-team-inner">
+        <div class="possession-arrow" id="poss-home"></div>
+        <div class="bug-team-info">
+          <span class="bug-team-name" id="name-home">HOME</span>
+          <span class="bug-team-record" id="record-home"></span>
+        </div>
+        <span class="bug-team-score" id="score-home">0</span>
+        <div class="bug-indicators"></div>
+      </div>
+    </div>
+  </div>
+  <div class="bug-team-logo-wrap" id="logo-wrap-home"><img class="bug-team-logo" id="logo-home" alt="" src=""></div>
+</div>
+
+<!-- Ticker -->
+<div id="ticker">
+  <div id="ticker-accent"></div>
+  <div id="ticker-track">
+    <div id="ticker-content"></div>
+  </div>
+</div>
+
+<!-- Graphic Overlay -->
+<div id="graphic-overlay">
+  <div id="graphic-accent"></div>
+  <div id="graphic-body">
+    <div id="graphic-type"></div>
+    <div id="graphic-line1"></div>
+    <div id="graphic-line2"></div>
+    <div id="graphic-line3"></div>
+  </div>
+</div>
+
+<!-- Spotlight Card -->
+<div id="spotlight">
+  <div id="spotlight-accent"></div>
+  <div id="spotlight-body">
+    <img id="spotlight-photo" alt="" src="">
+    <div id="spotlight-info">
+      <div id="spotlight-team-label"></div>
+      <div id="spotlight-name"></div>
+      <div id="spotlight-details"></div>
+      <div id="spotlight-stats"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Lower Third -->
+<div id="lower-third">
+  <div id="lower-third-text"></div>
+</div>
+
+<!-- Stats Panel -->
+<div id="stats-panel">
+  <div id="stats-header">
+    <div class="stats-team-header" id="stats-header-away"></div>
+    <div class="stats-team-header" id="stats-header-home"></div>
+  </div>
+  <div id="stats-body">
+    <div class="stats-col" id="stats-col-away"></div>
+    <div class="stats-col" id="stats-col-home"></div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<script>
+(function () {
+  // ── Firebase Config ─────────────────────────────────────────────
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
+    authDomain: "sincere-nirvana-436014-v9.firebaseapp.com",
+    databaseURL: "https://nsmt-scorebug.firebaseio.com",
+    projectId: "sincere-nirvana-436014-v9",
+    storageBucket: "sincere-nirvana-436014-v9.firebasestorage.app",
+    appId: "1:417098775531:web:d1d88da74d217ecbd5f7ae"
+  };
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.database();
+
+  // ── DOM refs ────────────────────────────────────────────────────
+  const $ = function (id) { return document.getElementById(id); };
+
+  // ── Helpers ─────────────────────────────────────────────────────
+  function luminance(hex) {
+    if (!hex || hex.length < 7) return 0;
+    const r = parseInt(hex.slice(1,3), 16) / 255;
+    const g = parseInt(hex.slice(3,5), 16) / 255;
+    const b = parseInt(hex.slice(5,7), 16) / 255;
+    const toLinear = function (c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  }
+
+  function darken(hex, pct) {
+    if (!hex || hex.length < 7) return '#000000';
+    const r = Math.max(0, Math.round(parseInt(hex.slice(1,3), 16) * (1 - pct)));
+    const g = Math.max(0, Math.round(parseInt(hex.slice(3,5), 16) * (1 - pct)));
+    const b = Math.max(0, Math.round(parseInt(hex.slice(5,7), 16) * (1 - pct)));
+    return '#' + r.toString(16).padStart(2,'0') + g.toString(16).padStart(2,'0') + b.toString(16).padStart(2,'0');
+  }
+
+  function setImg(el, src) {
+    if (!src) { el.style.display = 'none'; el.src = ''; return; }
+    el.src = src;
+    el.style.display = 'block';
+  }
+
+  function buildDots(container, count, max) {
+    if (!container) return;
+    if (container.children.length !== max) {
+      container.textContent = '';
+      for (var i = 0; i < max; i++) {
+        var d = document.createElement('span');
+        d.className = container.dataset.type === 'foul' ? 'foul-dot' : 'timeout-dot';
+        container.appendChild(d);
+      }
+    }
+    var dots = container.children;
+    for (var i = 0; i < max; i++) {
+      dots[i].classList.toggle('active', i < count);
+    }
+  }
+
+  function applyTeamColors(side, primary, text, accent) {
+    var col = primary || '#000000';
+    var textColor = text || (luminance(col) > 0.6 ? '#111111' : '#FFFFFF');
+    var bg2 = darken(col, 0.22);
+    var root = document.documentElement.style;
+    root.setProperty('--' + side + '-bg1', col);
+    root.setProperty('--' + side + '-bg2', bg2);
+    root.setProperty('--' + side + '-text', textColor);
+    root.setProperty('--' + side + '-accent', accent || '#CCCCCC');
+    var colorBar = $('color-bar-' + side);
+    if (colorBar) colorBar.style.background = col;
+  }
+
+  // ── Clock System ────────────────────────────────────────────────
+  var clockRunning = false;
+  var clockRafId = null;
+  var clockStartPerf = 0;
+  var clockStartSecs = 0;
+
+  function parseClockToSecs(display) {
+    if (!display) return 0;
+    var parts = display.split(':');
+    if (parts.length === 2) {
+      var m = parseInt(parts[0], 10) || 0;
+      var sParts = parts[1].split('.');
+      var s = parseInt(sParts[0], 10) || 0;
+      var tenths = sParts.length > 1 ? parseInt(sParts[1], 10) || 0 : 0;
+      return m * 60 + s + tenths / 10;
+    }
+    return parseFloat(display) || 0;
+  }
+
+  function formatClock(secs) {
+    if (secs < 0) secs = 0;
+    var m = Math.floor(secs / 60);
+    if (secs <= 60 && secs > 0) {
+      var s = Math.floor(secs);
+      var tenths = Math.floor((secs - s) * 10);
+      return m + ':' + (s % 60).toString().padStart(2, '0') + '.' + tenths;
+    }
+    var s = Math.floor(secs) % 60;
+    return m + ':' + s.toString().padStart(2, '0');
+  }
+
+  function clockTick() {
+    if (!clockRunning) return;
+    var now = performance.now();
+    var elapsed = (now - clockStartPerf) / 1000;
+    var current = clockStartSecs - elapsed;
+    if (current < 0) current = 0;
+    $('clock').textContent = formatClock(current);
+    clockRafId = requestAnimationFrame(clockTick);
+  }
+
+  function updateClock(display, running) {
+    var newDisplay = display || '8:00';
+    var newRunning = running || false;
+
+    if (newRunning && !clockRunning) {
+      clockRunning = true;
+      clockStartSecs = parseClockToSecs(newDisplay);
+      clockStartPerf = performance.now();
+      clockRafId = requestAnimationFrame(clockTick);
+    } else if (!newRunning && clockRunning) {
+      clockRunning = false;
+      if (clockRafId) cancelAnimationFrame(clockRafId);
+      $('clock').textContent = newDisplay;
+    } else if (!newRunning) {
+      $('clock').textContent = newDisplay;
+    }
+  }
+
+  // ── Score Pop ───────────────────────────────────────────────────
+  var prevScores = { away: 0, home: 0 };
+
+  function showScorePop(team, pts) {
+    var scoreEl = $('score-' + team);
+    var rect = scoreEl.getBoundingClientRect();
+    var pop = document.createElement('div');
+    pop.className = 'score-pop';
+    pop.textContent = '+' + pts;
+    var teamColor = getComputedStyle(document.documentElement).getPropertyValue('--' + team + '-bg1').trim();
+    pop.style.textShadow = '0 2px 12px ' + teamColor;
+    pop.style.left = (rect.left + rect.width / 2 - 30) + 'px';
+    pop.style.top = (rect.top - 50) + 'px';
+    document.body.appendChild(pop);
+    pop.addEventListener('animationend', function () { pop.remove(); });
+  }
+
+  // ── Graphic Overlay ─────────────────────────────────────────────
+  var graphicTimer = null;
+
+  function showGraphic(data) {
+    if (!data || !data.type) { hideGraphic(); return; }
+    var el = $('graphic-overlay');
+    var type = data.type;
+    var d = data.data || {};
+
+    $('graphic-type').textContent = type;
+
+    switch (type) {
+      case 'TIMEOUT':
+        $('graphic-line1').textContent = d.teamName || '';
+        $('graphic-line2').textContent = d.timeoutType || 'Full Timeout';
+        $('graphic-line3').textContent = d.remaining != null ? d.remaining + ' remaining' : '';
+        break;
+      case 'FOUL':
+        $('graphic-line1').textContent = d.playerName ? '#' + (d.playerNum || '') + ' ' + d.playerName : (d.teamName || '');
+        $('graphic-line2').textContent = d.foulCount != null ? d.foulCount + ' Foul' + (d.foulCount !== 1 ? 's' : '') : '';
+        $('graphic-line3').textContent = d.foulCount >= 5 ? 'FOULED OUT' : d.foulCount === 4 ? 'FOUL TROUBLE' : '';
+        break;
+      case 'SUBSTITUTION':
+        $('graphic-line1').textContent = d.teamName || '';
+        $('graphic-line2').textContent = d.playerIn ? 'IN: ' + d.playerIn : '';
+        $('graphic-line3').textContent = d.playerOut ? 'OUT: ' + d.playerOut : '';
+        break;
+      case 'HALFTIME':
+      case 'FINAL':
+        $('graphic-line1').textContent = type;
+        $('graphic-line2').textContent = d.awayName ? d.awayName + '  ' + d.awayScore : '';
+        $('graphic-line3').textContent = d.homeName ? d.homeName + '  ' + d.homeScore : '';
+        break;
+      default:
+        $('graphic-line1').textContent = d.line1 || '';
+        $('graphic-line2').textContent = d.line2 || '';
+        $('graphic-line3').textContent = d.line3 || '';
+    }
+
+    el.style.display = 'block';
+    el.style.animation = 'slideInLeft 0.3s ease-out forwards';
+    if (graphicTimer) clearTimeout(graphicTimer);
+    graphicTimer = setTimeout(function () { hideGraphic(); }, 5000);
+  }
+
+  function hideGraphic() {
+    var el = $('graphic-overlay');
+    el.style.animation = 'slideOutDown 0.35s ease-in forwards';
+    setTimeout(function () { el.style.display = 'none'; }, 350);
+    if (graphicTimer) { clearTimeout(graphicTimer); graphicTimer = null; }
+  }
+
+  // ── Ticker ──────────────────────────────────────────────────────
+  var lastTickerJson = '';
+
+  function updateTicker(tickerData) {
+    if (!tickerData) return;
+    var show = tickerData.show;
+    var el = $('ticker');
+
+    if (!show) {
+      el.style.display = 'none';
+      document.documentElement.style.setProperty('--ticker-h', '0px');
+      return;
+    }
+
+    el.style.display = 'flex';
+    document.documentElement.style.setProperty('--ticker-h', '32px');
+
+    var entries = tickerData.entries || [];
+    var json = JSON.stringify(entries);
+    if (json === lastTickerJson) {
+      var speed = tickerData.speed || 50;
+      var duration = Math.max(10, 200 - speed * 2);
+      $('ticker-content').style.animationDuration = duration + 's';
+      return;
+    }
+    lastTickerJson = json;
+
+    var content = $('ticker-content');
+    content.textContent = '';
+
+    if (entries.length === 0) return;
+
+    function buildItems() {
+      var frag = document.createDocumentFragment();
+      entries.forEach(function (entry, i) {
+        if (i > 0) {
+          var sep = document.createElement('span');
+          sep.className = 'ticker-sep';
+          frag.appendChild(sep);
+        }
+        var item = document.createElement('span');
+        item.className = 'ticker-item';
+        item.textContent = typeof entry === 'string' ? entry : (entry.text || '');
+        frag.appendChild(item);
+      });
+      return frag;
+    }
+
+    content.appendChild(buildItems());
+    content.appendChild(buildItems());
+
+    var speed = tickerData.speed || 50;
+    var duration = Math.max(10, 200 - speed * 2);
+    content.style.animationDuration = duration + 's';
+  }
+
+  // ── Stats Panel ─────────────────────────────────────────────────
+  var STAT_KEYS = ['PTS', 'REB', 'AST', 'STL', 'BLK'];
+
+  function updateStats(statsData) {
+    if (!statsData) return;
+    var el = $('stats-panel');
+    if (!statsData.showPanel) { el.style.display = 'none'; return; }
+
+    el.style.display = 'block';
+    el.style.animation = 'fadeIn 0.5s forwards';
+
+    $('stats-header-away').textContent = (statsData.away && statsData.away.name) || 'AWAY';
+    $('stats-header-home').textContent = (statsData.home && statsData.home.name) || 'HOME';
+
+    ['away', 'home'].forEach(function (side) {
+      var col = $('stats-col-' + side);
+      col.textContent = '';
+
+      var hdr = document.createElement('div');
+      hdr.className = 'stats-col-header';
+      var numH = document.createElement('span'); numH.className = 'num'; numH.textContent = '#'; hdr.appendChild(numH);
+      var nameH = document.createElement('span'); nameH.className = 'name'; nameH.textContent = 'Player'; hdr.appendChild(nameH);
+      STAT_KEYS.forEach(function (k) {
+        var s = document.createElement('span'); s.className = 'stat'; s.textContent = k; hdr.appendChild(s);
+      });
+      col.appendChild(hdr);
+
+      var players = (statsData[side] && statsData[side].players) || [];
+      players.forEach(function (p) {
+        var row = document.createElement('div');
+        row.className = 'stats-row';
+        var numS = document.createElement('span'); numS.className = 'num'; numS.textContent = p.num || ''; row.appendChild(numS);
+        var nameS = document.createElement('span'); nameS.className = 'name'; nameS.textContent = p.name || ''; row.appendChild(nameS);
+        var ptsS = document.createElement('span'); ptsS.className = 'stat'; ptsS.textContent = String(p.pts ?? p.PTS ?? 0); row.appendChild(ptsS);
+        var rebS = document.createElement('span'); rebS.className = 'stat'; rebS.textContent = String(p.reb ?? p.REB ?? 0); row.appendChild(rebS);
+        var astS = document.createElement('span'); astS.className = 'stat'; astS.textContent = String(p.ast ?? p.AST ?? 0); row.appendChild(astS);
+        var stlS = document.createElement('span'); stlS.className = 'stat'; stlS.textContent = String(p.stl ?? p.STL ?? 0); row.appendChild(stlS);
+        var blkS = document.createElement('span'); blkS.className = 'stat'; blkS.textContent = String(p.blk ?? p.BLK ?? 0); row.appendChild(blkS);
+        col.appendChild(row);
+      });
+    });
+  }
+
+  // ── Main Apply ──────────────────────────────────────────────────
+  // Handles flat Firebase state (state/bug) format
+  function apply(state) {
+    if (!state) return;
+    var bug = state.bug || {};
+
+    // Away team
+    $('name-away').textContent = bug.awayName || 'AWAY';
+    $('record-away').textContent = bug.awayRecord || '';
+    var awayScore = bug.awayScore ?? 0;
+    var diff = awayScore - prevScores.away;
+    if (diff > 0 && prevScores.away > 0) showScorePop('away', diff);
+    prevScores.away = awayScore;
+    $('score-away').textContent = awayScore;
+    buildDots($('fouls-away'), bug.awayFouls || 0, 5);
+    buildDots($('timeouts-away'), bug.awayTOs ?? 5, 5);
+    applyTeamColors('away', bug.awayPrimary, bug.awayText, bug.awayAccent);
+
+    // Away logo
+    setImg($('logo-away'), bug.awayLogo);
+    $('logo-wrap-away').style.display = bug.awayLogo ? 'flex' : 'none';
+
+    // Home team
+    $('name-home').textContent = bug.homeName || 'HOME';
+    $('record-home').textContent = bug.homeRecord || '';
+    var homeScore = bug.homeScore ?? 0;
+    var diffH = homeScore - prevScores.home;
+    if (diffH > 0 && prevScores.home > 0) showScorePop('home', diffH);
+    prevScores.home = homeScore;
+    $('score-home').textContent = homeScore;
+    buildDots($('fouls-home'), bug.homeFouls || 0, 5);
+    buildDots($('timeouts-home'), bug.homeTOs ?? 5, 5);
+    applyTeamColors('home', bug.homePrimary, bug.homeText, bug.homeAccent);
+
+    // Home logo
+    setImg($('logo-home'), bug.homeLogo);
+    $('logo-wrap-home').style.display = bug.homeLogo ? 'flex' : 'none';
+
+    // Clock
+    updateClock(bug.clock, bug.clockRunning);
+
+    // Period
+    $('period').textContent = (bug.quarter || '1ST').toUpperCase();
+
+    // Possession
+    $('poss-away').classList.toggle('visible', bug.possession === 'away');
+    $('poss-home').classList.toggle('visible', bug.possession === 'home');
+
+    // Event bar
+    var bar = $('event-bar');
+    if (bug.eventTitle) {
+      $('event-bar-text').textContent = bug.eventTitle;
+      bar.style.display = 'flex';
+    } else {
+      bar.style.display = 'none';
+    }
+
+    // Visibility
+    var wrap = $('scorebug-wrap');
+    if (bug.visible === false) {
+      wrap.style.opacity = '0';
+      wrap.style.pointerEvents = 'none';
+    } else {
+      wrap.style.opacity = '1';
+      wrap.style.pointerEvents = 'auto';
+    }
+
+    // Scale & logo size overrides
+    if (bug.bugScale) {
+      document.documentElement.style.setProperty('--bug-scale', bug.bugScale);
+    }
+    if (bug.bugLogoSize) {
+      document.documentElement.style.setProperty('--bug-logo-size', bug.bugLogoSize + 'px');
+    }
+
+    // Corner sponsor logos
+    var corners = state.corners || {};
+    ['tl','tr','bl','br'].forEach(function(pos){
+      var c = corners[pos] || {};
+      var el = $('corner-' + pos);
+      if(c.src){
+        el.src = c.src;
+        el.style.display = 'block';
+        var s = c.scale || 1;
+        el.style.transform = 'scale(' + s + ')';
+      } else {
+        el.style.display = 'none';
+        el.src = '';
+      }
+    });
+
+    // Ticker
+    if (state.ticker) updateTicker(state.ticker);
+
+    // Stats
+    if (state.stats) updateStats(state.stats);
+  }
+
+  // ── Firebase Listeners ──────────────────────────────────────────
+  var stateRef = db.ref('state');
+
+  stateRef.on('value', function (snap) {
+    var data = snap.val();
+    if (data) apply(data);
+  });
+
+  // Connection monitoring
+  db.ref('.info/connected').on('value', function (snap) {
+    if (snap.val() === true) {
+      console.log('[NSMT] Connected to Firebase');
+    } else {
+      console.log('[NSMT] Disconnected from Firebase');
+    }
+  });
+
+  console.log('[Overlay] NSMT Fastbreak YoloBox overlay loaded');
+})();
+</script>
+</body>
+</html>

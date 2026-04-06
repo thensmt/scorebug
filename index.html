@@ -100,18 +100,22 @@
   <div class="shell">
     <header>
       <h1>NSMT Scorebug Launcher</h1>
-      <p>Select what you want to open — all files live at <code>http://localhost:8000/</code>.</p>
+      <p>Select what you want to open. Enter an event ID to auto-fill overlay and control URLs.</p>
     </header>
+    <div style="max-width:400px;margin:0 auto 24px;">
+      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Event ID</label>
+      <input type="text" id="eventInput" placeholder="e.g. chipotle-qf1" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;font-family:inherit;outline:none;" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--line)'">
+    </div>
     <div class="grid">
-      <a class="card" href="nsmt_fox_overlay_ws.html" target="_blank" rel="noreferrer">
+      <a class="card" id="overlayLink" href="yolo-overlay.html" target="_blank" rel="noreferrer">
         <span class="label">Overlay</span>
-        <span class="title">FOX-Style Scorebug</span>
-        <span class="desc">Opens the broadcast overlay with WebSocket-driven clocks, sponsor pod, ticker, and corner logos.</span>
+        <span class="title">YoloBox Scorebug</span>
+        <span class="desc">Opens the broadcast overlay for YoloBox. Scales to any viewport with 16:9 preserved stage.</span>
       </a>
-      <a class="card" href="nsmt_fox_control_ws.html" target="_blank" rel="noreferrer">
+      <a class="card" id="controlLink" href="yolo-control.html" target="_blank" rel="noreferrer">
         <span class="label">Control Console</span>
-        <span class="title">Unified Scorebug Control</span>
-        <span class="desc">Launches the control dashboard to edit teams, clocks, ticker schedule, and sponsor content in real time.</span>
+        <span class="title">Scorebug Control Hub</span>
+        <span class="desc">Launches the control dashboard to manage teams, clocks, ticker, sponsors, and overlay settings.</span>
       </a>
       <a class="card" href="stats_control.html" target="_blank" rel="noreferrer">
         <span class="label">Stats</span>
@@ -125,8 +129,18 @@
       </a>
     </div>
     <footer>
-      Tip: leave this tab open so the base URL is always a click away.
+      Tip: enter an event ID above and links will auto-update with the event parameter.
     </footer>
+    <script>
+      var input = document.getElementById('eventInput');
+      var overlayLink = document.getElementById('overlayLink');
+      var controlLink = document.getElementById('controlLink');
+      input.addEventListener('input', function() {
+        var eid = this.value.trim();
+        overlayLink.href = eid ? 'yolo-overlay.html?event=' + encodeURIComponent(eid) : 'yolo-overlay.html';
+        controlLink.href = eid ? 'yolo-control.html?event=' + encodeURIComponent(eid) : 'yolo-control.html';
+      });
+    </script>
   </div>
 </body>
 </html>
