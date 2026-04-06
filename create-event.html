@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NSMT — Create Event</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0b0e; --card: #111318; --border: #1e2028; --input: #161820;
+  --text: #e4e4e8; --dim: #7a7d8a; --accent: #0E80FC;
+  --green: #34d058; --red: #f04040; --gold: #f0c030;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.shell { width: min(420px, 100%); }
+.logo { text-align: center; margin-bottom: 24px; }
+.logo img { height: 28px; width: auto; }
+h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--accent); text-align: center;
+  margin-bottom: 4px;
+}
+.sub { font-size: 0.75rem; color: var(--dim); text-align: center; margin-bottom: 20px; }
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.f { margin-bottom: 14px; }
+.lbl {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px;
+}
+.hint { font-size: 0.6rem; color: var(--dim); margin-top: 2px; }
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 10px 12px; font-size: 0.95rem;
+  background: var(--input); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: inherit; outline: none;
+}
+input:focus { border-color: var(--accent); }
+.btn {
+  width: 100%; padding: 12px; font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; margin-top: 6px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg { font-size: 0.75rem; min-height: 20px; text-align: center; margin-top: 12px; }
+.msg.error { color: var(--red); }
+.msg.ok { color: var(--green); }
+
+.result { display: none; margin-top: 16px; }
+.result.visible { display: block; }
+.result .card { border-color: var(--green); }
+.result h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--green); margin-bottom: 12px;
+}
+.url-row {
+  margin-bottom: 10px;
+}
+.url-row .lbl { margin-bottom: 2px; }
+.url-box {
+  display: flex; align-items: center; gap: 6px;
+}
+.url-box input {
+  flex: 1; font-size: 0.75rem; padding: 8px 10px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--accent); font-family: monospace;
+}
+.copy-btn {
+  padding: 8px 12px; font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  border-radius: 6px; border: 1px solid var(--border);
+  background: var(--input); color: var(--text); cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.copy-btn:active { background: var(--accent); border-color: var(--accent); }
+.pin-summary {
+  font-size: 0.75rem; color: var(--dim); margin-top: 8px;
+  line-height: 1.6;
+}
+.pin-summary strong { color: var(--text); }
+.another {
+  display: block; width: 100%; padding: 10px; margin-top: 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--input);
+  color: var(--text); cursor: pointer; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="logo"><img src="NSMTWordmarkBlue.png" alt="NSMT"></div>
+  <h1>Create Event</h1>
+  <div class="sub">Set up a new game with PINs for your crew</div>
+
+  <div id="formCard" class="card">
+    <div class="f">
+      <div class="lbl">Event ID</div>
+      <input type="text" id="eventId" placeholder="e.g. eagles-vs-stallions" autocomplete="off" spellcheck="false">
+      <div class="hint">Short, unique name. Used in URLs.</div>
+    </div>
+    <div class="f">
+      <div class="lbl">Event Title</div>
+      <input type="text" id="eventTitle" placeholder="e.g. CHIPOTLE NATIONALS - QUARTERFINAL">
+      <div class="hint">Displayed on the overlay event bar.</div>
+    </div>
+    <div class="f">
+      <div class="lbl">Operator PIN</div>
+      <input type="password" id="operatorPin" placeholder="4+ digits" inputmode="numeric" autocomplete="off">
+      <div class="hint">For crew members running the scorebug.</div>
+    </div>
+    <div class="f">
+      <div class="lbl">Owner PIN</div>
+      <input type="password" id="ownerPin" placeholder="6+ digits" inputmode="numeric" autocomplete="off">
+      <div class="hint">For admin access — revoke sessions, rotate PINs.</div>
+    </div>
+    <button class="btn" id="createBtn" onclick="createEvent()">Create Event</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="result" id="result">
+    <div class="card">
+      <h2>Event Created</h2>
+      <div class="url-row">
+        <div class="lbl">Overlay URL (for YoloBox)</div>
+        <div class="url-box">
+          <input type="text" id="overlayUrl" readonly>
+          <button class="copy-btn" onclick="copyUrl('overlayUrl')">Copy</button>
+        </div>
+      </div>
+      <div class="url-row">
+        <div class="lbl">Control URL (for crew)</div>
+        <div class="url-box">
+          <input type="text" id="controlUrl" readonly>
+          <button class="copy-btn" onclick="copyUrl('controlUrl')">Copy</button>
+        </div>
+      </div>
+      <div class="pin-summary" id="pinSummary"></div>
+      <button class="another" onclick="resetForm()">Create Another Event</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script>
+(function(){
+  firebase.initializeApp({
+    apiKey:"AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
+    authDomain:"sincere-nirvana-436014-v9.firebaseapp.com",
+    databaseURL:"https://nsmt-scorebug.firebaseio.com",
+    projectId:"sincere-nirvana-436014-v9",
+    storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",
+    appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
+  });
+  var fns = firebase.functions();
+
+  var $ = function(id){ return document.getElementById(id); };
+  var baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+
+  window.createEvent = function(){
+    var eid = $('eventId').value.trim();
+    var title = $('eventTitle').value.trim();
+    var opPin = $('operatorPin').value.trim();
+    var owPin = $('ownerPin').value.trim();
+
+    // Validation
+    if (!eid) { showMsg('Event ID is required.', true); return; }
+    if (!/^[a-zA-Z0-9_-]+$/.test(eid)) { showMsg('Event ID: letters, numbers, hyphens, underscores only.', true); return; }
+    if (!opPin || opPin.length < 4) { showMsg('Operator PIN must be at least 4 digits.', true); return; }
+    if (!owPin || owPin.length < 6) { showMsg('Owner PIN must be at least 6 digits.', true); return; }
+    if (opPin === owPin) { showMsg('Operator and owner PINs must be different.', true); return; }
+
+    $('createBtn').disabled = true;
+    $('createBtn').textContent = 'Creating...';
+    showMsg('', false);
+
+    var createEventFn = fns.httpsCallable('createEvent');
+    createEventFn({ eventId: eid, operatorPin: opPin, ownerPin: owPin, eventTitle: title || eid }).then(function(result){
+      if (result.data && result.data.success) {
+        var overlayUrl = baseUrl + '/yolo-overlay.html?event=' + encodeURIComponent(eid);
+        var controlUrl = baseUrl + '/yolo-control.html?event=' + encodeURIComponent(eid);
+        $('overlayUrl').value = overlayUrl;
+        $('controlUrl').value = controlUrl;
+        $('pinSummary').innerHTML =
+          'Operator PIN: <strong>' + opPin + '</strong><br>' +
+          'Owner PIN: <strong>' + owPin + '</strong><br>' +
+          '<span style="color:var(--gold);font-size:0.65rem;">Save these — PINs are hashed and cannot be recovered.</span>';
+        $('formCard').style.display = 'none';
+        $('result').classList.add('visible');
+      }
+    }).catch(function(err){
+      showMsg(err.message || 'Failed to create event.', true);
+      $('createBtn').disabled = false;
+      $('createBtn').textContent = 'Create Event';
+    });
+  };
+
+  window.resetForm = function(){
+    $('eventId').value = '';
+    $('eventTitle').value = '';
+    $('operatorPin').value = '';
+    $('ownerPin').value = '';
+    $('createBtn').disabled = false;
+    $('createBtn').textContent = 'Create Event';
+    $('msg').textContent = '';
+    $('msg').className = 'msg';
+    $('formCard').style.display = 'block';
+    $('result').classList.remove('visible');
+  };
+
+  window.copyUrl = function(id){
+    var input = $(id);
+    input.select();
+    input.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(input.value).then(function(){
+      var btn = input.parentElement.querySelector('.copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(function(){ btn.textContent = 'Copy'; }, 1500);
+    });
+  };
+
+  function showMsg(text, isError){
+    var el = $('msg');
+    el.textContent = text;
+    el.className = 'msg ' + (isError ? 'error' : 'ok');
+  }
+
+  // Enter key support
+  ['eventId','eventTitle','operatorPin','ownerPin'].forEach(function(id, i, arr){
+    $(id).addEventListener('keydown', function(e){
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (i < arr.length - 1) $(arr[i+1]).focus();
+        else createEvent();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
