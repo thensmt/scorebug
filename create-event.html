@@ -132,7 +132,7 @@ input:focus { border-color: var(--accent); }
       <input type="password" id="ownerPin" placeholder="6+ digits" inputmode="numeric" autocomplete="off">
       <div class="hint">For admin access — revoke sessions, rotate PINs.</div>
     </div>
-    <button class="btn" id="createBtn" onclick="createEvent()">Create Event</button>
+    <button class="btn" id="createBtn" onclick="submitEvent()">Create Event</button>
     <div class="msg" id="msg"></div>
   </div>
 
@@ -176,7 +176,7 @@ input:focus { border-color: var(--accent); }
   var $ = function(id){ return document.getElementById(id); };
   var baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
 
-  window.createEvent = function(){
+  window.submitEvent = function(){
     var eid = $('eventId').value.trim();
     var title = $('eventTitle').value.trim();
     var opPin = $('operatorPin').value.trim();
@@ -250,7 +250,7 @@ input:focus { border-color: var(--accent); }
       if (e.key === 'Enter') {
         e.preventDefault();
         if (i < arr.length - 1) $(arr[i+1]).focus();
-        else createEvent();
+        else submitEvent();
       }
     });
   });
