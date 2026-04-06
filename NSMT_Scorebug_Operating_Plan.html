@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NSMT Scorebug Secure Live Operations Plan</title>
+  <style>
+    :root {
+      --text: #111827;
+      --muted: #4b5563;
+      --line: #d1d5db;
+      --bg: #ffffff;
+      --accent: #0e80fc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 48px 56px;
+    }
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      line-height: 1.2;
+    }
+    h1 {
+      font-size: 30px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-top: 28px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    h3 {
+      font-size: 16px;
+      margin-top: 20px;
+    }
+    p {
+      margin: 0 0 12px;
+    }
+    ul, ol {
+      margin: 0 0 14px 22px;
+      padding: 0;
+    }
+    li {
+      margin: 0 0 6px;
+    }
+    .meta {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .note {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      background: #f9fafb;
+      border-radius: 6px;
+      margin: 12px 0 18px;
+    }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+    .section-block {
+      break-inside: avoid-page;
+      page-break-inside: avoid;
+    }
+    @page {
+      size: letter;
+      margin: 0.5in;
+    }
+    @media print {
+      .page {
+        max-width: none;
+        padding: 0;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>NSMT Scorebug Secure Live Operations Plan</h1>
+    <p class="meta">Prepared for the <code>thensmt/scorebug</code> repo. PDF export generated from the finalized planning pass.</p>
+
+    <section class="section-block">
+      <h2>Summary</h2>
+      <ul>
+        <li>Keep the overlay public, but make it read-only and safe.</li>
+        <li>Make the overlay elastic by scaling a fixed <code>1920x1080</code> scene with <code>contain</code>, so it fits any browser window without distortion.</li>
+        <li>Move production hosting from GitHub Pages to Firebase Hosting with a short custom subdomain, so YoloBox URLs become short and clean.</li>
+        <li>Keep admin inside <code>yolo-control.html</code> for Phase 1, but only as a separately unlocked owner mode with its own backend-issued session.</li>
+        <li>Replace the current client-side PIN model with server-validated PINs, short-lived sessions, strict rules, and event-scoped state.</li>
+        <li>Build around <code>eventId</code> from the start so one game uses <code>live</code> now, and multiple simultaneous games later use separate isolated event routes.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Key Decisions</h2>
+      <h3>Overlay Fit</h3>
+      <ul>
+        <li>Use preserve-16:9 <code>contain</code> scaling.</li>
+        <li>Do not stretch to fill by default.</li>
+        <li>Keep the internal broadcast layout as a logical <code>1920x1080</code> scene.</li>
+      </ul>
+
+      <h3>Admin Model</h3>
+      <ul>
+        <li>Phase 1: no separate <code>admin.html</code>.</li>
+        <li>Owner/admin lives inside <code>yolo-control.html</code> as a hidden, separately authenticated mode.</li>
+        <li>Phase 2: add a separate owner oversight hub when running multiple simultaneous games.</li>
+      </ul>
+
+      <h3>Hosting</h3>
+      <ul>
+        <li>Use Firebase Hosting now.</li>
+        <li>Put a short custom subdomain in front of it, for example <code>bug.yourdomain.com</code>.</li>
+        <li>Public route model:
+          <ul>
+            <li>Overlay: <code>/o/{eventId}</code></li>
+            <li>Control: <code>/c/{eventId}</code></li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>Security</h3>
+      <ul>
+        <li>Operator auth remains PIN-based for workflow simplicity.</li>
+        <li>Owner/admin also remains PIN-based in Phase 1 because that was the selected workflow.</li>
+        <li>Because of that choice, owner PIN auth is the weakest part of the design and must be hardened aggressively.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Implementation Changes</h2>
+
+      <h3>1. Overlay Responsiveness</h3>
+      <ul>
+        <li>Wrap the full overlay DOM in a top-level <code>#scene</code> container.</li>
+        <li>Change root page sizing from fixed <code>1920x1080</code> to full-window browser sizing.</li>
+        <li>On <code>load</code> and <code>resize</code>, compute <code>scale = min(window.innerWidth / 1920, window.innerHeight / 1080)</code>.</li>
+        <li>Center the scene and scale it with CSS transform.</li>
+        <li>Keep existing absolute-positioned overlay internals unchanged where possible.</li>
+        <li>Refactor the score-pop effect so it positions relative to the scene wrapper instead of <code>document.body</code>.</li>
+      </ul>
+
+      <h3>2. Admin Inside Control</h3>
+      <ul>
+        <li>Split <code>yolo-control.html</code> into two capability layers.</li>
+        <li>Operator mode:
+          <ul>
+            <li>score</li>
+            <li>clock</li>
+            <li>period and possession</li>
+            <li>approved live graphics</li>
+            <li>active game metadata</li>
+          </ul>
+        </li>
+        <li>Owner mode:
+          <ul>
+            <li>rotate operator PIN</li>
+            <li>reset event state from template</li>
+            <li>revoke active operator session</li>
+            <li>create and close event</li>
+            <li>lock and unlock control</li>
+            <li>copy crew URLs</li>
+          </ul>
+        </li>
+        <li>Owner mode must require its own backend-issued owner session and never appear unless owner unlock succeeds.</li>
+      </ul>
+
+      <h3>3. PINs, Sessions, and Auth</h3>
+      <ul>
+        <li>Remove all browser-side PIN checking, direct <code>/pin</code> reads, and the master reset key.</li>
+        <li>Replace with backend validation:
+          <ul>
+            <li>Operator PIN: 6 digits minimum, unique per event, rotated every game, one active editor session per event.</li>
+            <li>Owner PIN: 10 digits minimum if numeric-only, separate validation path and session role, shorter session lifetime than operator, stricter rate limits and lockouts.</li>
+          </ul>
+        </li>
+        <li>Store only hashed PINs, never raw PINs.</li>
+        <li>Backend issues short-lived Firebase-authenticated sessions after successful validation.</li>
+        <li>Add audit logs for unlocks, PIN rotation, session revocation, event reset, and emergency takeover.</li>
+      </ul>
+
+      <h3>4. Database and Rules</h3>
+      <ul>
+        <li>Replace the flat root model with:
+          <ul>
+            <li><code>/publicEvents/{eventId}/{bug,corners,ticker,stats,meta}</code></li>
+            <li><code>/adminEvents/{eventId}</code></li>
+            <li><code>/controlSessions/{uid}</code></li>
+            <li><code>/auditLogs/{eventId}/{logId}</code></li>
+          </ul>
+        </li>
+        <li>Rules:
+          <ul>
+            <li>Public read allowed only on <code>/publicEvents/{eventId}</code>.</li>
+            <li>Public write denied everywhere.</li>
+            <li>Admin, session, and audit paths blocked from public clients.</li>
+            <li>Writes to <code>/publicEvents/{eventId}</code> allowed only for valid, unexpired, unrevoked sessions scoped to that exact event.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>5. Assets</h3>
+      <ul>
+        <li>Stop storing logos and corner graphics as base64 in Realtime Database.</li>
+        <li>Upload assets to Cloud Storage.</li>
+        <li>Store only project-controlled Storage paths or signed download URLs in event state.</li>
+        <li>Do not allow arbitrary third-party remote image URLs for live assets.</li>
+      </ul>
+
+      <h3>6. Hosting and URL Cutover</h3>
+      <ul>
+        <li>Move production hosting from GitHub Pages to Firebase Hosting.</li>
+        <li>Keep GitHub as source control.</li>
+        <li>Use a short custom subdomain, for example:
+          <ul>
+            <li><code>https://bug.yourdomain.com/o/live</code></li>
+            <li><code>https://bug.yourdomain.com/c/live</code></li>
+          </ul>
+        </li>
+        <li>During migration:
+          <ul>
+            <li>build and validate Firebase preview first</li>
+            <li>connect the domain</li>
+            <li>test live routes and event routing</li>
+            <li>keep GitHub Pages temporarily as rollback only during the migration window</li>
+            <li>retire GitHub Pages as the live host after production validation</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>7. Multi-Game Scale</h3>
+      <ul>
+        <li>Make <code>eventId</code> mandatory from Phase 1, even if the first event is just <code>live</code>.</li>
+        <li>Final route model:
+          <ul>
+            <li>overlay <code>/o/{eventId}</code></li>
+            <li>control <code>/c/{eventId}</code></li>
+          </ul>
+        </li>
+        <li>Each event gets one overlay URL, one control URL, one operator PIN, one owner PIN, one crew label, and one game label.</li>
+        <li>If <code>eventId</code> is missing or invalid, block editing and show an error instead of falling back to shared state.</li>
+      </ul>
+    </section>
+
+    <section class="section-block">
+      <h2>Rollout And Test Plan</h2>
+      <ol>
+        <li><strong>Secure foundation</strong>: add event-scoped data paths, backend PIN validation, short-lived sessions, RTDB rules, audit logs, and Cloud Storage assets. Remove raw <code>/pin</code>, client-side PIN checks, and the master key.</li>
+        <li><strong>Overlay fit</strong>: add the responsive scene wrapper and verify preserve-16:9 behavior on desktop, iPad, phone, and YoloBox.</li>
+        <li><strong>Hosting cutover</strong>: stand up Firebase Hosting preview, connect the short custom subdomain, route <code>/o/live</code> and <code>/c/live</code>, and cut over only after preview validation passes.</li>
+        <li><strong>Multi-event</strong>: add per-event routing, event badges, event creation flow, and a 5-game dry run.</li>
+      </ol>
+      <div class="note">
+        <strong>Required validation:</strong> public overlay loads with no auth; public clients cannot read admin/session/audit paths; invalid PINs rate-limit and lock temporarily; revoked or expired sessions lose write access immediately; owner mode cannot be entered without a separate owner session; each event updates only its own overlay; images land in Storage, not RTDB; missing or invalid <code>eventId</code> blocks editing; Firebase preview route behavior matches production before cutover.
+      </div>
+    </section>
+
+    <section class="section-block">
+      <h2>Assumptions And Defaults</h2>
+      <ul>
+        <li>Default overlay fit mode is <code>contain</code>.</li>
+        <li>Phase 1 owner/admin stays embedded inside control because that is the selected workflow.</li>
+        <li>Phase 1 owner/admin remains PIN-only because that is the selected auth model.</li>
+        <li>Because of that choice, these safeguards are mandatory:
+          <ul>
+            <li>10-digit owner PIN minimum</li>
+            <li>separate hashed owner PIN and operator PIN</li>
+            <li>backend-only validation</li>
+            <li>separate rate limits and lockouts</li>
+            <li>short-lived owner sessions</li>
+            <li>audit logging</li>
+            <li>no client-readable secrets</li>
+          </ul>
+        </li>
+        <li>Production hosting changes now to Firebase Hosting plus a short custom subdomain.</li>
+        <li>Phase 1 is secure single-game <code>live</code>.</li>
+        <li>Phase 2 adds per-event scale-out and a separate owner oversight hub for multi-game nights.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
