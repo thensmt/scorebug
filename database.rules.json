@@ -32,7 +32,6 @@
       }
     },
 
-    "_comment": "Legacy paths locked down — no reads or writes",
     "state": {
       ".read": false,
       ".write": false
