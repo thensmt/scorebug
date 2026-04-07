@@ -384,6 +384,8 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   var authRole='operator';
   var activeListeners=[];  // Track all listeners for cleanup
   var stateReady=false;    // Safari suspension: gate writes until fresh state
+  var inputsBound=false;   // Prevent duplicate DOM listeners on re-auth
+  var renewalTimer=null;   // Track session renewal timeout for cleanup
 
   function $(id){return document.getElementById(id)}
   function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
@@ -478,13 +480,14 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     // Auto-renew session 15 min before expiry
     scheduleRenewal();
 
-    // Bind all input handlers
-    bindInputs();
+    // Bind DOM input handlers (once only — survives re-auth)
+    if(!inputsBound){bindInputs();inputsBound=true;}
   }
 
   function scheduleRenewal(){
+    if(renewalTimer)clearTimeout(renewalTimer);
     var msUntilRenew=Math.max(0,(sessionExpiry-Date.now())-15*60*1000);
-    setTimeout(function(){
+    renewalTimer=setTimeout(function(){
       if(!sessionId)return;
       var renewSession=fns.httpsCallable('renewSession');
       renewSession({sessionId:sessionId,eventId:eventId}).then(function(result){
@@ -506,6 +509,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     activeListeners.forEach(function(l){l.ref.off(l.event,l.fn);});
     activeListeners=[];
     stateReady=false;
+    if(renewalTimer){clearTimeout(renewalTimer);renewalTimer=null;}
     firebase.auth().signOut();
     eventId=null;sessionId=null;sessionRole=null;
     $('auth-screen').classList.remove('hidden');
@@ -592,7 +596,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     lcInt=setInterval(function(){
       var e=performance.now()-lcPerf;lcMs=Math.max(0,lcStart-e);
       var d=fmtC(lcMs);if(document.activeElement!==$('clockDisplay'))$('clockDisplay').value=d;
-      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;if(stateRef)stateRef.update({'bug/clock':d});}
+      var cs=Math.floor(lcMs/1000);if(cs!==lcSync){lcSync=cs;if(stateRef&&stateReady)stateRef.update({'bug/clock':d});}
       if(lcMs<=0){clearInterval(lcInt);lcRun=false;$('clockDisplay').classList.remove('running');patch({clock:'0:00',clockRunning:false});}
     },100);
   }
@@ -635,7 +639,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
       $('spn-'+pos+'-file').addEventListener('change',function(){
         var file=this.files[0];if(!file)return;
         uploadAsset(file,'corner-'+pos).then(function(url){
-          cornersRef.child(pos).update({src:url});
+          if(cornersRef&&stateReady)cornersRef.child(pos).update({src:url});
         }).catch(function(err){alert('Upload failed: '+err.message);});
         this.value='';
       });
@@ -643,7 +647,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
         var v=parseFloat(this.value);
         $('spn-'+pos+'-sv').textContent=v+'x';
         clearTimeout(T['spn'+pos]);
-        T['spn'+pos]=setTimeout(function(){if(cornersRef)cornersRef.child(pos).update({scale:v});},100);
+        T['spn'+pos]=setTimeout(function(){if(cornersRef&&stateReady)cornersRef.child(pos).update({scale:v});},100);
       });
     });
   }
@@ -652,7 +656,7 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   window.pickLogo=function(s){$(s+'FileInput').click();};
   var POSITIONS=['tl','tr','bl','br'];
   window.pickCorner=function(pos){$('spn-'+pos+'-file').click();};
-  window.clearCorner=function(pos){if(cornersRef)cornersRef.child(pos).remove();};
+  window.clearCorner=function(pos){if(cornersRef&&stateReady)cornersRef.child(pos).remove();};
 
   // ── Cloud Storage Upload ──
   function uploadAsset(file,name){
