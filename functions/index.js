@@ -111,7 +111,33 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
     },
     corners: {},
     ticker: { show: false, entries: [], speed: 50 },
+    statsMode: false,
   });
+
+  // Initialize game data nodes (flattened for performance)
+  await db.ref(`gameData/${eventId}`).set({
+    meta: {
+      event: eventTitle || eventId,
+      venue: "",
+      date: "",
+      time: "",
+      periods: 4,
+      periodLen: 8,
+      keeper: "",
+      status: "setup",
+      seasonId: "",
+      awayTeamId: "",
+      homeTeamId: "",
+      source: "nsmt_broadcast",
+      finalized: false,
+      finalizedAt: null,
+    },
+    rosters: {
+      away: { name: "AWAY", code: "", teamCode: "", seasonYear: "", level: "" },
+      home: { name: "HOME", code: "", teamCode: "", seasonYear: "", level: "" },
+    },
+  });
+  // gameEvents/{eventId} and gameSubLogs/{eventId} start empty — push-keyed
 
   // Audit log
   await db.ref(`auditLogs/${eventId}`).push({
@@ -352,11 +378,22 @@ exports.registerAsset = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError("permission-denied", "Invalid session.");
   }
 
-  // Write the Storage URL to the public event data (not the base64 data)
+  // Validate assetKey against allowlist to prevent path injection via Admin SDK
+  const ALLOWED_LOGO_KEYS = ["awayLogo", "homeLogo"];
+  const ALLOWED_CORNER_KEYS = ["tl", "tr", "bl", "br"];
+
   if (assetType === "teamLogo") {
+    if (!ALLOWED_LOGO_KEYS.includes(assetKey)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid logo key.");
+    }
     await db.ref(`publicEvents/${eventId}/bug/${assetKey}`).set(storageUrl);
   } else if (assetType === "corner") {
+    if (!ALLOWED_CORNER_KEYS.includes(assetKey)) {
+      throw new functions.https.HttpsError("invalid-argument", "Invalid corner key.");
+    }
     await db.ref(`publicEvents/${eventId}/corners/${assetKey}/src`).set(storageUrl);
+  } else {
+    throw new functions.https.HttpsError("invalid-argument", "Invalid asset type.");
   }
 
   return { success: true };

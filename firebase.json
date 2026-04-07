@@ -33,7 +33,10 @@
       "**/nsmt-producer*",
       "**/stats_v3*",
       "**/stats_control*",
-      "**/ticker2*"
+      "**/ticker2*",
+      "**/ws-client*",
+      "uploads/**",
+      "**/NSMT_Scorebug_*"
     ],
     "rewrites": [
       {
