@@ -40,11 +40,11 @@
     ],
     "rewrites": [
       {
-        "source": "/o/{eventId}",
+        "source": "/o/**",
         "destination": "/yolo-overlay.html"
       },
       {
-        "source": "/c/{eventId}",
+        "source": "/c/**",
         "destination": "/yolo-control.html"
       }
     ],
