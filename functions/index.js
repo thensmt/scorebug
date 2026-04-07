@@ -62,45 +62,27 @@ function validateEventId(eventId) {
   }
 }
 
-// ── Create Event ─────────────────────────────────────────────────
-// Creates a new event with hashed operator and owner PINs
-exports.createEvent = functions.https.onCall(async (data, context) => {
-  const { eventId, eventTitle, operatorPin, ownerPin } = data;
-
-  validateEventId(eventId);
-  if (!operatorPin || operatorPin.length < OPERATOR_PIN_LENGTH) {
-    throw new functions.https.HttpsError("invalid-argument", `Operator PIN must be at least ${OPERATOR_PIN_LENGTH} digits.`);
-  }
-  if (!ownerPin || ownerPin.length < OWNER_PIN_MIN_LENGTH) {
-    throw new functions.https.HttpsError("invalid-argument", `Owner PIN must be at least ${OWNER_PIN_MIN_LENGTH} digits.`);
-  }
-  if (operatorPin === ownerPin) {
-    throw new functions.https.HttpsError("invalid-argument", "Operator and owner PINs must be different.");
-  }
-
-  // Check if event already exists
-  const existing = await db.ref(`adminEvents/${eventId}`).once("value");
-  if (existing.exists()) {
-    throw new functions.https.HttpsError("already-exists", "Event already exists.");
-  }
-
+// ── Create Event (shared internals) ─────────────────────────────
+async function _createEventInternal({ eventId, eventTitle, operatorPin, ownerPin, awayName, homeName, ip }) {
   const operatorHash = await bcrypt.hash(operatorPin, SALT_ROUNDS);
   const ownerHash = await bcrypt.hash(ownerPin, SALT_ROUNDS);
 
-  // Write admin event data (never publicly readable)
+  const away = awayName || "AWAY";
+  const home = homeName || "HOME";
+  const title = eventTitle || `${away} vs ${home}`;
+
   await db.ref(`adminEvents/${eventId}`).set({
-    eventTitle: eventTitle || eventId,
+    eventTitle: title,
     operatorPinHash: operatorHash,
     ownerPinHash: ownerHash,
     createdAt: admin.database.ServerValue.TIMESTAMP,
     activeOperatorSessionId: null,
   });
 
-  // Initialize public event data (readable by overlay)
   await db.ref(`publicEvents/${eventId}`).set({
     bug: {
-      awayName: "AWAY",
-      homeName: "HOME",
+      awayName: away,
+      homeName: home,
       awayCode: "",
       homeCode: "",
       awayScore: 0,
@@ -109,7 +91,7 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
       clockRunning: false,
       quarter: "1ST",
       visible: true,
-      eventTitle: eventTitle || "",
+      eventTitle: title,
       bugScale: 1.25,
       bugLogoSize: 160,
       possession: "",
@@ -119,10 +101,9 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
     statsMode: false,
   });
 
-  // Initialize game data nodes (flattened for performance)
   await db.ref(`gameData/${eventId}`).set({
     meta: {
-      event: eventTitle || eventId,
+      event: title,
       venue: "",
       date: "",
       time: "",
@@ -138,23 +119,114 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
       finalizedAt: null,
     },
     rosters: {
-      away: { name: "AWAY", code: "", teamCode: "", seasonYear: "", level: "" },
-      home: { name: "HOME", code: "", teamCode: "", seasonYear: "", level: "" },
+      away: { name: away, code: "", teamCode: "", seasonYear: "", level: "" },
+      home: { name: home, code: "", teamCode: "", seasonYear: "", level: "" },
     },
     stats: {},
     onCourt: { away: {}, home: {} },
     periodScores: { away: {}, home: {} },
   });
-  // gameEvents/{eventId} and gameSubLogs/{eventId} start empty — push-keyed
 
-  // Audit log
   await db.ref(`auditLogs/${eventId}`).push({
     action: "EVENT_CREATED",
     timestamp: admin.database.ServerValue.TIMESTAMP,
-    ip: context.rawRequest?.ip || "unknown",
+    ip: ip || "unknown",
+  });
+}
+
+// ── Create Event (manual — full control) ────────────────────────
+exports.createEvent = functions.https.onCall(async (data, context) => {
+  const { eventId, eventTitle, operatorPin, ownerPin } = data;
+
+  validateEventId(eventId);
+  if (!operatorPin || operatorPin.length < OPERATOR_PIN_LENGTH) {
+    throw new functions.https.HttpsError("invalid-argument", `Operator PIN must be at least ${OPERATOR_PIN_LENGTH} digits.`);
+  }
+  if (!ownerPin || ownerPin.length < OWNER_PIN_MIN_LENGTH) {
+    throw new functions.https.HttpsError("invalid-argument", `Owner PIN must be at least ${OWNER_PIN_MIN_LENGTH} digits.`);
+  }
+  if (operatorPin === ownerPin) {
+    throw new functions.https.HttpsError("invalid-argument", "Operator and owner PINs must be different.");
+  }
+
+  const existing = await db.ref(`adminEvents/${eventId}`).once("value");
+  if (existing.exists()) {
+    throw new functions.https.HttpsError("already-exists", "Event already exists.");
+  }
+
+  await _createEventInternal({
+    eventId,
+    eventTitle,
+    operatorPin,
+    ownerPin,
+    ip: context.rawRequest?.ip,
   });
 
   return { success: true, eventId };
+});
+
+// ── Quick Create Event (auto-generates ID + PINs) ───────────────
+function generatePin(length) {
+  const digits = "0123456789";
+  let pin = "";
+  for (let i = 0; i < length; i++) {
+    pin += digits[Math.floor(Math.random() * 10)];
+  }
+  // Avoid trivial patterns
+  if (/^(.)\1+$/.test(pin) || pin === "1234" || pin === "123456") {
+    return generatePin(length);
+  }
+  return pin;
+}
+
+function slugify(str) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").substring(0, 20);
+}
+
+exports.quickCreateEvent = functions.https.onCall(async (data, context) => {
+  const { awayName, homeName, eventTitle } = data;
+
+  if (!awayName || !homeName) {
+    throw new functions.https.HttpsError("invalid-argument", "Away and home team names are required.");
+  }
+  if (awayName.length > 40 || homeName.length > 40) {
+    throw new functions.https.HttpsError("invalid-argument", "Team names must be 40 chars or less.");
+  }
+
+  // Auto-generate eventId from team names + date
+  const now = new Date();
+  const mmdd = String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
+  const baseId = slugify(awayName) + "-" + slugify(homeName) + "-" + mmdd;
+
+  let eventId = baseId;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const existing = await db.ref(`adminEvents/${eventId}`).once("value");
+    if (!existing.exists()) break;
+    eventId = baseId + "-" + (attempt + 2);
+    if (attempt === 4) {
+      throw new functions.https.HttpsError("already-exists", "Could not generate a unique event ID. Try different team names.");
+    }
+  }
+
+  const operatorPin = generatePin(4);
+  const ownerPin = generatePin(6);
+
+  await _createEventInternal({
+    eventId,
+    eventTitle: eventTitle || `${awayName} vs ${homeName}`,
+    operatorPin,
+    ownerPin,
+    awayName,
+    homeName,
+    ip: context.rawRequest?.ip,
+  });
+
+  return {
+    success: true,
+    eventId,
+    operatorPin,
+    ownerPin,
+  };
 });
 
 // ── Authenticate (PIN validation + session creation) ─────────────

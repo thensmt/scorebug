@@ -645,6 +645,12 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
   if(pathMatch) urlEvent = pathMatch[1];
   if(urlEvent) $('authEventId').value = urlEvent;
 
+  // Fragment auto-auth (crew invite links with #pin=XXXX)
+  var hashParams = new URLSearchParams(window.location.hash.substring(1));
+  var hashPin = hashParams.get('pin');
+  var hashRole = hashParams.get('role') || 'operator';
+  if(hashPin) history.replaceState(null, '', window.location.pathname + window.location.search);
+
   // ═══════════════════════════════════════════
   // AUTH
   // ═══════════════════════════════════════════
@@ -2006,6 +2012,14 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
   // INIT
   // ═══════════════════════════════════════════
   $('gsDate').value = new Date().toISOString().split('T')[0];
+
+  // Auto-auth from fragment link (#pin=XXXX)
+  if(urlEvent && hashPin){
+    $('authEventId').value = urlEvent;
+    $('authPin').value = hashPin;
+    setAuthRole(hashRole);
+    setTimeout(function(){ doAuth(); }, 300);
+  }
 
 })();
 </script>
