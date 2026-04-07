@@ -39,11 +39,10 @@
         "corners": {
           ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
           "$position": {
-            ".validate": "newData.hasChild('src')",
+            ".validate": "($position === 'tl' || $position === 'tr' || $position === 'bl' || $position === 'br') && newData.hasChild('src')",
             "src": { ".validate": "newData.isString() && newData.val().length <= 500" },
             "$other": { ".validate": false }
-          },
-          "$other": { ".validate": false }
+          }
         },
         "ticker": {
           ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
@@ -154,8 +153,7 @@
             ".validate": "$side === 'away' || $side === 'home'",
             "$period": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300 && $period.matches(/^[0-9]+$/)"
-            },
-            "$other": { ".validate": false }
+            }
           }
         }
       }
