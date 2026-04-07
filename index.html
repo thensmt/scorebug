@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NSMT Scorebug Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
     :root{
       color-scheme: dark;
@@ -26,19 +28,9 @@
       justify-content:center;
       padding:32px;
     }
-    .shell{
-      width:min(940px,100%);
-    }
-    header{
-      text-align:center;
-      margin-bottom:32px;
-    }
-    h1{
-      margin:0 0 12px;
-      font-size:32px;
-      font-weight:700;
-      letter-spacing:.4px;
-    }
+    .shell{ width:min(940px,100%); }
+    header{ text-align:center; margin-bottom:32px; }
+    h1{ margin:0 0 12px; font-size:32px; font-weight:700; letter-spacing:.4px; }
     p{ margin:0; color:var(--muted); font-size:16px; }
     .grid{
       display:grid;
@@ -56,7 +48,6 @@
       text-decoration:none;
       color:inherit;
       transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
-      position:relative;
     }
     a.card:hover{
       transform:translateY(-4px);
@@ -64,88 +55,173 @@
       box-shadow:0 12px 28px rgba(14,128,252,.16);
     }
     .label{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      font-size:14px;
-      color:var(--brand);
-      text-transform:uppercase;
-      letter-spacing:.8px;
-      font-weight:600;
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:14px; color:var(--brand); text-transform:uppercase;
+      letter-spacing:.8px; font-weight:600;
     }
-    .title{
-      font-size:24px;
-      font-weight:600;
+    .title{ font-size:24px; font-weight:600; }
+    .desc{ color:var(--muted); font-size:15px; line-height:1.4; }
+    .events-section{ margin-bottom:28px; }
+    .events-section h2{ font-size:13px; font-weight:600; margin:0 0 14px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+    .event-list{ display:flex; flex-direction:column; gap:8px; }
+    .event-item{
+      display:flex; align-items:center; gap:12px;
+      padding:14px 18px; background:var(--card);
+      border:1px solid var(--line); border-radius:12px;
+      cursor:pointer; transition:border-color .15s, background .15s;
     }
-    .desc{
-      color:var(--muted);
-      font-size:15px;
-      line-height:1.4;
+    .event-item:hover{ border-color:var(--brand); background:#1a1f2a; }
+    .event-item.selected{ border-color:var(--brand); background:rgba(14,128,252,.08); }
+    .event-name{ font-weight:600; font-size:16px; flex:1; }
+    .event-title{ color:var(--muted); font-size:13px; }
+    .event-links{ display:flex; gap:6px; flex-shrink:0; }
+    .event-links a{
+      font-size:11px; font-weight:600; text-transform:uppercase;
+      letter-spacing:.5px; color:var(--brand); text-decoration:none;
+      padding:4px 10px; border:1px solid var(--brand); border-radius:6px;
+      transition:background .15s, color .15s;
     }
-    footer{
-      margin-top:28px;
-      text-align:center;
-      font-size:13px;
-      color:var(--muted);
-    }
-    code{
-      background:rgba(255,255,255,.06);
-      padding:2px 6px;
-      border-radius:6px;
-      font-family:monospace;
-    }
+    .event-links a:hover{ background:var(--brand); color:#fff; }
+    .loading{ color:var(--muted); font-size:14px; padding:20px; text-align:center; }
+    .no-events{ color:var(--muted); font-size:14px; padding:20px; text-align:center; font-style:italic; }
+    footer{ margin-top:28px; text-align:center; font-size:13px; color:var(--muted); }
   </style>
 </head>
 <body>
   <div class="shell">
     <header>
       <h1>NSMT Scorebug Launcher</h1>
-      <p>Select what you want to open. Enter an event ID to auto-fill overlay and control URLs.</p>
+      <p>Select an event or create a new one.</p>
     </header>
-    <div style="max-width:400px;margin:0 auto 24px;">
-      <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px;">Event ID</label>
-      <input type="text" id="eventInput" placeholder="e.g. chipotle-qf1" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:16px;font-family:inherit;outline:none;" onfocus="this.style.borderColor='var(--brand)'" onblur="this.style.borderColor='var(--line)'">
+
+    <div class="events-section">
+      <h2>Your Events</h2>
+      <div id="eventList" class="event-list">
+        <div class="loading">Loading events...</div>
+      </div>
     </div>
+
     <div class="grid">
-      <a class="card" id="overlayLink" href="yolo-overlay.html" target="_blank" rel="noreferrer">
-        <span class="label">Overlay</span>
-        <span class="title">YoloBox Scorebug</span>
-        <span class="desc">Opens the broadcast overlay for YoloBox. Scales to any viewport with 16:9 preserved stage.</span>
-      </a>
-      <a class="card" id="controlLink" href="yolo-control.html" target="_blank" rel="noreferrer">
-        <span class="label">Control Console</span>
-        <span class="title">Scorebug Control Hub</span>
-        <span class="desc">Launches the control dashboard to manage teams, clocks, ticker, sponsors, and overlay settings.</span>
-      </a>
       <a class="card" href="create-event.html" target="_blank" rel="noreferrer">
         <span class="label">Setup</span>
         <span class="title">Create Event</span>
-        <span class="desc">Set up a new game with operator and owner PINs. Generates overlay and control URLs for your crew.</span>
+        <span class="desc">Set up a new game with operator and owner PINs. Generates overlay and control URLs.</span>
       </a>
-      <a class="card" href="stats_control.html" target="_blank" rel="noreferrer">
+      <a class="card" id="overlayLink" href="yolo-overlay.html" target="_blank" rel="noreferrer">
+        <span class="label">Overlay</span>
+        <span class="title">YoloBox Scorebug</span>
+        <span class="desc">Opens the broadcast overlay. Select an event above or use /o/{eventId}.</span>
+      </a>
+      <a class="card" id="controlLink" href="yolo-control.html" target="_blank" rel="noreferrer">
+        <span class="label">Control</span>
+        <span class="title">Control Hub</span>
+        <span class="desc">Manage teams, clocks, ticker, sponsors, and overlay settings.</span>
+      </a>
+      <a class="card" id="statsLink" href="yolo-stats.html" target="_blank" rel="noreferrer">
         <span class="label">Stats</span>
-        <span class="title">Basketball Stats Control</span>
-        <span class="desc">iPad-friendly stat sheet for player and team totals, plus quick access to score, clock, period, and fouls.</span>
-      </a>
-      <a class="card" href="ticker_games.csv" target="_blank" rel="noreferrer">
-        <span class="label">Data</span>
-        <span class="title">Ticker CSV Schedule</span>
-        <span class="desc">Download or open the preloaded matchup list for fast editing in Excel before importing back into the console.</span>
+        <span class="title">Stat Tracker</span>
+        <span class="desc">Live basketball stat tracking with box scores, play-by-play, and printable reports.</span>
       </a>
     </div>
-    <footer>
-      Tip: enter an event ID above and links will auto-update with the event parameter.
-    </footer>
-    <script>
-      var input = document.getElementById('eventInput');
-      var overlayLink = document.getElementById('overlayLink');
-      var controlLink = document.getElementById('controlLink');
-      input.addEventListener('input', function() {
-        var eid = this.value.trim();
-        overlayLink.href = eid ? 'yolo-overlay.html?event=' + encodeURIComponent(eid) : 'yolo-overlay.html';
-        controlLink.href = eid ? 'yolo-control.html?event=' + encodeURIComponent(eid) : 'yolo-control.html';
-      });
-    </script>
+
+    <footer>Nova Sports Media Team &mdash; thensmt.com</footer>
   </div>
+
+  <script>
+    firebase.initializeApp({
+      apiKey:"AIzaSyD_ObMxqLz2LiuDiU4TWDT7G5FtWDeK_sI",
+      authDomain:"sincere-nirvana-436014-v9.firebaseapp.com",
+      databaseURL:"https://nsmt-scorebug.firebaseio.com",
+      projectId:"sincere-nirvana-436014-v9",
+      storageBucket:"sincere-nirvana-436014-v9.firebasestorage.app",
+      appId:"1:417098775531:web:d1d88da74d217ecbd5f7ae"
+    });
+
+    var db = firebase.database();
+    var listEl = document.getElementById('eventList');
+    var overlayLink = document.getElementById('overlayLink');
+    var controlLink = document.getElementById('controlLink');
+    var statsLink = document.getElementById('statsLink');
+
+    function selectEvent(eid) {
+      overlayLink.href = '/o/' + encodeURIComponent(eid);
+      controlLink.href = '/c/' + encodeURIComponent(eid);
+      statsLink.href = '/s/' + encodeURIComponent(eid);
+      document.querySelectorAll('.event-item').forEach(function(el) {
+        el.classList.toggle('selected', el.dataset.eid === eid);
+      });
+    }
+
+    function makeLink(href, label) {
+      var a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.textContent = label;
+      a.addEventListener('click', function(e) { e.stopPropagation(); });
+      return a;
+    }
+
+    db.ref('publicEvents').once('value').then(function(snap) {
+      var data = snap.val();
+      if (!data) {
+        listEl.textContent = '';
+        var msg = document.createElement('div');
+        msg.className = 'no-events';
+        msg.textContent = 'No events yet. Create one to get started.';
+        listEl.appendChild(msg);
+        return;
+      }
+
+      listEl.textContent = '';
+      Object.keys(data).forEach(function(eid) {
+        var ev = data[eid];
+        var bug = ev.bug || {};
+        var away = bug.awayName || 'AWAY';
+        var home = bug.homeName || 'HOME';
+        var score = (bug.awayScore || 0) + ' - ' + (bug.homeScore || 0);
+        var quarter = bug.quarter || '';
+        var title = bug.eventTitle || '';
+
+        var row = document.createElement('div');
+        row.className = 'event-item';
+        row.dataset.eid = eid;
+        row.addEventListener('click', function() { selectEvent(eid); });
+
+        var info = document.createElement('div');
+        info.style.flex = '1';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'event-name';
+        nameEl.textContent = away + ' vs ' + home;
+        info.appendChild(nameEl);
+
+        var sub = document.createElement('div');
+        sub.className = 'event-title';
+        var subText = eid;
+        if (title) subText += ' \u2014 ' + title;
+        if (quarter) subText += ' \u2022 ' + quarter + ' ' + score;
+        sub.textContent = subText;
+        info.appendChild(sub);
+
+        row.appendChild(info);
+
+        var links = document.createElement('div');
+        links.className = 'event-links';
+        links.appendChild(makeLink('/o/' + encodeURIComponent(eid), 'Overlay'));
+        links.appendChild(makeLink('/c/' + encodeURIComponent(eid), 'Control'));
+        links.appendChild(makeLink('/s/' + encodeURIComponent(eid), 'Stats'));
+        row.appendChild(links);
+
+        listEl.appendChild(row);
+      });
+    }).catch(function(err) {
+      console.error('Failed to load events:', err);
+      listEl.textContent = '';
+      var msg = document.createElement('div');
+      msg.className = 'no-events';
+      msg.textContent = 'Could not load events. Check console for details.';
+      listEl.appendChild(msg);
+    });
+  </script>
 </body>
 </html>
