@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=1920">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>NSMT Fastbreak — YoloBox Overlay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +24,15 @@ html, body {
   width: 1920px; height: 1080px;
   position: relative; overflow: hidden;
   transform-origin: top left;
+  opacity: 0; transition: opacity 0.5s ease;
+}
+#offline-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+  display: none; align-items: center; justify-content: center;
+  height: 48px;
+  background: #D32F2F; color: #fff;
+  font-family: var(--fb-font-display); font-size: 24px;
+  font-weight: 700; letter-spacing: 0.06em;
 }
 #no-event {
   position: fixed; inset: 0; z-index: 9999;
@@ -540,6 +552,9 @@ html, body {
   <div class="sub">No event ID was provided. Use /o/{eventId} or ?event={eventId}</div>
 </div>
 
+<!-- Offline Banner (debounced) -->
+<div id="offline-banner">OFFLINE — Reconnecting...</div>
+
 <!-- Stage: 1920x1080 internal coordinate system, scaled to fit viewport -->
 <div id="stage">
 
@@ -571,8 +586,8 @@ html, body {
         </div>
         <span class="bug-team-score" id="score-away">0</span>
         <div class="bug-indicators">
-          <div id="fouls-away" class="indicator-dots"></div>
-          <div id="timeouts-away" class="indicator-dots"></div>
+          <div id="fouls-away" class="indicator-dots" data-type="foul"></div>
+          <div id="timeouts-away" class="indicator-dots" data-type="timeout"></div>
         </div>
       </div>
     </div>
@@ -597,8 +612,8 @@ html, body {
         </div>
         <span class="bug-team-score" id="score-home">0</span>
         <div class="bug-indicators">
-          <div id="fouls-home" class="indicator-dots"></div>
-          <div id="timeouts-home" class="indicator-dots"></div>
+          <div id="fouls-home" class="indicator-dots" data-type="foul"></div>
+          <div id="timeouts-home" class="indicator-dots" data-type="timeout"></div>
         </div>
       </div>
     </div>
@@ -1050,12 +1065,12 @@ html, body {
       bar.style.display = 'none';
     }
 
-    // Visibility
+    // Visibility (scorebug show/hide controlled by operator)
     var wrap = $('scorebug-wrap');
     if (bug.visible === false) {
       wrap.style.opacity = '0';
       wrap.style.pointerEvents = 'none';
-    } else {
+    } else if (overlayReady) {
       wrap.style.opacity = '1';
       wrap.style.pointerEvents = 'auto';
     }
@@ -1101,17 +1116,41 @@ html, body {
       apply(data);
       if (!overlayReady) {
         overlayReady = true;
-        $('scorebug-wrap').style.opacity = '1';
+        // Fade in stage after first valid data (cache poisoning prevention)
+        stage.style.opacity = '1';
       }
     }
   });
 
-  // Connection monitoring
+  // ── Overlay Heartbeat (every 10s) ────────────────────────────────
+  var heartbeatRef = db.ref('publicEvents/' + eventId + '/overlayHeartbeat');
+  setInterval(function () {
+    heartbeatRef.set(firebase.database.ServerValue.TIMESTAMP).catch(function (err) {
+      console.warn('[NSMT] Heartbeat write failed:', err.message);
+    });
+  }, 10000);
+  // Write initial heartbeat immediately
+  heartbeatRef.set(firebase.database.ServerValue.TIMESTAMP).catch(function () {});
+
+  // ── Debounced Offline Banner ─────────────────────────────────────
+  var offlineBanner = $('offline-banner');
+  var offlineTimer = null;
+
   db.ref('.info/connected').on('value', function (snap) {
     if (snap.val() === true) {
       console.log('[NSMT] Connected to Firebase — event: ' + eventId);
+      // Clear the debounce timer if reconnected within 4s
+      if (offlineTimer) { clearTimeout(offlineTimer); offlineTimer = null; }
+      offlineBanner.style.display = 'none';
     } else {
       console.log('[NSMT] Disconnected from Firebase');
+      // Debounce: only show banner after 4 seconds of sustained disconnect
+      if (!offlineTimer) {
+        offlineTimer = setTimeout(function () {
+          offlineBanner.style.display = 'flex';
+          offlineTimer = null;
+        }, 4000);
+      }
     }
   });
 
