@@ -555,7 +555,7 @@ html, body {
 <!-- ════════════════════════════════════════════════════════════════════
      SCOREBUG — TNT-Style Compact Bar
      ════════════════════════════════════════════════════════════════════ -->
-<div id="scorebug-wrap">
+<div id="scorebug-wrap" style="opacity:0;transition:opacity 0.3s ease">
   <!-- Event Banner — spans full width above scorebug -->
   <div id="event-bar"><span id="event-bar-text"></span></div>
   <div class="bug-team-logo-wrap away-side" id="logo-wrap-away"><img class="bug-team-logo" id="logo-away" alt="" src=""></div>
@@ -570,7 +570,10 @@ html, body {
           <span class="bug-team-record" id="record-away"></span>
         </div>
         <span class="bug-team-score" id="score-away">0</span>
-        <div class="bug-indicators"></div>
+        <div class="bug-indicators">
+          <div id="fouls-away" class="indicator-dots"></div>
+          <div id="timeouts-away" class="indicator-dots"></div>
+        </div>
       </div>
     </div>
     <div class="bug-divider"></div>
@@ -593,7 +596,10 @@ html, body {
           <span class="bug-team-record" id="record-home"></span>
         </div>
         <span class="bug-team-score" id="score-home">0</span>
-        <div class="bug-indicators"></div>
+        <div class="bug-indicators">
+          <div id="fouls-home" class="indicator-dots"></div>
+          <div id="timeouts-home" class="indicator-dots"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -803,6 +809,10 @@ html, body {
       clockStartSecs = parseClockToSecs(newDisplay);
       clockStartPerf = performance.now();
       clockRafId = requestAnimationFrame(clockTick);
+    } else if (newRunning && clockRunning) {
+      // Mid-run correction: snap to new value
+      clockStartSecs = parseClockToSecs(newDisplay);
+      clockStartPerf = performance.now();
     } else if (!newRunning && clockRunning) {
       clockRunning = false;
       if (clockRafId) cancelAnimationFrame(clockRafId);
@@ -1084,9 +1094,16 @@ html, body {
   // ── Firebase Listeners (event-scoped) ───────────────────────────
   var stateRef = db.ref('publicEvents/' + eventId);
 
+  var overlayReady = false;
   stateRef.on('value', function (snap) {
     var data = snap.val();
-    if (data) apply(data);
+    if (data) {
+      apply(data);
+      if (!overlayReady) {
+        overlayReady = true;
+        $('scorebug-wrap').style.opacity = '1';
+      }
+    }
   });
 
   // Connection monitoring

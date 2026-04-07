@@ -1,23 +1,49 @@
 {
   "hosting": {
-    "public": "public",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "functions/**"],
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "database.rules.json",
+      "database.rules.json.local",
+      "firebase.json.local",
+      "storage.rules",
+      ".firebaserc",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**",
+      "gemini-review-package/**",
+      "nsmt-scorebug/**",
+      "nsmt-wiki/**",
+      "**/*.md",
+      "**/*.log"
+    ],
     "rewrites": [
-      { "source": "/o/{eventId}", "destination": "/yolo-overlay.html" },
-      { "source": "/c/{eventId}", "destination": "/yolo-control.html" },
-      { "source": "/api/**", "function": "api" }
+      {
+        "source": "/o/{eventId}",
+        "destination": "/yolo-overlay.html"
+      },
+      {
+        "source": "/c/{eventId}",
+        "destination": "/yolo-control.html"
+      }
     ],
     "headers": [
       {
         "source": "/yolo-overlay.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       },
       {
         "source": "/yolo-control.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       }
     ]

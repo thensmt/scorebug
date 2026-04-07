@@ -382,6 +382,8 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   var eventId=null, sessionId=null, sessionRole=null, sessionExpiry=0;
   var stateRef=null, bugRef=null, cornersRef=null, state={};
   var authRole='operator';
+  var activeListeners=[];  // Track all listeners for cleanup
+  var stateReady=false;    // Safari suspension: gate writes until fresh state
 
   function $(id){return document.getElementById(id)}
   function setB(id,v){var e=$(id);if(document.activeElement!==e&&v!==undefined)e.value=v??'';}
@@ -442,7 +444,10 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
 
     // Update header
     var info=$('sessionInfo');
-    info.innerHTML='<span style="color:var(--text)">'+eventId+'</span> <span class="role-badge '+sessionRole+'">'+sessionRole+'</span>';
+    info.textContent='';
+    var evSpan=document.createElement('span');evSpan.style.color='var(--text)';evSpan.textContent=eventId;
+    var roleSpan=document.createElement('span');roleSpan.className='role-badge '+sessionRole;roleSpan.textContent=sessionRole;
+    info.appendChild(evSpan);info.appendChild(document.createTextNode(' '));info.appendChild(roleSpan);
 
     // Show owner controls if owner
     if(sessionRole==='owner'){
@@ -450,20 +455,25 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     }
 
     // Listen for state changes
-    stateRef.on('value',function(snap){state=snap.val()||{};syncUI();});
+    var stateListener=stateRef.on('value',function(snap){state=snap.val()||{};stateReady=true;syncUI();});
+    activeListeners.push({ref:stateRef,event:'value',fn:stateListener});
 
     // Connection badge
-    db.ref('.info/connected').on('value',function(s){
+    var connRef=db.ref('.info/connected');
+    var connListener=connRef.on('value',function(s){
       var b=$('badge');if(s.val()){b.textContent='Live';b.classList.add('on');}else{b.textContent='Offline';b.classList.remove('on');}
     });
+    activeListeners.push({ref:connRef,event:'value',fn:connListener});
 
     // Monitor session revocation
-    db.ref('sessions/'+sessionId+'/revoked').on('value',function(snap){
+    var revokeRef=db.ref('sessions/'+sessionId+'/revoked');
+    var revokeListener=revokeRef.on('value',function(snap){
       if(snap.val()===true){
         alert('Your session has been revoked.');
         doSignOut();
       }
     });
+    activeListeners.push({ref:revokeRef,event:'value',fn:revokeListener});
 
     // Auto-renew session 15 min before expiry
     scheduleRenewal();
@@ -492,7 +502,10 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
   }
 
   window.doSignOut=function(){
-    if(stateRef)stateRef.off();
+    // Detach ALL listeners to prevent leaks on re-auth
+    activeListeners.forEach(function(l){l.ref.off(l.event,l.fn);});
+    activeListeners=[];
+    stateReady=false;
     firebase.auth().signOut();
     eventId=null;sessionId=null;sessionRole=null;
     $('auth-screen').classList.remove('hidden');
@@ -502,9 +515,21 @@ input[type="color"] { width: 100%; height: 30px; padding: 1px; border-radius: 5p
     $('authSubmit').textContent='Sign In';
   };
 
+  // ── Safari Background Suspension Handler ──
+  // When iPad operator switches apps, WebKit suspends JS. On return,
+  // non-transactional patch() writes could push stale values.
+  // Gate writes until RTDB delivers fresh state.
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='visible' && stateRef){
+      stateReady=false;  // Block writes until fresh state arrives
+      // RTDB reconnects automatically — stateRef.on('value') will fire
+      // with fresh data and set stateReady=true
+    }
+  });
+
   // ── Patch (event-scoped) ──
   window.patch=function(fields){
-    if(!stateRef)return;
+    if(!stateRef||!stateReady)return;
     var u={};for(var k in fields)u['bug/'+k]=fields[k];
     stateRef.update(u);
   };

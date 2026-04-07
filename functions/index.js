@@ -3,7 +3,10 @@ const admin = require("firebase-admin");
 const bcrypt = require("bcryptjs");
 const { v4: uuidv4 } = require("uuid");
 
-admin.initializeApp();
+admin.initializeApp({
+  projectId: "sincere-nirvana-436014-v9",
+  databaseURL: "https://nsmt-scorebug.firebaseio.com",
+});
 const db = admin.database();
 
 // ── Constants ────────────────────────────────────────────────────
@@ -56,6 +59,9 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
 
   if (!eventId || typeof eventId !== "string" || eventId.length < 2) {
     throw new functions.https.HttpsError("invalid-argument", "eventId is required (min 2 chars).");
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(eventId)) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId must contain only letters, numbers, hyphens, and underscores.");
   }
   if (!operatorPin || operatorPin.length < OPERATOR_PIN_LENGTH) {
     throw new functions.https.HttpsError("invalid-argument", `Operator PIN must be at least ${OPERATOR_PIN_LENGTH} digits.`);
@@ -177,14 +183,19 @@ exports.authenticate = functions.https.onCall(async (data, context) => {
     revoked: false,
   });
 
-  // If operator, claim the active operator lease
+  // If operator, claim the active operator lease atomically via transaction
   if (role === "operator") {
-    const prevSessionId = adminData.activeOperatorSessionId;
-    // Revoke previous operator session if it exists
-    if (prevSessionId) {
-      await db.ref(`sessions/${prevSessionId}/revoked`).set(true);
+    let prevLease = null;
+    const leaseRef = db.ref(`adminEvents/${eventId}/activeOperatorSessionId`);
+    await leaseRef.transaction((currentLease) => {
+      prevLease = currentLease;
+      return sessionId;
+    });
+
+    // Revoke previous operator session if one existed
+    if (prevLease && prevLease !== sessionId) {
+      await db.ref(`sessions/${prevLease}/revoked`).set(true);
     }
-    await db.ref(`adminEvents/${eventId}/activeOperatorSessionId`).set(sessionId);
   }
 
   // Audit log

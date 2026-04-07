@@ -200,10 +200,13 @@ input:focus { border-color: var(--accent); }
         var controlUrl = baseUrl + '/yolo-control.html?event=' + encodeURIComponent(eid);
         $('overlayUrl').value = overlayUrl;
         $('controlUrl').value = controlUrl;
-        $('pinSummary').innerHTML =
-          'Operator PIN: <strong>' + opPin + '</strong><br>' +
-          'Owner PIN: <strong>' + owPin + '</strong><br>' +
-          '<span style="color:var(--gold);font-size:0.65rem;">Save these — PINs are hashed and cannot be recovered.</span>';
+        var ps=$('pinSummary'); ps.textContent='';
+        var b1=document.createElement('strong');b1.textContent=opPin;
+        var b2=document.createElement('strong');b2.textContent=owPin;
+        var warn=document.createElement('span');warn.style.cssText='color:var(--gold);font-size:0.65rem;';warn.textContent='Save these — PINs are hashed and cannot be recovered.';
+        ps.appendChild(document.createTextNode('Operator PIN: '));ps.appendChild(b1);ps.appendChild(document.createElement('br'));
+        ps.appendChild(document.createTextNode('Owner PIN: '));ps.appendChild(b2);ps.appendChild(document.createElement('br'));
+        ps.appendChild(warn);
         $('formCard').style.display = 'none';
         $('result').classList.add('visible');
       }

@@ -3,13 +3,13 @@
     "publicEvents": {
       "$eventId": {
         ".read": true,
-        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
       }
     },
     "adminEvents": {
       "$eventId": {
-        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'",
-        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'"
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner' && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner' && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
       }
     },
     "sessions": {
@@ -20,7 +20,7 @@
     },
     "auditLogs": {
       "$eventId": {
-        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner'",
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner' && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
         ".write": false
       }
     },
@@ -31,7 +31,10 @@
         }
       }
     },
-
+    "rateLimits": {
+      ".read": false,
+      ".write": false
+    },
     "state": {
       ".read": false,
       ".write": false
