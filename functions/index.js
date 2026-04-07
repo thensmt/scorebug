@@ -359,6 +359,41 @@ exports.rotatePin = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
+// ── Force Release Stats Mode (owner escape hatch) ───────────────
+// Allows owner to clear statsMode lock when operator disconnects unexpectedly
+exports.forceReleaseStats = functions.https.onCall(async (data, context) => {
+  const { eventId, ownerSessionId } = data;
+
+  if (!eventId || !ownerSessionId) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId and ownerSessionId required.");
+  }
+
+  // Verify caller is an owner with valid session
+  const ownerSnap = await db.ref(`sessions/${ownerSessionId}`).once("value");
+  if (!ownerSnap.exists()) {
+    throw new functions.https.HttpsError("not-found", "Owner session not found.");
+  }
+  const ownerSession = ownerSnap.val();
+  if (ownerSession.role !== "owner" || ownerSession.eventId !== eventId || ownerSession.revoked || ownerSession.expiresAt < Date.now()) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid or expired owner session.");
+  }
+
+  // Clear statsMode and statsPresence
+  await db.ref(`publicEvents/${eventId}`).update({
+    statsMode: false,
+    statsPresence: null,
+  });
+
+  // Audit
+  await db.ref(`auditLogs/${eventId}`).push({
+    action: "STATS_MODE_FORCE_RELEASED",
+    ownerSessionId,
+    timestamp: admin.database.ServerValue.TIMESTAMP,
+  });
+
+  return { success: true };
+});
+
 // ── Upload Asset URL (moves base64 out of RTDB) ─────────────────
 // Client uploads to Cloud Storage, then calls this to record the URL
 exports.registerAsset = functions.https.onCall(async (data, context) => {

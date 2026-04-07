@@ -46,6 +46,10 @@
       {
         "source": "/c/{eventId}",
         "destination": "/yolo-control.html"
+      },
+      {
+        "source": "/s/{eventId}",
+        "destination": "/yolo-stats.html"
       }
     ],
     "headers": [

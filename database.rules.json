@@ -3,9 +3,180 @@
     "publicEvents": {
       "$eventId": {
         ".read": true,
-        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        "bug": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now && (root.child('publicEvents').child($eventId).child('statsMode').val() !== true || root.child('sessions').child(auth.uid).child('role').val() === 'owner')",
+          ".validate": true,
+          "awayScore":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300" },
+          "homeScore":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300" },
+          "awayFouls":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
+          "homeFouls":    { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 20" },
+          "awayTOs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+          "homeTOs":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+          "clock":        { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "clockRunning": { ".validate": "newData.isBoolean()" },
+          "quarter":      { ".validate": "newData.isString() && (newData.val() === '1ST' || newData.val() === '2ND' || newData.val() === '3RD' || newData.val() === '4TH' || newData.val() === 'OT' || newData.val() === 'OT2' || newData.val() === 'OT3' || newData.val() === 'HALF' || newData.val() === 'FINAL')" },
+          "visible":      { ".validate": "newData.isBoolean()" },
+          "awayName":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "homeName":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "awayCode":     { ".validate": "newData.isString() && newData.val().length <= 4" },
+          "homeCode":     { ".validate": "newData.isString() && newData.val().length <= 4" },
+          "awayRecord":   { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "homeRecord":   { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "eventTitle":   { ".validate": "newData.isString() && newData.val().length <= 80" },
+          "possession":   { ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'away' || newData.val() === 'home')" },
+          "bugScale":     { ".validate": "newData.isNumber() && newData.val() >= 0.5 && newData.val() <= 3" },
+          "bugLogoSize":  { ".validate": "newData.isNumber() && newData.val() >= 24 && newData.val() <= 300" },
+          "awayPrimary":  { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "homePrimary":  { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "awayText":     { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "homeText":     { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "awayAccent":   { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "homeAccent":   { ".validate": "newData.isString() && newData.val().length <= 9" },
+          "awayLogo":     { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "homeLogo":     { ".validate": "newData.isString() && newData.val().length <= 500" },
+          "$other":       { ".validate": false }
+        },
+        "corners": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        },
+        "ticker": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        },
+        "stats": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        },
+        "statsMode": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          ".validate": "newData.isBoolean()"
+        },
+        "statsPresence": {
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+        },
+        "overlayHeartbeat": {
+          ".write": true,
+          ".validate": "newData.isNumber()"
+        },
+        "$other": { ".validate": false }
       }
     },
+
+    "gameData": {
+      "$eventId": {
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        "meta": {
+          ".validate": true,
+          "status":     { ".validate": "newData.isString() && (newData.val() === 'setup' || newData.val() === 'live' || newData.val() === 'final')" },
+          "event":      { ".validate": "newData.isString() && newData.val().length <= 80" },
+          "venue":      { ".validate": "newData.isString() && newData.val().length <= 80" },
+          "date":       { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "time":       { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "periods":    { ".validate": "newData.isNumber() && (newData.val() === 2 || newData.val() === 4)" },
+          "periodLen":  { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 20" },
+          "keeper":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "seasonId":   { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "awayTeamId": { ".validate": "newData.isString() && newData.val().length <= 30" },
+          "homeTeamId": { ".validate": "newData.isString() && newData.val().length <= 30" },
+          "source":     { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "finalized":  { ".validate": "newData.isBoolean()" },
+          "finalizedAt": { ".validate": "newData.isNumber() || newData.val() === null" },
+          "$other":     { ".validate": false }
+        },
+        "rosters": {
+          "$side": {
+            ".validate": "$side === 'away' || $side === 'home'",
+            "name":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "code":    { ".validate": "newData.isString() && newData.val().length <= 4" },
+            "teamCode":   { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "seasonYear": { ".validate": "newData.isString() && newData.val().length <= 10" },
+            "level":      { ".validate": "newData.isString() && newData.val().length <= 5" },
+            "players": {
+              "$playerId": {
+                ".validate": "newData.hasChildren(['name', 'num'])",
+                "name":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "num":     { ".validate": "newData.isString() && newData.val().length <= 3" },
+                "active":  { ".validate": "newData.isBoolean()" },
+                "starter": { ".validate": "newData.isBoolean()" },
+                "$other":  { ".validate": false }
+              }
+            }
+          }
+        },
+        "stats": {
+          "$playerId": {
+            "fgm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "fga":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "tpm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "tpa":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "ftm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "fta":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "oreb": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "dreb": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "ast":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "stl":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "blk":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "to":   { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "pf":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7" },
+            "minSecs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "$other":  { ".validate": false }
+          }
+        },
+        "onCourt": {
+          "$side": {
+            ".validate": "$side === 'away' || $side === 'home'",
+            "$slot": {
+              ".validate": "newData.isString() && $slot.matches(/^[0-4]$/)"
+            }
+          }
+        },
+        "periodScores": {
+          "$side": {
+            ".validate": "$side === 'away' || $side === 'home'"
+          }
+        }
+      }
+    },
+
+    "gameEvents": {
+      "$eventId": {
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        "$pushId": {
+          ".validate": "newData.hasChildren(['type', 'ts'])",
+          "type":      { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "team":      { ".validate": "newData.isString() && (newData.val() === 'away' || newData.val() === 'home')" },
+          "pid":       { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "result":    { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "pts":       { ".validate": "newData.isNumber()" },
+          "period":    { ".validate": "newData.isString() && newData.val().length <= 5" },
+          "clock":     { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "context":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "loc":       { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "assistPid": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "desc":      { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "ts":        { ".validate": "newData.isNumber()" },
+          "$other":    { ".validate": false }
+        }
+      }
+    },
+
+    "gameSubLogs": {
+      "$eventId": {
+        ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+        "$pushId": {
+          ".validate": "newData.hasChildren(['team', 'inId', 'outId', 'ts'])",
+          "team":    { ".validate": "newData.isString() && (newData.val() === 'away' || newData.val() === 'home')" },
+          "inId":    { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "outId":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "ts":      { ".validate": "newData.isNumber()" },
+          "period":  { ".validate": "newData.isString() && newData.val().length <= 5" },
+          "clock":   { ".validate": "newData.isString() && newData.val().length <= 10" },
+          "$other":  { ".validate": false }
+        }
+      }
+    },
+
     "adminEvents": {
       "$eventId": {
         ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() === 'owner' && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
