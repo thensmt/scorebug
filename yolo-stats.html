@@ -1837,6 +1837,21 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
       return rows;
     };
 
+    // Combined period breakdown (both teams side-by-side)
+    var periodBreakdownCombined = function(){
+      var rows = '';
+      for(var i = 1; i <= G.totalPeriods; i++){
+        var aP = (G.periodScores && G.periodScores.away && G.periodScores.away[i - 1] !== undefined) ? G.periodScores.away[i - 1] : '\u2014';
+        var hP = (G.periodScores && G.periodScores.home && G.periodScores.home[i - 1] !== undefined) ? G.periodScores.home[i - 1] : '\u2014';
+        rows += '<tr><td>' + periodLabel(i) + '</td><td>' + aP + '</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>' + hP + '</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>';
+      }
+      var at2 = getTeamTotals('away'), ht2 = getTeamTotals('home');
+      rows += '<tr style="font-weight:700;border-top:2px solid #333"><td>Final</td>' +
+        '<td>' + at2.pts + '</td><td>' + at2.fgm + '-' + at2.fga + '</td><td>' + at2.tpm + '-' + at2.tpa + '</td><td>' + at2.ftm + '-' + at2.fta + '</td><td>' + ((at2.oreb||0)+(at2.dreb||0)) + '</td><td>' + at2.ast + '</td><td>' + at2.to + '</td>' +
+        '<td>' + ht2.pts + '</td><td>' + ht2.fgm + '-' + ht2.fga + '</td><td>' + ht2.tpm + '-' + ht2.tpa + '</td><td>' + ht2.ftm + '-' + ht2.fta + '</td><td>' + ((ht2.oreb||0)+(ht2.dreb||0)) + '</td><td>' + ht2.ast + '</td><td>' + ht2.to + '</td></tr>';
+      return rows;
+    };
+
     // Period scores row for score header
     var periodScoreRow = '';
     for(var i = 1; i <= G.totalPeriods; i++){
@@ -1906,7 +1921,8 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
       '<tbody>' + playerRows('home') + totRow(ht) + '</tbody></table>' +
 
       '<div class="r-summary">' +
-        '<div class="r-summary-row">' +
+        '<div class="r-summary-row r-three-col">' +
+          '<table class="r-sum-table"><thead><tr><th colspan="3">PERIOD SCORES</th></tr><tr><th></th><th>' + escHtml(away.code || 'AWY') + '</th><th>' + escHtml(home.code || 'HME') + '</th></tr></thead><tbody>' + periodScoreRow + '</tbody></table>' +
           '<table class="r-sum-table"><thead><tr><th colspan="3">POINT TYPE</th></tr><tr><th></th><th>' + escHtml(away.code || 'AWY') + '</th><th>' + escHtml(home.code || 'HME') + '</th></tr></thead><tbody>' +
             '<tr><td>In Paint</td><td>' + (at.paintPts || 0) + '</td><td>' + (ht.paintPts || 0) + '</td></tr>' +
             '<tr><td>Fast Break</td><td>' + (at.fastPts || 0) + '</td><td>' + (ht.fastPts || 0) + '</td></tr>' +
@@ -1925,8 +1941,7 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
           '</tbody></table>' +
         '</div>' +
         '<div class="r-summary-row">' +
-          '<table class="r-sum-table"><thead><tr><th colspan="8">PERIOD BREAKDOWN \u2014 ' + escHtml(away.name).toUpperCase() + '</th></tr><tr><th></th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>TO</th></tr></thead><tbody>' + periodBreakdown('away') + '</tbody></table>' +
-          '<table class="r-sum-table"><thead><tr><th colspan="8">PERIOD BREAKDOWN \u2014 ' + escHtml(home.name).toUpperCase() + '</th></tr><tr><th></th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>TO</th></tr></thead><tbody>' + periodBreakdown('home') + '</tbody></table>' +
+          '<table class="r-sum-table r-period-wide"><thead><tr><th colspan="15">PERIOD BREAKDOWN</th></tr><tr><th></th><th colspan="7">' + escHtml(away.name).toUpperCase() + '</th><th colspan="7">' + escHtml(home.name).toUpperCase() + '</th></tr><tr><th></th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>TO</th><th>PTS</th><th>FG</th><th>3PT</th><th>FT</th><th>REB</th><th>AST</th><th>TO</th></tr></thead><tbody>' + periodBreakdownCombined() + '</tbody></table>' +
         '</div>' +
       '</div>' +
 
@@ -1962,7 +1977,8 @@ label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;text-tra
       '.r-table tr.rtot td { background:#f0f0f0; font-weight:700; border-top:1.5pt solid #999; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
       '.r-summary { margin-top:10pt; }' +
       '.r-summary-row { display:flex; gap:8pt; margin-bottom:8pt; }' +
-      '.r-summary-row .r-sum-table { flex:1; }' +
+      '.r-three-col .r-sum-table { flex:1; }' +
+      '.r-summary-row .r-period-wide { width:100%; }' +
       '.r-sum-table { width:100%; border-collapse:collapse; }' +
       '.r-sum-table th { background:#f0f0f0; font-size:7pt; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; padding:3pt 4pt; border:0.5pt solid #ccc; text-align:left; -webkit-print-color-adjust:exact; print-color-adjust:exact; }' +
       '.r-sum-table th:not(:first-child) { text-align:center; }' +
