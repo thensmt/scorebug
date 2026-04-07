@@ -188,6 +188,9 @@
         list.appendChild(msg);
         return;
       }
+      var savedPins = {};
+      try { savedPins = JSON.parse(localStorage.getItem('nsmtPins') || '{}'); } catch(e) {}
+
       Object.keys(data).forEach(function(eid){
         var bug = data[eid].bug || {};
         var row = document.createElement('div');
@@ -204,6 +207,8 @@
         var subText = eid;
         if(bug.eventTitle) subText += ' \u2014 ' + bug.eventTitle;
         if(bug.quarter) subText += ' \u2022 ' + bug.quarter + ' ' + (bug.awayScore||0) + '-' + (bug.homeScore||0);
+        // Show saved PIN inline
+        if(savedPins[eid]) subText += ' \u2022 PIN: ' + savedPins[eid].operatorPin;
         sub.textContent = subText;
         info.appendChild(sub);
         row.appendChild(info);
@@ -274,6 +279,13 @@
     $('createResult').style.display = '';
     $('resultEventName').textContent = away + ' vs ' + home;
 
+    // Save PINs to localStorage for future reference
+    try {
+      var saved = JSON.parse(localStorage.getItem('nsmtPins') || '{}');
+      saved[eventId] = { operatorPin: opPin, ownerPin: ownerPin, created: Date.now() };
+      localStorage.setItem('nsmtPins', JSON.stringify(saved));
+    } catch(e) {}
+
     var base = window.location.origin;
     var overlayUrl = base + '/o/' + eventId;
     var crewLink = base + '/c/' + eventId + '#pin=' + opPin;
@@ -282,6 +294,33 @@
 
     var panel = $('resultPanel');
     panel.textContent = '';
+
+    // Show PINs prominently at the top
+    var pinBox = document.createElement('div');
+    pinBox.style.cssText = 'display:flex;gap:16px;margin-bottom:16px;';
+    var opBox = document.createElement('div');
+    opBox.style.cssText = 'flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;';
+    var opLabel = document.createElement('div');
+    opLabel.style.cssText = 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;';
+    opLabel.textContent = 'Operator PIN';
+    opBox.appendChild(opLabel);
+    var opVal = document.createElement('div');
+    opVal.style.cssText = 'font-size:28px;font-weight:700;font-family:monospace;color:var(--brand);letter-spacing:4px;';
+    opVal.textContent = opPin;
+    opBox.appendChild(opVal);
+    pinBox.appendChild(opBox);
+    var owBox = document.createElement('div');
+    owBox.style.cssText = 'flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center;';
+    var owLabel = document.createElement('div');
+    owLabel.style.cssText = 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;';
+    owLabel.textContent = 'Owner PIN';
+    owBox.appendChild(owLabel);
+    var owVal = document.createElement('div');
+    owVal.style.cssText = 'font-size:28px;font-weight:700;font-family:monospace;color:var(--text);letter-spacing:4px;';
+    owVal.textContent = ownerPin;
+    owBox.appendChild(owVal);
+    pinBox.appendChild(owBox);
+    panel.appendChild(pinBox);
 
     var rows = [
       { label: 'Overlay', url: overlayUrl, share: false },
