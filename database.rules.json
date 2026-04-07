@@ -37,24 +37,40 @@
           "$other":       { ".validate": false }
         },
         "corners": {
-          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          "$position": {
+            ".validate": "newData.hasChild('src')",
+            "src": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
         },
         "ticker": {
-          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          "show":    { ".validate": "newData.isBoolean()" },
+          "speed":   { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 200" },
+          "entries": {
+            "$index": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            }
+          },
+          "$other":  { ".validate": false }
         },
         "stats": {
-          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          "$other": { ".validate": false }
         },
         "statsMode": {
-          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
           ".validate": "newData.isBoolean()"
         },
         "statsPresence": {
-          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
+          ".write": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('role').val() !== null && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now",
+          ".validate": "newData.isNumber() || newData.val() === null"
         },
         "overlayHeartbeat": {
           ".write": true,
-          ".validate": "newData.isNumber()"
+          ".validate": "newData.isNumber() && newData.val() <= now + 5000 && newData.val() >= now - 5000"
         },
         "$other": { ".validate": false }
       }
@@ -99,39 +115,47 @@
                 "starter": { ".validate": "newData.isBoolean()" },
                 "$other":  { ".validate": false }
               }
-            }
+            },
+            "$other":  { ".validate": false }
           }
         },
         "stats": {
+          ".validate": true,
           "$playerId": {
-            "fgm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "fga":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "tpm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "tpa":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "ftm":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "fta":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "oreb": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "dreb": { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "ast":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "stl":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "blk":  { ".validate": "newData.isNumber() && newData.val() >= 0" },
-            "to":   { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "fgm":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "fga":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "tpm":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "tpa":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "ftm":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "fta":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "oreb": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "dreb": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "ast":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "stl":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "blk":  { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "to":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
             "pf":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 7" },
             "minSecs": { ".validate": "newData.isNumber() && newData.val() >= 0" },
             "$other":  { ".validate": false }
           }
         },
         "onCourt": {
+          ".validate": true,
           "$side": {
             ".validate": "$side === 'away' || $side === 'home'",
             "$slot": {
-              ".validate": "newData.isString() && $slot.matches(/^[0-4]$/)"
+              ".validate": "newData.isString() && newData.val().length <= 40 && $slot.matches(/^[0-4]$/)"
             }
           }
         },
         "periodScores": {
+          ".validate": true,
           "$side": {
-            ".validate": "$side === 'away' || $side === 'home'"
+            ".validate": "$side === 'away' || $side === 'home'",
+            "$period": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300 && $period.matches(/^[0-9]+$/)"
+            },
+            "$other": { ".validate": false }
           }
         }
       }
@@ -147,14 +171,14 @@
           "team":      { ".validate": "newData.isString() && (newData.val() === 'away' || newData.val() === 'home')" },
           "pid":       { ".validate": "newData.isString() && newData.val().length <= 40" },
           "result":    { ".validate": "newData.isString() && newData.val().length <= 20" },
-          "pts":       { ".validate": "newData.isNumber()" },
+          "pts":       { ".validate": "newData.isNumber() && newData.val() >= -4 && newData.val() <= 4" },
           "period":    { ".validate": "newData.isString() && newData.val().length <= 5" },
           "clock":     { ".validate": "newData.isString() && newData.val().length <= 10" },
           "context":   { ".validate": "newData.isString() && newData.val().length <= 40" },
           "loc":       { ".validate": "newData.isString() && newData.val().length <= 20" },
           "assistPid": { ".validate": "newData.isString() && newData.val().length <= 40" },
           "desc":      { ".validate": "newData.isString() && newData.val().length <= 120" },
-          "ts":        { ".validate": "newData.isNumber()" },
+          "ts":        { ".validate": "newData.isNumber() && newData.val() <= now + 60000 && newData.val() >= now - 60000" },
           "$other":    { ".validate": false }
         }
       }
@@ -169,7 +193,7 @@
           "team":    { ".validate": "newData.isString() && (newData.val() === 'away' || newData.val() === 'home')" },
           "inId":    { ".validate": "newData.isString() && newData.val().length <= 40" },
           "outId":   { ".validate": "newData.isString() && newData.val().length <= 40" },
-          "ts":      { ".validate": "newData.isNumber()" },
+          "ts":      { ".validate": "newData.isNumber() && newData.val() <= now + 60000 && newData.val() >= now - 60000" },
           "period":  { ".validate": "newData.isString() && newData.val().length <= 5" },
           "clock":   { ".validate": "newData.isString() && newData.val().length <= 10" },
           "$other":  { ".validate": false }

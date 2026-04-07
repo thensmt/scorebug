@@ -19,8 +19,10 @@ const OPERATOR_PIN_LENGTH = 4;
 const OWNER_PIN_MIN_LENGTH = 6;
 
 // ── Rate Limiting ────────────────────────────────────────────────
-async function checkRateLimit(eventId, ip) {
-  const key = `rateLimits/${eventId}/${ip.replace(/\./g, "_")}`;
+// Keyed by eventId only (not IP) — school WiFi NATs all devices behind one IP,
+// so IP-based keys would lock ALL devices when one person fails their PIN.
+async function checkRateLimit(eventId) {
+  const key = `rateLimits/${eventId}`;
   const ref = db.ref(key);
   const snap = await ref.once("value");
   const data = snap.val() || { attempts: 0, lockedUntil: 0 };
@@ -136,6 +138,9 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
       away: { name: "AWAY", code: "", teamCode: "", seasonYear: "", level: "" },
       home: { name: "HOME", code: "", teamCode: "", seasonYear: "", level: "" },
     },
+    stats: {},
+    onCourt: { away: {}, home: {} },
+    periodScores: { away: {}, home: {} },
   });
   // gameEvents/{eventId} and gameSubLogs/{eventId} start empty — push-keyed
 
@@ -161,7 +166,7 @@ exports.authenticate = functions.https.onCall(async (data, context) => {
   }
 
   const ip = context.rawRequest?.ip || "unknown";
-  const { ref: rateRef, attempts } = await checkRateLimit(eventId, ip);
+  const { ref: rateRef, attempts } = await checkRateLimit(eventId);
 
   // Load admin event
   const adminSnap = await db.ref(`adminEvents/${eventId}`).once("value");
@@ -248,6 +253,11 @@ exports.renewSession = functions.https.onCall(async (data, context) => {
 
   if (!sessionId || !eventId) {
     throw new functions.https.HttpsError("invalid-argument", "sessionId and eventId required.");
+  }
+
+  // Verify caller is the session owner
+  if (!context.auth || context.auth.uid !== sessionId) {
+    throw new functions.https.HttpsError("unauthenticated", "Caller does not own this session.");
   }
 
   const sessionSnap = await db.ref(`sessions/${sessionId}`).once("value");
@@ -411,6 +421,15 @@ exports.registerAsset = functions.https.onCall(async (data, context) => {
   const session = sessionSnap.val();
   if (session.eventId !== eventId || session.revoked || session.expiresAt < Date.now()) {
     throw new functions.https.HttpsError("permission-denied", "Invalid session.");
+  }
+
+  // Validate storageUrl domain to prevent XSS via malicious URLs
+  const ALLOWED_URL_PREFIXES = [
+    "https://firebasestorage.googleapis.com/",
+    "https://storage.googleapis.com/",
+  ];
+  if (!ALLOWED_URL_PREFIXES.some((p) => storageUrl.startsWith(p))) {
+    throw new functions.https.HttpsError("invalid-argument", "Storage URL must be from Firebase Storage.");
   }
 
   // Validate assetKey against allowlist to prevent path injection via Admin SDK
