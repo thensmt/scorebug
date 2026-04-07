@@ -46,6 +46,10 @@
       {
         "source": "/c/**",
         "destination": "/yolo-control.html"
+      },
+      {
+        "source": "/s/**",
+        "destination": "/yolo-stats.html"
       }
     ],
     "headers": [
@@ -69,6 +73,15 @@
       },
       {
         "source": "/yolo-control.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/yolo-stats.html",
         "headers": [
           {
             "key": "Cache-Control",
