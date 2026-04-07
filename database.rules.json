@@ -155,7 +155,8 @@
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300 && $period.matches(/^[0-9]+$/)"
             }
           }
-        }
+        },
+        "$other": { ".validate": false }
       }
     },
 
@@ -220,7 +221,7 @@
     "eventMeta": {
       "$eventId": {
         "activeOperator": {
-          ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId"
+          ".read": "auth != null && root.child('sessions').child(auth.uid).child('eventId').val() === $eventId && root.child('sessions').child(auth.uid).child('revoked').val() !== true && root.child('sessions').child(auth.uid).child('expiresAt').val() > now"
         }
       }
     },

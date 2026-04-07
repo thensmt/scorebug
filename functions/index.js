@@ -54,17 +54,20 @@ async function clearAttempts(rateRef) {
   await rateRef.remove();
 }
 
+// ── Input Validation ─────────────────────────────────────────────
+const EVENT_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+function validateEventId(eventId) {
+  if (!eventId || typeof eventId !== "string" || eventId.length < 2 || !EVENT_ID_REGEX.test(eventId)) {
+    throw new functions.https.HttpsError("invalid-argument", "eventId must be 2+ chars: letters, numbers, hyphens, underscores only.");
+  }
+}
+
 // ── Create Event ─────────────────────────────────────────────────
 // Creates a new event with hashed operator and owner PINs
 exports.createEvent = functions.https.onCall(async (data, context) => {
   const { eventId, eventTitle, operatorPin, ownerPin } = data;
 
-  if (!eventId || typeof eventId !== "string" || eventId.length < 2) {
-    throw new functions.https.HttpsError("invalid-argument", "eventId is required (min 2 chars).");
-  }
-  if (!/^[a-zA-Z0-9_-]+$/.test(eventId)) {
-    throw new functions.https.HttpsError("invalid-argument", "eventId must contain only letters, numbers, hyphens, and underscores.");
-  }
+  validateEventId(eventId);
   if (!operatorPin || operatorPin.length < OPERATOR_PIN_LENGTH) {
     throw new functions.https.HttpsError("invalid-argument", `Operator PIN must be at least ${OPERATOR_PIN_LENGTH} digits.`);
   }
@@ -158,8 +161,9 @@ exports.createEvent = functions.https.onCall(async (data, context) => {
 exports.authenticate = functions.https.onCall(async (data, context) => {
   const { eventId, pin, role } = data;
 
-  if (!eventId || !pin || !role) {
-    throw new functions.https.HttpsError("invalid-argument", "eventId, pin, and role are required.");
+  validateEventId(eventId);
+  if (!pin || !role) {
+    throw new functions.https.HttpsError("invalid-argument", "pin and role are required.");
   }
   if (role !== "operator" && role !== "owner") {
     throw new functions.https.HttpsError("invalid-argument", "Role must be 'operator' or 'owner'.");
@@ -251,8 +255,9 @@ exports.authenticate = functions.https.onCall(async (data, context) => {
 exports.renewSession = functions.https.onCall(async (data, context) => {
   const { sessionId, eventId } = data;
 
-  if (!sessionId || !eventId) {
-    throw new functions.https.HttpsError("invalid-argument", "sessionId and eventId required.");
+  validateEventId(eventId);
+  if (!sessionId) {
+    throw new functions.https.HttpsError("invalid-argument", "sessionId required.");
   }
 
   // Verify caller is the session owner
@@ -295,8 +300,9 @@ exports.renewSession = functions.https.onCall(async (data, context) => {
 exports.revokeOperator = functions.https.onCall(async (data, context) => {
   const { eventId, ownerSessionId } = data;
 
-  if (!eventId || !ownerSessionId) {
-    throw new functions.https.HttpsError("invalid-argument", "eventId and ownerSessionId required.");
+  validateEventId(eventId);
+  if (!ownerSessionId) {
+    throw new functions.https.HttpsError("invalid-argument", "ownerSessionId required.");
   }
 
   // Verify caller is an owner with valid session
@@ -333,8 +339,9 @@ exports.revokeOperator = functions.https.onCall(async (data, context) => {
 exports.rotatePin = functions.https.onCall(async (data, context) => {
   const { eventId, ownerSessionId, target, newPin } = data;
 
-  if (!eventId || !ownerSessionId || !target || !newPin) {
-    throw new functions.https.HttpsError("invalid-argument", "All fields required.");
+  validateEventId(eventId);
+  if (!ownerSessionId || !target || !newPin) {
+    throw new functions.https.HttpsError("invalid-argument", "ownerSessionId, target, and newPin required.");
   }
   if (target !== "operator" && target !== "owner") {
     throw new functions.https.HttpsError("invalid-argument", "Target must be 'operator' or 'owner'.");
@@ -374,8 +381,9 @@ exports.rotatePin = functions.https.onCall(async (data, context) => {
 exports.forceReleaseStats = functions.https.onCall(async (data, context) => {
   const { eventId, ownerSessionId } = data;
 
-  if (!eventId || !ownerSessionId) {
-    throw new functions.https.HttpsError("invalid-argument", "eventId and ownerSessionId required.");
+  validateEventId(eventId);
+  if (!ownerSessionId) {
+    throw new functions.https.HttpsError("invalid-argument", "ownerSessionId required.");
   }
 
   // Verify caller is an owner with valid session
@@ -409,8 +417,9 @@ exports.forceReleaseStats = functions.https.onCall(async (data, context) => {
 exports.registerAsset = functions.https.onCall(async (data, context) => {
   const { eventId, sessionId, assetType, assetKey, storageUrl } = data;
 
-  if (!eventId || !sessionId || !assetType || !storageUrl) {
-    throw new functions.https.HttpsError("invalid-argument", "Missing required fields.");
+  validateEventId(eventId);
+  if (!sessionId || !assetType || !storageUrl) {
+    throw new functions.https.HttpsError("invalid-argument", "sessionId, assetType, and storageUrl required.");
   }
 
   // Verify session
